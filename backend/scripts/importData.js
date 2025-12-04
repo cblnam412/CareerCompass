@@ -57,7 +57,7 @@ const importUniversities = async () => {
     }));
 
     await University.insertMany(results);
-    console.log(`✅ Đã nhập ${results.length} trường đại học.`);
+    console.log(`Đã nhập ${results.length} trường đại học.`);
 };
 
 const importMajors = async () => {
@@ -73,7 +73,7 @@ const importMajors = async () => {
     }));
 
     await Major.insertMany(results);
-    console.log(`✅ Đã nhập ${results.length} ngành học.`);
+    console.log(`Đã nhập ${results.length} ngành học.`);
 };
 
 const run = async () => {
@@ -81,12 +81,12 @@ const run = async () => {
 
     await University.deleteMany({});
     await Major.deleteMany({});
-    console.log("🗑️ Đã xóa dữ liệu cũ.");
+    console.log("Đã xóa dữ liệu cũ.");
 
     await importUniversities();
     await importMajors();
 
-    console.log("🎉 Hoàn tất nhập dữ liệu.");
+    console.log("Hoàn tất nhập dữ liệu.");
     process.exit();
 };
 
