@@ -1,6 +1,44 @@
 import MockExam from '../models/MockExam.js';
 import SubjectCombination from '../models/SubjectCombination.js';
 import User from '../models/User.js';
+import { parseExcelQuestions, validateQuestions } from '../utils/excelParser.js';
+
+const validateQuestionsStructure = (questions) => {
+    const errors = [];
+    
+    if (!Array.isArray(questions) || questions.length === 0) {
+        errors.push('Questions phải là mảng và không được trống');
+        return { valid: false, errors };
+    }
+    
+    questions.forEach((q, index) => {
+        if (!q.question || typeof q.question !== 'string' || q.question.trim() === '') {
+            errors.push(`Question ${index + 1}: Nội dung câu hỏi không hợp lệ`);
+        }
+        
+        if (!Array.isArray(q.options) || q.options.length !== 4) {
+            errors.push(`Question ${index + 1}: Cần đúng 4 lựa chọn`);
+        } else {
+            q.options.forEach((opt, optIndex) => {
+                if (!opt || typeof opt !== 'string' || opt.trim() === '') {
+                    errors.push(`Question ${index + 1}, Option ${optIndex + 1}: Lựa chọn không được trống`);
+                }
+            });
+        }
+        
+        if (!q.answer || typeof q.answer !== 'string' || q.answer.trim() === '') {
+            errors.push(`Question ${index + 1}: Đáp án không hợp lệ`);
+        } else if (q.options && !q.options.includes(q.answer)) {
+            errors.push(`Question ${index + 1}: Đáp án không nằm trong các lựa chọn`);
+        }
+    });
+    
+    return {
+        valid: errors.length === 0,
+        errors
+    };
+};
+
 
 export const getAllMockExams = async (req, res) => {
     try {
@@ -105,6 +143,15 @@ export const createMockExam = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Yêu cầu thiếu: title, subjectCombination, duration, questions'
+            });
+        }
+
+        const validation = validateQuestionsStructure(questions);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dữ liệu câu hỏi không hợp lệ',
+                errors: validation.errors
             });
         }
 
@@ -220,10 +267,12 @@ export const updateMockExam = async (req, res) => {
         }
 
         if (questions !== undefined) {
-            if (!Array.isArray(questions) || questions.length === 0) {
+            const validation = validateQuestionsStructure(questions);
+            if (!validation.valid) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Đề thi phải có ít nhất 1 câu hỏi'
+                    message: 'Dữ liệu câu hỏi không hợp lệ',
+                    errors: validation.errors
                 });
             }
             exam.questions = questions;
@@ -238,7 +287,7 @@ export const updateMockExam = async (req, res) => {
             message: 'Cập nhật đề thi thành công',
             data: populatedExam
         });
-
+    
     } catch (error) {
         console.error('Update mock exam error:', error);
         res.status(500).json({
@@ -295,6 +344,128 @@ export const deleteMockExam = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi xóa đề thi',
+            error: error.message
+        });
+    }
+};
+
+export const importQuestionsFromExcel = async (req, res) => {
+    try {
+        const userId = req.headers['x-user-id'] || req.body.userId;
+        const { examId } = req.params;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Không xác thực được người dùng'
+            });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Không xác thực được người dùng'
+            });
+        }
+
+        if (user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Chỉ admin được phép import questions'
+            });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng upload file Excel'
+            });
+        }
+
+        const allowedMimes = [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel',
+            'application/octet-stream'
+        ];
+
+        if (!allowedMimes.includes(req.file.mimetype)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng upload file Excel (.xlsx hoặc .xls)'
+            });
+        }
+
+        let questions;
+        try {
+            questions = parseExcelQuestions(req.file.buffer);
+        } catch (parseError) {
+            return res.status(400).json({
+                success: false,
+                message: parseError.message
+            });
+        }
+
+        if (questions.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'File Excel không chứa câu hỏi hợp lệ'
+            });
+        }
+        const validation = validateQuestions(questions);
+        if (!validation.valid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dữ liệu câu hỏi không hợp lệ',
+                errors: validation.errors
+            });
+        }
+
+        if (examId && examId !== 'undefined') {
+            const exam = await MockExam.findById(examId);
+            if (!exam) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Đề thi không tồn tại'
+                });
+            }
+
+            const action = req.body.action || 'replace';
+            
+            if (action === 'append') {
+                exam.questions = [...exam.questions, ...questions];
+            } else {
+                exam.questions = questions;
+            }
+
+            await exam.save();
+            const populatedExam = await exam.populate('subjectCombination', 'combinationName subjects');
+
+            return res.status(200).json({
+                success: true,
+                message: `Import thành công ${questions.length} câu hỏi`,
+                data: {
+                    exam: populatedExam,
+                    importedCount: questions.length
+                }
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Parse thành công ${questions.length} câu hỏi`,
+            data: {
+                questions,
+                count: questions.length,
+                preview: questions.slice(0, 3)
+            }
+        });
+
+    } catch (error) {
+        console.error('Import questions error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi import questions từ Excel',
             error: error.message
         });
     }
