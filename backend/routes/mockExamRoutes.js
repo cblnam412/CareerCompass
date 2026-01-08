@@ -1,12 +1,19 @@
 import express from 'express';
 import multer from 'multer';
+import { verifyToken, checkAdminRole } from '../middlewares/authMiddleware.js';
 import {
     getAllMockExams,
     getMockExamById,
     createMockExam,
     updateMockExam,
     deleteMockExam,
-    importQuestionsFromExcel
+    importQuestionsFromExcel,
+    getMockExamForStudent,
+    submitMockExam,
+    getExamResult,
+    getStudentExamResults,
+    getAllExamResults,
+    getStudentExamStats
 } from '../controllers/mockExamController.js';
 
 const router = express.Router();
@@ -32,10 +39,16 @@ const upload = multer({
 router.get('/mock-exams', getAllMockExams);
 router.get('/mock-exams/:examId', getMockExamById);
 
-router.post('/admin/mock-exams', createMockExam);
-router.patch('/admin/mock-exams/:examId', updateMockExam);
-router.delete('/admin/mock-exams/:examId', deleteMockExam);
-router.post('/admin/mock-exams/import/excel', upload.single('file'), importQuestionsFromExcel);
-router.post('/admin/mock-exams/:examId/import/excel', upload.single('file'), importQuestionsFromExcel);
+router.get('/student/mock-exams/:examId', verifyToken, getMockExamForStudent);
+router.post('/student/mock-exams/:examId/submit', verifyToken, submitMockExam);
+router.get('/student/exam-results', verifyToken, getStudentExamResults);
+router.get('/student/exam-stats', verifyToken, getStudentExamStats);
+router.get('/exam-results/:resultId', verifyToken, getExamResult);
+
+router.post('/admin/mock-exams', verifyToken, checkAdminRole, createMockExam);
+router.patch('/admin/mock-exams/:examId', verifyToken, checkAdminRole, updateMockExam);
+router.delete('/admin/mock-exams/:examId', verifyToken, checkAdminRole, deleteMockExam);
+router.post('/admin/mock-exams/:examId/import/excel', verifyToken, checkAdminRole, upload.single('file'), importQuestionsFromExcel);
+router.get('/admin/exam-results', verifyToken, checkAdminRole, getAllExamResults);
 
 export default router;

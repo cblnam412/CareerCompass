@@ -2,6 +2,7 @@ import User from '../models/User.js';
 import StudentProfile from '../models/StudentProfile.js';
 import UniversityAffiliation from '../models/UniversityAffiliation.js';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { uploadFileToSupabase, deleteFileFromSupabase, ensureBucketExists } from '../utils/supabaseUtils.js';
 
 export const registerUser = async (req, res) => {
@@ -199,10 +200,19 @@ export const login = async (req, res) => {
         const userResponse = user.toObject();
         delete userResponse.password;
 
+        const token = jwt.sign(
+            { userId: user._id, email: user.email, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
         res.status(200).json({
             success: true,
             message: 'Đăng nhập thành công',
-            data: userResponse
+            data: {
+                token,
+                user: userResponse
+            }
         });
 
     } catch (error) {

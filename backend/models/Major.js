@@ -6,7 +6,7 @@ const majorSchema = new mongoose.Schema({
     },
     category: {
         type: String,
-        required: true,
+        //required: true,
     },
     description: {
         type: String,

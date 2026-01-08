@@ -1,4 +1,5 @@
 import SubjectCombination from '../models/SubjectCombination.js';
+import { parseSubjectCombinationsFromDocx, validateSubjectCombinations } from '../utils/docxParser.js';
 
 export const getAllSubjectCombinations = async (req, res) => {
     try {
@@ -192,5 +193,167 @@ export const deleteSubjectCombination = async (req, res) => {
             message: 'Lỗi xóa kết hợp môn học',
             error: error.message
         });
+    }
+};
+
+export const importSubjectCombinationsFromDocx = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng upload file .docx'
+            });
+        }
+
+        const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+        if (fileExtension !== 'docx') {
+            return res.status(400).json({
+                success: false,
+                message: 'Chỉ chấp nhận file .docx'
+            });
+        }
+
+        const parseResult = await parseSubjectCombinationsFromDocx(req.file.path);
+
+        if (!parseResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: parseResult.message,
+                error: parseResult.error
+            });
+        }
+
+        const validationResult = validateSubjectCombinations(parseResult.data);
+        if (!validationResult.valid) {
+            return res.status(400).json({
+                success: false,
+                message: 'Dữ liệu không hợp lệ',
+                errors: validationResult.errors
+            });
+        }
+
+        const combinationNames = new Set();
+        const duplicates = [];
+
+        parseResult.data.forEach((combo, index) => {
+            if (combinationNames.has(combo.combinationName.toLowerCase())) {
+                duplicates.push({
+                    index,
+                    combinationName: combo.combinationName,
+                    message: 'Mã tổ hợp bị trùng trong file'
+                });
+            }
+            combinationNames.add(combo.combinationName.toLowerCase());
+        });
+
+        if (duplicates.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Phát hiện tổ hợp môn bị trùng',
+                duplicates: duplicates
+            });
+        }
+
+        const existingCombos = await SubjectCombination.find({
+            combinationName: {
+                $in: parseResult.data.map(c => new RegExp(`^${c.combinationName}$`, 'i'))
+            }
+        });
+
+        const existingNames = new Set(
+            existingCombos.map(c => c.combinationName.toLowerCase())
+        );
+
+        const toCreate = [];
+        const toUpdate = [];
+
+        parseResult.data.forEach(combo => {
+            if (existingNames.has(combo.combinationName.toLowerCase())) {
+                toUpdate.push(combo);
+            } else {
+                toCreate.push(combo);
+            }
+        });
+
+        const createdCombos = [];
+        const createErrors = [];
+
+        for (const combo of toCreate) {
+            try {
+                const newCombination = new SubjectCombination({
+                    combinationName: combo.combinationName.trim(),
+                    subjects: combo.subjects.map(s => s.trim())
+                });
+                const saved = await newCombination.save();
+                createdCombos.push(saved);
+            } catch (error) {
+                createErrors.push({
+                    combinationName: combo.combinationName,
+                    error: error.message
+                });
+            }
+        }
+
+        const updatedCombos = [];
+        const updateErrors = [];
+
+        for (const combo of toUpdate) {
+            try {
+                const updated = await SubjectCombination.findOneAndUpdate(
+                    { combinationName: { $regex: `^${combo.combinationName}$`, $options: 'i' } },
+                    {
+                        subjects: combo.subjects.map(s => s.trim())
+                    },
+                    { new: true }
+                );
+                if (updated) {
+                    updatedCombos.push(updated);
+                }
+            } catch (error) {
+                updateErrors.push({
+                    combinationName: combo.combinationName,
+                    error: error.message
+                });
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Import tổ hợp môn thành công',
+            summary: {
+                total: parseResult.data.length,
+                created: createdCombos.length,
+                updated: updatedCombos.length,
+                errors: createErrors.length + updateErrors.length
+            },
+            data: {
+                created: createdCombos,
+                updated: updatedCombos
+            },
+            errors: createErrors.length > 0 || updateErrors.length > 0 
+                ? { createErrors, updateErrors }
+                : null,
+            parseWarnings: parseResult.errors
+        });
+
+    } catch (error) {
+        console.error('Import subject combinations error:', error);
+
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi import tổ hợp môn',
+            error: error.message
+        });
+    } finally {
+        // Xóa file upload dù thành công hay lỗi
+        if (req.file && req.file.path) {
+            try {
+                const fs = (await import('fs')).default;
+                fs.unlinkSync(req.file.path);
+                console.log('Temp file deleted:', req.file.path);
+            } catch (e) {
+                console.error('Error deleting temp file:', e);
+            }
+        }
     }
 };

@@ -1,5 +1,37 @@
+import jwt from 'jsonwebtoken';
+
+export const verifyToken = (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                message: 'Token không được cung cấp'
+            });
+        }
+
+        const token = authHeader.startsWith('Bearer ') 
+            ? authHeader.slice(7) 
+            : authHeader;
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.userId = decoded.userId;
+        req.userRole = decoded.role;
+        next();
+
+    } catch (error) {
+        console.error('Verify token error:', error);
+        return res.status(401).json({
+            success: false,
+            message: 'Token không hợp lệ hoặc đã hết hạn',
+            error: error.message
+        });
+    }
+};
+
 export const checkAuth = (req, res, next) => {
-    const userId = req.body.userId || req.query.userId || req.headers['x-user-id'];
+    const userId = req.userId;
     
     if (!userId) {
         return res.status(401).json({
@@ -8,7 +40,6 @@ export const checkAuth = (req, res, next) => {
         });
     }
 
-    req.userId = userId;
     next();
 };
 
