@@ -188,6 +188,48 @@ export const deleteUniversityMajor = async (req, res) => {
     }
 };
 
+const escapeRegExp = (string) => {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
+const findUniversityByName = async (universityName) => {
+    const searchTerm = universityName.trim();
+    
+    let uni = await University.findOne({ name: searchTerm });
+    if (uni) return uni;
+    
+    const escapedTerm = escapeRegExp(searchTerm);
+    uni = await University.findOne({
+        name: new RegExp(escapedTerm, 'i')
+    });
+    if (uni) return uni;
+    
+    const keywords = searchTerm.split(' ').filter(k => k.length > 2);
+    for (const keyword of keywords) {
+        uni = await University.findOne({
+            name: new RegExp(escapeRegExp(keyword), 'i')
+        });
+        if (uni) return uni;
+    }
+    
+    return null;
+};
+
+const findMajorByName = async (majorName) => {
+    const searchTerm = majorName.trim();
+    
+    let major = await Major.findOne({ name: searchTerm });
+    if (major) return major;
+    
+    const escapedTerm = escapeRegExp(searchTerm);
+    major = await Major.findOne({
+        name: new RegExp(escapedTerm, 'i')
+    });
+    if (major) return major;
+    
+    return null;
+};
+
 export const importFromExcel = async (req, res) => {
     try {
         if (!req.file) {
@@ -197,7 +239,7 @@ export const importFromExcel = async (req, res) => {
             });
         }
 
-        const records = req.excelData || []; // Dữ liệu từ middleware parseExcel
+        const records = req.excelData || []; 
 
         if (records.length === 0) {
             return res.status(400).json({
@@ -214,13 +256,8 @@ export const importFromExcel = async (req, res) => {
 
         for (const record of records) {
             try {
-                const major = await Major.findOne({
-                    name: new RegExp(record.majorGroupName, 'i')
-                });
-
-                const university = await University.findOne({
-                    name: new RegExp(record.universityName, 'i')
-                });
+                const major = await findMajorByName(record.majorGroupName);
+                const university = await findUniversityByName(record.universityName);
 
                 if (!major) {
                     results.skipped++;
