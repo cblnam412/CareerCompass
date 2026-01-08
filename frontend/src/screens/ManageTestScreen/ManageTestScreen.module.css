@@ -1,0 +1,585 @@
+.container {
+  height: 100vh;
+  background-color: #f3f4f6;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.header {
+  margin-bottom: 32px;
+  text-align: left;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: left;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  color: #6b7280;
+  margin: 0;
+}
+
+.searchBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  align-items: center;
+}
+
+.searchInputWrapper {
+  position: relative;
+  flex: 1;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 40px;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 12px;
+}
+
+.addButton,
+.uploadButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
+  outline: none !important;
+}
+
+.addButton:hover,
+.uploadButton:hover {
+  background-color: #0056b3;
+}
+
+.formCard {
+  margin-bottom: 24px;
+  background-color: #ffffff;
+}
+
+.inlineFormCard {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.inlineFormCard .py-6 {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formGroupFull {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formGroup label,
+.formGroupFull label {
+  font-weight: 500;
+  color: #1f2937;
+  text-align: left;
+}
+
+.formActions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.formActions button {
+  outline: none !important;
+}
+
+.testsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Update card styles to match career quizzes unified design */
+.testWrapper {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.testCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fafafa;
+  transition: all 0.3s ease;
+}
+
+.testCard:hover {
+  border-color: #007bff;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.cardTitle h3 {
+  font-size: 16px;
+  font-weight: 600;
+  text-align: left;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.testCardActions {
+  display: flex;
+  gap: 8px;
+}
+
+.editButton,
+.deleteButton {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none !important;
+}
+
+.editButton {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.editButton:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.deleteButton {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.deleteButton:hover {
+  background-color: #ef4444;
+  color: white;
+}
+
+.editCard {
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  background-color: #f0f9ff;
+}
+
+.editContent {
+  padding: 20px;
+}
+
+.cardContent {
+  flex: 1;
+}
+
+.name {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.subject {
+  margin: 0 0 8px 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 32px;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .searchBar {
+    flex-direction: column;
+  }
+
+  .buttonGroup {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .addButton,
+  .uploadButton {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .testCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    width: 100%;
+    margin-top: 12px;
+  }
+
+  .searchInputWrapper {
+    width: 100%;
+    flex: 1;
+  }
+}
+
+
+/* Add styles for questions management */
+.questionsCard {
+  margin-top: 16px;
+  background-color: #f9fafb;
+  border: 1px solid black;
+}
+
+.questionsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.addQuestionButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  font-size: 14px;
+}
+
+.addQuestionButton:hover {
+  background-color: #0056b3;
+}
+
+.questionFormCard {
+  margin-bottom: 16px;
+  background-color: #ffffff;
+  border: 1px solid black;
+}
+
+.questionFormContent {
+  padding: 16px;
+}
+
+.questionFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.selectInput {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #ffffff;
+  cursor: pointer;
+}
+
+.selectInput:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.questionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.questionCard {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.questionCardContent {
+  flex: 1;
+  padding: 0;
+}
+
+.questionNumber {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 14px;
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+.questionText {
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.optionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 8px;
+  background-color: #f9fafb;
+  border-radius: 4px;
+}
+
+.option {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.optionLabel {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.correctAnswer {
+  color: #059669;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.questionActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 8px;
+}
+
+.editQuestionCard {
+  margin-top: 8px;
+  background-color: #ffffff;
+  border: 1px solid #fbbf24;
+}
+
+.emptyQuestions {
+  text-align: center;
+  padding: 24px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Add styles for MBTI-style inline question editing */
+.individualQuestionCard {
+  background-color: #ffffff;
+  border: 1px solid black;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.individualQuestionContent {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.questionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.questionTextInput {
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+}
+
+.questionTextInput:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.optionsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.optionRadio {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.optionRadio:hover {
+  border-color: #007bff;
+  background-color: #f0f7ff;
+}
+
+.optionRadio.selected {
+  border-color: #007bff;
+  background-color: #e7f1ff;
+}
+
+.radioInput {
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  cursor: pointer;
+  accent-color: #007bff;
+}
+
+.optionContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.optionLetter {
+  font-weight: 600;
+  color: #007bff;
+  font-size: 14px;
+  min-width: 20px;
+}
+
+.optionInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: transparent;
+  transition: all 0.2s ease;
+}
+
+.optionInput:focus {
+  outline: none;
+  border-color: #007bff;
+  background-color: #ffffff;
+}
+
+.deleteQuestionButton {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #ef4444;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteQuestionButton:hover {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.questionsSection {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}

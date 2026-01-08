@@ -1,0 +1,400 @@
+.container {
+  height: 100vh;
+  padding: 24px;
+  overflow-y: auto;
+  background-color: #f9fafb;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: left;
+  margin: 0 0 8px 0;
+  color: #1f2937;
+}
+
+.subtitle {
+  color: #6b7280;
+  text-align: left;
+  margin: 0;
+  font-size: 14px;
+}
+
+.searchBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.searchInputWrapper {
+  position: relative;
+  flex: 1;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: #007bff;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  outline: none !important;
+}
+
+.addButton:hover {
+  background-color: #0056b3;
+}
+
+.formCard {
+  padding: 16px 16px 0px 16px;
+  margin-bottom: 24px;
+  background-color: #ffffff;
+  border: 1px solid black;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: left;
+  margin: 0;
+}
+
+.cardContent {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+/* Grid layout for dense user forms */
+.formGridTwo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-weight: 600;
+  color: #374151;
+  text-align: left;
+  font-size: 13px;
+}
+
+.required {
+    color: #ef4444;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid black;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+  background-color: white;
+}
+
+.input:focus {
+  border-color: #007bff;
+}
+
+.readOnlyField {
+    padding: 10px 0;
+    display: flex;
+    align-items: center;
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.editActionsWrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.itemWrapper {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.userCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #ffffff;
+  transition: all 0.3s ease;
+  padding: 16px;
+}
+
+.userCard:hover {
+  border-color: #007bff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+}
+
+.userCardContent {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.userInfo {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.userHeader {
+  display: grid;
+  grid-template-columns: 140px auto; 
+  align-items: center;
+}
+
+.userName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 12px;
+}
+
+.avatarPlaceholder {
+    width: 48px;
+    height: 48px;
+    background-color: #eff6ff;
+    color: #007bff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.userDetails {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.userName {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.userEmail {
+    font-size: 14px;
+    color: #4b5563;
+    margin: 0;
+}
+
+.userMeta {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 0;
+}
+
+.badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badgeActive {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.badgeBanned {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+.badgePending {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editBtn {
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none !important;
+}
+
+.editBtn {
+  color: #007bff;
+  border-color: #e5e7eb;
+}
+
+.editBtn:hover {
+  border-color: #007bff;
+  background-color: #eff6ff;
+}
+
+.editCard {
+  border: 1px solid #007bff;
+  border-radius: 8px;
+  background-color: #f8fbff;
+  padding: 16px;
+}
+
+.editContent {
+  padding: 0;
+}
+
+.saveBtn {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+  outline: none !important;
+}
+
+.saveBtn:hover {
+  background-color: #059669 !important;
+}
+
+.cancelBtn {
+    background-color: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1;
+    outline: none !important;
+}
+
+.cancelBtn:hover {
+  background-color: #d1d5db !important; 
+  border-color: #9ca3af !important;
+  color: #111827 !important;
+}
+
+.unbanBtn {
+    background-color: #fff;
+    color: #059669;
+    border: 1px solid #059669;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.unbanBtn:hover {
+  background-color: #ecfdf5 !important;
+  color: #047857 !important;       
+  border-color: #047857 !important; 
+}
+
+.emptyState {
+  text-align: center;
+  padding: 32px;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .container {
+    height: 85vh;
+  }
+  
+  .formGridTwo {
+    grid-template-columns: 1fr;
+  }
+
+  .searchBar {
+    flex-direction: column;
+  }
+  
+  .editActionsWrapper {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+  }
+}

@@ -11,6 +11,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  box-sizing: border-box;
 }
 
 a {
@@ -52,6 +53,47 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
+}
+
+.Toastify__close-button {
+  position: relative !important;
+  top: auto !important;   
+  right: auto !important;
+  
+  align-self: center !important;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  width: 24px; 
+  height: 24px;
+  opacity: 0.7; 
+  flex-shrink: 0; 
+}
+
+.Toastify__close-button:hover {
+  opacity: 1;
+}
+
+.Toastify__close-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.Toastify__toast {
+  display: flex;
+  align-items: center; 
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+}
+
+.Toastify__toast-body {
+  flex: 1; 
+  padding-right: 8px; 
+  margin: auto 0; 
+  line-height: 1.4;
 }
 
 @media (prefers-color-scheme: light) {

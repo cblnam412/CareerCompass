@@ -1,0 +1,422 @@
+/* 1. Make the main screen take exactly the viewport height */
+.container {
+  height: 100vh; /* Changed from min-height to height */
+  background-color: #fafafa;
+  padding: 20px;
+  box-sizing: border-box; /* Ensures padding doesn't break 100vh */
+  display: flex;         /* Prepare for column layout */
+  flex-direction: column;
+  overflow: hidden;      /* Prevent the outer window from scrolling */
+}
+
+/* 2. Make content a flex column that spans the full height */
+.content {
+  max-width: 1200px;
+  width: 100%;           /* Ensure it takes width */
+  margin: 0 auto;
+  display: flex;         /* Make this a flex container */
+  flex-direction: column;
+  height: 100%;          /* Fill the .container */
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  color: #262626;
+  margin: 0 0 8px 0;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #8e8e8e;
+  margin: 0 0 24px 0;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #007bff;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 24px;
+  padding: 0;
+  transition: color 0.2s ease;
+}
+
+.backButton:hover {
+  color: #0056b3;
+}
+
+/* Subject selection grid layout */
+.subjectGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.subjectCard {
+  background-color: #fff;
+  border: 2px solid #dbdbdb;
+  border-radius: 12px;
+  padding: 32px 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-family: inherit;
+}
+
+.subjectCard:hover {
+  border-color: #007bff;
+  box-shadow: 0 8px 24px rgba(0, 123, 255, 0.15);
+  transform: translateY(-4px);
+}
+
+.subjectIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  background-color: #f0f4f8;
+  border-radius: 12px;
+  color: #007bff;
+  margin-bottom: 16px;
+}
+
+.subjectName {
+  font-size: 20px;
+  font-weight: 700;
+  color: #262626;
+  margin: 0 0 8px 0;
+}
+
+.subjectCount {
+  font-size: 14px;
+  color: #8e8e8e;
+  margin: 0;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  padding: 24px;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.cardHeader {
+  margin-bottom: 20px;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  color: #262626;
+  margin: 0 0 8px 0;
+}
+
+.cardDescription {
+  font-size: 14px;
+  color: #8e8e8e;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.duration {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #8e8e8e;
+}
+
+.startButton {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.startButton:hover {
+  background-color: #0056b3;
+}
+
+/* Add styles for tabs */
+.tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  border-bottom: 2px solid #dbdbdb;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #8e8e8e;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  outline: none !important;
+  border-radius: 0px;
+}
+
+.tab:hover {
+  color: #262626;
+}
+
+.tabActive {
+  color: #007bff;
+  border-bottom-color: #007bff;
+}
+
+/* Add styles for results view */
+/* 3. The scrollable area takes the REMAINING space */
+.resultsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  
+  flex: 1;              
+  overflow-y: auto;      
+  min-height: 0;         
+  
+  padding-right: 8px;    
+  padding-bottom: 20px;   
+}
+
+.emptyState {
+  padding: 48px;
+  text-align: center;
+  color: #8e8e8e;
+}
+
+.resultCard {
+  background-color: #fff;
+  border: 1px solid #dbdbdb;
+  border-radius: 8px;
+  padding: 24px;
+  transition: all 0.2s ease;
+}
+
+.resultCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.resultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.resultInfo {
+  flex: 1;
+}
+
+.resultTitle {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: left;
+  color: #262626;
+  margin: 0 0 8px 0;
+}
+
+.resultDate {
+  font-size: 14px;
+  text-align: left;
+  color: #8e8e8e;
+  margin: 0;
+}
+
+.scoreDisplay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scoreCircle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  text-align: center;
+}
+
+.scoreValue {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.scoreLabel {
+  font-size: 12px;
+}
+
+.resultStats {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+  padding: 16px 0;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #8e8e8e;
+}
+
+.statLabel {
+  font-weight: 500;
+}
+
+.statValue {
+  font-weight: 600;
+  color: #262626;
+}
+
+.viewButton {
+  display: inline-block;
+  width: 100%;
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.viewButton:hover {
+  background-color: #0056b3;
+  color: white;
+}
+
+/* Tablet responsive */
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+
+  .subjectGrid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  .title {
+    font-size: 24px;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .subjectGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-bottom: 50px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .subjectCard {
+    padding: 24px 20px;
+  }
+
+  .subjectIcon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .subjectName {
+    font-size: 18px;
+  }
+
+  .tabs {
+    gap: 8px;
+  }
+
+  .tab {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .resultHeader {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .scoreCircle {
+    width: 70px;
+    height: 70px;
+  }
+
+  .scoreValue {
+    font-size: 24px;
+  }
+
+  .resultStats {
+    gap: 16px;
+  }
+
+  .resultsContainer {
+    padding-bottom: 50px;
+  }
+}

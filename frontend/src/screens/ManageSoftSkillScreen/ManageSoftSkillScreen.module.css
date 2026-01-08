@@ -1,0 +1,330 @@
+.container {
+  height: 100vh;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: left;
+  margin: 0 0 8px 0;
+  color: #1f2937;
+}
+
+.subtitle {
+  color: #6b7280;
+  text-align: left;
+  margin: 0;
+  font-size: 14px;
+}
+
+.searchBar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.searchInputWrapper {
+  position: relative;
+  flex: 1;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: #007bff;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #007bff;
+  color: #ffffff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+  outline: none !important;
+}
+
+.addButton:hover {
+  background-color: #0056b3;
+}
+
+.formCard {
+  padding: 16px 16px 0px 16px;
+  margin-bottom: 24px;
+  background-color: #ffffff;
+  border: 1px solid black;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: left;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.cardTitleWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.cardContent {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-weight: 600;
+  color: #1f2937;
+  text-align: left;
+  font-size: 14px;
+}
+
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid black;
+  border-radius: 6px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  border-color: #007bff;
+}
+
+select {
+  padding: 10px 12px;
+  border: 1px solid black;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M1 4l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+select:disabled {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  cursor: not-allowed;
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.formActions button {
+    outline: none !important;
+}
+.skillsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skillWrapper {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skillCard {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background-color: #fafafa;
+  transition: all 0.3s ease;
+  padding: 16px;
+}
+
+.skillCard:hover {
+  border-color: #007bff;
+  background-color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editBtn,
+.deleteBtn {
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none !important;
+}
+
+.editBtn {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.editBtn:hover {
+  background-color: #007bff;
+  color: white;
+}
+
+.deleteBtn {
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.deleteBtn:hover {
+  background-color: #ef4444;
+  color: white;
+}
+
+.editCard {
+  border: 1px solid #007bff;
+  border-radius: 8px;
+  background-color: #f0f9ff;
+  padding: 16px;
+}
+
+.editContent {
+  padding: 16px;
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.saveBtn {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  outline: none !important;
+  line-height: 1; 
+}
+
+.saveBtn:hover {
+  background-color: #059669 !important;
+}
+
+.cancelBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: #e5e7eb; 
+  color: #374151; 
+  border: 1px solid #d1d5db;
+  line-height: 1; 
+  outline: none !important;
+}
+
+.cancelBtn:hover {
+  background-color: #d1d5db !important; 
+  border-color: #9ca3af !important;
+  color: #111827 !important;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 32px;
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .container {
+    height: 85vh;
+  }
+
+  .searchBar {
+    flex-direction: column;
+  }
+
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}
