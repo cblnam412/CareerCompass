@@ -5,7 +5,12 @@ const universityAffiliationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true, 
-    }, 
+    },
+    studentIdNumber: {
+        type: String,
+        required: true,
+        trim: true,
+    },
     universityId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'University',
@@ -44,5 +49,6 @@ const universityAffiliationSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
 const UniversityAffiliation = mongoose.model('UniversityAffiliation', universityAffiliationSchema);
 export default UniversityAffiliation;

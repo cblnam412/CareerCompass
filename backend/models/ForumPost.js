@@ -16,6 +16,9 @@ const forumPostSchema = new mongoose.Schema({
     itemUrl: {
         type: String,
     },
+    documentUrl: {
+        type: String,
+    },
     relatedMajorIds: {
         type: [mongoose.Schema.Types.ObjectId],
         ref: 'Major',
@@ -36,6 +39,11 @@ const forumPostSchema = new mongoose.Schema({
     upvotes: {
         type: Number,
         default: 0,
+    },
+    upvoters: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'User',
+        default: [],
     }
 }, {
     timestamps: true

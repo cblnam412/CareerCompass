@@ -1,10 +1,12 @@
 import ForumPost from '../models/ForumPost.js';
 import ForumComment from '../models/ForumComment.js';
 import User from '../models/User.js';
+import { uploadFileToSupabase, deleteFileFromSupabase } from '../utils/supabaseUtils.js';
 
 export const getAllForumPosts = async (req, res) => {
     try {
         const { search, status = 'active', sort = '-createdAt', limit = 10, page = 1 } = req.query;
+        const userId = req.userId;
         const skip = (page - 1) * limit;
 
         const filter = {};
@@ -28,11 +30,16 @@ export const getAllForumPosts = async (req, res) => {
             .limit(parseInt(limit))
             .sort(sort);
 
+        const postsWithUpvoteStatus = posts.map(post => ({
+            ...post.toObject(),
+            isUpvoted: userId && post.upvoters.includes(userId)
+        }));
+
         const total = await ForumPost.countDocuments(filter);
 
         res.status(200).json({
             success: true,
-            data: posts,
+            data: postsWithUpvoteStatus,
             pagination: {
                 total,
                 page: parseInt(page),
@@ -54,6 +61,7 @@ export const getAllForumPosts = async (req, res) => {
 export const getForumPostById = async (req, res) => {
     try {
         const { postId } = req.params;
+        const userId = req.userId;
 
         const post = await ForumPost.findById(postId)
             .populate('authorId', 'fullName email')
@@ -71,11 +79,21 @@ export const getForumPostById = async (req, res) => {
             .populate('authorId', 'fullName email')
             .sort({ createdAt: -1 });
 
+        const postWithUpvote = {
+            ...post.toObject(),
+            isUpvoted: userId && post.upvoters.includes(userId)
+        };
+
+        const commentsWithUpvote = comments.map(comment => ({
+            ...comment.toObject(),
+            isUpvoted: userId && comment.upvoters.includes(userId)
+        }));
+
         res.status(200).json({
             success: true,
             data: {
-                post,
-                comments
+                post: postWithUpvote,
+                comments: commentsWithUpvote
             }
         });
 
@@ -92,7 +110,9 @@ export const getForumPostById = async (req, res) => {
 export const createForumPost = async (req, res) => {
     try {
         const { title, content, itemUrl, relatedMajorIds, relatedUniversityIds } = req.body;
-        const authorId = req.body.userId || req.headers['x-user-id'];
+        const authorId = req.userId;
+        let imageUrl = itemUrl;
+        let fileUrl = null;
 
         if (!title || title.trim().length === 0) {
             return res.status(400).json({
@@ -108,13 +128,6 @@ export const createForumPost = async (req, res) => {
             });
         }
 
-        if (!authorId) {
-            return res.status(401).json({
-                success: false,
-                message: 'Vui lòng đăng nhập'
-            });
-        }
-
         const user = await User.findById(authorId);
         if (!user) {
             return res.status(404).json({
@@ -123,11 +136,44 @@ export const createForumPost = async (req, res) => {
             });
         }
 
+        if (req.files && req.files.image) {
+            const imageUpload = await uploadFileToSupabase(
+                req.files.image,
+                'forum-posts',
+                'images'
+            );
+            if (imageUpload.success) {
+                imageUrl = imageUpload.url;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi upload hình ảnh: ' + imageUpload.error
+                });
+            }
+        }
+
+        if (req.files && req.files.document) {
+            const docUpload = await uploadFileToSupabase(
+                req.files.document,
+                'forum-posts',
+                'documents'
+            );
+            if (docUpload.success) {
+                fileUrl = docUpload.url;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi upload tài liệu: ' + docUpload.error
+                });
+            }
+        }
+
         const newPost = new ForumPost({
             authorId,
             title: title.trim(),
             content: content.trim(),
-            itemUrl,
+            itemUrl: imageUrl,
+            documentUrl: fileUrl,
             relatedMajorIds: relatedMajorIds || [],
             relatedUniversityIds: relatedUniversityIds || [],
             status: 'active'
@@ -157,7 +203,7 @@ export const updateForumPost = async (req, res) => {
     try {
         const { postId } = req.params;
         const { title, content, itemUrl, relatedMajorIds, relatedUniversityIds, status } = req.body;
-        const userId = req.body.userId || req.headers['x-user-id'];
+        const userId = req.userId;
 
         const post = await ForumPost.findById(postId);
 
@@ -175,9 +221,55 @@ export const updateForumPost = async (req, res) => {
             });
         }
 
+        // Upload image nếu có file mới
+        if (req.files && req.files.image) {
+            // Xóa ảnh cũ nếu có
+            if (post.itemUrl) {
+                const oldPath = post.itemUrl.split('/').pop();
+                await deleteFileFromSupabase('forum-posts', `images/${oldPath}`);
+            }
+            
+            const imageUpload = await uploadFileToSupabase(
+                req.files.image,
+                'forum-posts',
+                'images'
+            );
+            if (imageUpload.success) {
+                post.itemUrl = imageUpload.url;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi upload hình ảnh: ' + imageUpload.error
+                });
+            }
+        }
+
+        // Upload document nếu có file mới
+        if (req.files && req.files.document) {
+            // Xóa tài liệu cũ nếu có
+            if (post.documentUrl) {
+                const oldPath = post.documentUrl.split('/').pop();
+                await deleteFileFromSupabase('forum-posts', `documents/${oldPath}`);
+            }
+            
+            const docUpload = await uploadFileToSupabase(
+                req.files.document,
+                'forum-posts',
+                'documents'
+            );
+            if (docUpload.success) {
+                post.documentUrl = docUpload.url;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi upload tài liệu: ' + docUpload.error
+                });
+            }
+        }
+
         if (title) post.title = title.trim();
         if (content) post.content = content.trim();
-        if (itemUrl) post.itemUrl = itemUrl;
+        if (itemUrl && !req.files?.image) post.itemUrl = itemUrl; // Chỉ update nếu không upload file mới
         if (relatedMajorIds) post.relatedMajorIds = relatedMajorIds;
         if (relatedUniversityIds) post.relatedUniversityIds = relatedUniversityIds;
         if (status && ['active', 'resolved', 'closed'].includes(status)) {
@@ -206,7 +298,7 @@ export const updateForumPost = async (req, res) => {
 export const deleteForumPost = async (req, res) => {
     try {
         const { postId } = req.params;
-        const userId = req.body.userId || req.headers['x-user-id'];
+        const userId = req.userId;
 
         const post = await ForumPost.findById(postId);
 
@@ -222,6 +314,16 @@ export const deleteForumPost = async (req, res) => {
                 success: false,
                 message: 'Bạn không có quyền xóa bài viết này'
             });
+        }
+
+        // Xóa file từ Supabase
+        if (post.itemUrl) {
+            const oldPath = post.itemUrl.split('/').pop();
+            await deleteFileFromSupabase('forum-posts', `images/${oldPath}`);
+        }
+        if (post.documentUrl) {
+            const oldPath = post.documentUrl.split('/').pop();
+            await deleteFileFromSupabase('forum-posts', `documents/${oldPath}`);
         }
 
         await ForumPost.findByIdAndDelete(postId);
@@ -245,6 +347,7 @@ export const deleteForumPost = async (req, res) => {
 export const upvoteForumPost = async (req, res) => {
     try {
         const { postId } = req.params;
+        const userId = req.userId;
 
         const post = await ForumPost.findById(postId);
 
@@ -255,13 +358,26 @@ export const upvoteForumPost = async (req, res) => {
             });
         }
 
-        post.upvotes += 1;
+  
+        const hasUpvoted = post.upvoters.includes(userId);
+
+        if (hasUpvoted) {
+            post.upvoters = post.upvoters.filter(id => id.toString() !== userId);
+            post.upvotes = Math.max(0, post.upvotes - 1);
+        } else {
+            post.upvoters.push(userId);
+            post.upvotes += 1;
+        }
+
         const updated = await post.save();
 
         res.status(200).json({
             success: true,
-            message: 'Upvote thành công',
-            data: { upvotes: updated.upvotes }
+            message: hasUpvoted ? 'Hủy upvote thành công' : 'Upvote thành công',
+            data: {
+                upvotes: updated.upvotes,
+                isUpvoted: !hasUpvoted
+            }
         });
 
     } catch (error) {

@@ -24,7 +24,16 @@ const userSchema = new mongoose.Schema({
     DOB: {
         type: Date,
     },
+    studentId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+    },
     address: {
+        type: String,
+    },
+    avatar: {
         type: String,
     },
     status: {

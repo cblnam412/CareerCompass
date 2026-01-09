@@ -24,6 +24,11 @@ const forumCommentSchema = new mongoose.Schema({
     upvotes: {
         type: Number,
         default: 0,
+    },
+    upvoters: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'User',
+        default: [],
     }
 }, {
     timestamps: true

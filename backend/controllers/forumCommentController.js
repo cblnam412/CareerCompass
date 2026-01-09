@@ -6,6 +6,7 @@ export const getForumComments = async (req, res) => {
     try {
         const { postId } = req.params;
         const { sort = '-createdAt', limit = 20, page = 1 } = req.query;
+        const userId = req.userId;
         const skip = (page - 1) * limit;
 
         const post = await ForumPost.findById(postId);
@@ -23,11 +24,16 @@ export const getForumComments = async (req, res) => {
             .limit(parseInt(limit))
             .sort(sort);
 
+        const commentsWithUpvote = comments.map(comment => ({
+            ...comment.toObject(),
+            isUpvoted: userId && comment.upvoters.includes(userId)
+        }));
+
         const total = await ForumComment.countDocuments({ postId });
 
         res.status(200).json({
             success: true,
-            data: comments,
+            data: commentsWithUpvote,
             pagination: {
                 total,
                 page: parseInt(page),
@@ -50,19 +56,12 @@ export const createForumComment = async (req, res) => {
     try {
         const { postId } = req.params;
         const { content, itemUrl, parentCommentId } = req.body;
-        const authorId = req.body.userId || req.headers['x-user-id'];
+        const authorId = req.userId;
 
         if (!content || content.trim().length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'Vui lòng cung cấp nội dung bình luận'
-            });
-        }
-
-        if (!authorId) {
-            return res.status(401).json({
-                success: false,
-                message: 'Vui lòng đăng nhập'
             });
         }
 
@@ -127,7 +126,7 @@ export const updateForumComment = async (req, res) => {
     try {
         const { commentId } = req.params;
         const { content, itemUrl } = req.body;
-        const userId = req.body.userId || req.headers['x-user-id'];
+        const userId = req.userId;
 
         const comment = await ForumComment.findById(commentId);
 
@@ -170,7 +169,7 @@ export const updateForumComment = async (req, res) => {
 export const deleteForumComment = async (req, res) => {
     try {
         const { commentId } = req.params;
-        const userId = req.body?.userId || req.headers['x-user-id'];
+        const userId = req.userId; 
 
         const comment = await ForumComment.findById(commentId);
 
@@ -218,6 +217,7 @@ export const deleteForumComment = async (req, res) => {
 export const upvoteForumComment = async (req, res) => {
     try {
         const { commentId } = req.params;
+        const userId = req.userId;
 
         const comment = await ForumComment.findById(commentId);
 
@@ -228,13 +228,25 @@ export const upvoteForumComment = async (req, res) => {
             });
         }
 
-        comment.upvotes += 1;
+        const hasUpvoted = comment.upvoters.includes(userId);
+
+        if (hasUpvoted) {
+            comment.upvoters = comment.upvoters.filter(id => id.toString() !== userId);
+            comment.upvotes = Math.max(0, comment.upvotes - 1);
+        } else {
+            comment.upvoters.push(userId);
+            comment.upvotes += 1;
+        }
+
         const updated = await comment.save();
 
         res.status(200).json({
             success: true,
-            message: 'Upvote thành công',
-            data: { upvotes: updated.upvotes }
+            message: hasUpvoted ? 'Hủy upvote thành công' : 'Upvote thành công',
+            data: {
+                upvotes: updated.upvotes,
+                isUpvoted: !hasUpvoted
+            }
         });
 
     } catch (error) {

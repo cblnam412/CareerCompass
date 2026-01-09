@@ -192,41 +192,40 @@ const escapeRegExp = (string) => {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
-const findUniversityByName = async (universityName) => {
-    const searchTerm = universityName.trim();
+const normalizeText = (text) => {
+    if (!text) return '';
+    return text
+        .toLowerCase()
+        .trim()
+        .replace(/[()[\]{}.,;:!?@#$%^&*\-_=+`~'"]/g, '') 
+        .replace(/\s+/g, ' '); 
+};
+
+const createNameIdMap = (items) => {
+    return items.map(item => ({
+        name: item.name,
+        normalized: normalizeText(item.name),
+        id: item._id
+    }));
+};
+
+const findInMap = (searchName, map) => {
+    const searchTerm = normalizeText(searchName);
     
-    let uni = await University.findOne({ name: searchTerm });
-    if (uni) return uni;
+    if (!searchTerm) return null;
+
+    let result = map.find(item => item.normalized === searchTerm);
+    if (result) return result;
     
-    const escapedTerm = escapeRegExp(searchTerm);
-    uni = await University.findOne({
-        name: new RegExp(escapedTerm, 'i')
-    });
-    if (uni) return uni;
+    result = map.find(item => item.normalized.includes(searchTerm) || searchTerm.includes(item.normalized));
+    if (result) return result;
     
     const keywords = searchTerm.split(' ').filter(k => k.length > 2);
     for (const keyword of keywords) {
-        uni = await University.findOne({
-            name: new RegExp(escapeRegExp(keyword), 'i')
-        });
-        if (uni) return uni;
+        result = map.find(item => item.normalized.includes(keyword));
+        if (result) return result;
     }
-    
-    return null;
-};
-
-const findMajorByName = async (majorName) => {
-    const searchTerm = majorName.trim();
-    
-    let major = await Major.findOne({ name: searchTerm });
-    if (major) return major;
-    
-    const escapedTerm = escapeRegExp(searchTerm);
-    major = await Major.findOne({
-        name: new RegExp(escapedTerm, 'i')
-    });
-    if (major) return major;
-    
+    //onsole.log(`No match found for: ${searchName}`);
     return null;
 };
 
@@ -248,6 +247,13 @@ export const importFromExcel = async (req, res) => {
             });
         }
 
+        const allUniversities = await University.find({}, 'name');
+
+        const allMajors = await Major.find({}, 'name');
+        
+        const universityMap = createNameIdMap(allUniversities);
+        const majorMap = createNameIdMap(allMajors);
+
         const results = {
             imported: 0,
             skipped: 0,
@@ -256,34 +262,66 @@ export const importFromExcel = async (req, res) => {
 
         for (const record of records) {
             try {
-                const major = await findMajorByName(record.majorGroupName);
-                const university = await findUniversityByName(record.universityName);
+                const majorMatch = findInMap(record.majorGroupName, majorMap);
+                const universityMatch = findInMap(record.universityName, universityMap);
 
-                if (!major) {
+                if (!majorMatch) {
                     results.skipped++;
                     results.errors.push(`Major not found: ${record.majorGroupName}`);
                     continue;
                 }
 
-                if (!university) {
+                if (!universityMatch) {
                     results.skipped++;
                     results.errors.push(`University not found: ${record.universityName}`);
                     continue;
                 }
 
                 const existing = await UniversityMajor.findOne({
-                    universityId: university._id,
-                    majorId: major._id
+                    universityId: universityMatch.id,
+                    majorId: majorMatch.id
                 });
 
                 if (existing) {
-                    results.skipped++;
+                    const needsUpdate = 
+                        existing.tutionFee === 0 ||
+                        existing.duration === 0 ||
+                        existing.quota === 0 ||
+                        !existing.addmissionMethods ||
+                        existing.addmissionMethods.length === 0;
+                    
+                    if (needsUpdate) {
+                        const updateData = {};
+                        
+                        if (existing.tutionFee === 0) {
+                            updateData.tutionFee = parseFloat(record.tuition) || 0;
+                        }
+                        if (existing.duration === 0) {
+                            updateData.duration = 0;
+                        }
+                        if (existing.quota === 0) {
+                            updateData.quota = 0; 
+                        }
+                        if (!existing.addmissionMethods || existing.addmissionMethods.length === 0) {
+                            updateData.addmissionMethods = record.subjects ? [record.subjects] : [];
+                        }
+                        
+                        await UniversityMajor.findByIdAndUpdate(
+                            existing._id,
+                            updateData,
+                            { new: true }
+                        );
+                        
+                        results.imported++;
+                    } else {
+                        results.skipped++;
+                    }
                     continue;
                 }
 
                 await UniversityMajor.create({
-                    universityId: university._id,
-                    majorId: major._id,
+                    universityId: universityMatch.id,
+                    majorId: majorMatch.id,
                     majorName: record.majorName,
                     tutionFee: parseFloat(record.tuition) || 0,
                     duration: 0,
