@@ -46,6 +46,7 @@ export const checkAuth = (req, res, next) => {
 export const checkUniManagerRole = async (req, res, next) => {
     try {
         const User = (await import('../models/User.js')).default;
+        const { id } = req.params;
         
         const user = await User.findById(req.userId);
         
@@ -60,6 +61,13 @@ export const checkUniManagerRole = async (req, res, next) => {
             return res.status(403).json({
                 success: false,
                 message: 'Bạn không có quyền thực hiện hành động này. Chỉ quản lý trường (uniManager) mới có quyền'
+            });
+        }
+
+        if (!user.universityId || user.universityId.toString() !== id) {
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn chỉ có quyền quản lý trường của bạn'
             });
         }
 
@@ -142,4 +150,49 @@ export const checkRoles = (allowedRoles) => {
             });
         }
     };
+};
+
+export const checkAdminOrUniManager = async (req, res, next) => {
+    try {
+        const User = (await import('../models/User.js')).default;
+        const { id } = req.params; 
+        
+        const user = await User.findById(req.userId);
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Người dùng không tồn tại'
+            });
+        }
+
+        if (user.role === 'admin') {
+            req.user = user;
+            return next();
+        }
+
+        if (user.role === 'uniManager') {
+            if (user.universityId && user.universityId.toString() === id) {
+                req.user = user;
+                return next();
+            }
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn chỉ có quyền chỉnh sửa thông tin trường của bạn'
+            });
+        }
+
+        return res.status(403).json({
+            success: false,
+            message: 'Bạn không có quyền thực hiện hành động này'
+        });
+
+    } catch (error) {
+        console.error('Check admin or uniManager error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi kiểm tra quyền',
+            error: error.message
+        });
+    }
 };

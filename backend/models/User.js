@@ -27,6 +27,9 @@ const userSchema = new mongoose.Schema({
     address: {
         type: String,
     },
+    avatar: {
+        type: String,
+    },
     status: {
         type: String,
         enum: ['active', 'pending', 'banned'],

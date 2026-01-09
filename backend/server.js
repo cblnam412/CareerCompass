@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import affiliationRoutes from './routes/affiliationRoutes.js';
 import subjectCombinationRoutes from './routes/subjectCombinationRoutes.js';
 import softSkillRoutes from './routes/softSkillRoutes.js';
@@ -24,7 +25,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/auth', authRoutes);
-app.use('/admin', affiliationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/affiliations', affiliationRoutes);
 app.use('/api', subjectCombinationRoutes);
 app.use('/api', softSkillRoutes);
 app.use('/api/forum', forumRoutes);
