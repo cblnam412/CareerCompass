@@ -46,7 +46,8 @@ export const checkAuth = (req, res, next) => {
 export const checkUniManagerRole = async (req, res, next) => {
     try {
         const User = (await import('../models/User.js')).default;
-        const { id } = req.params;
+        const UniversityAffiliation = (await import('../models/UniversityAffiliation.js')).default;
+        const { id, universityId } = req.params;
         
         const user = await User.findById(req.userId);
         
@@ -64,8 +65,20 @@ export const checkUniManagerRole = async (req, res, next) => {
             });
         }
 
-        // Nếu có id param, kiểm tra xem user có quyền quản lý trường đó không
-        if (id && user.universityId.toString() !== id) {
+        let compareId = universityId; 
+        
+        if (!compareId && id) {
+            try {
+                const affiliation = await UniversityAffiliation.findById(id);
+                if (affiliation) {
+                    compareId = affiliation.universityId.toString();
+                }
+            } catch (error) {
+                console.log('Could not find affiliation with id:', id);
+            }
+        }
+
+        if (compareId && user.universityId.toString() !== compareId) {
             return res.status(403).json({
                 success: false,
                 message: 'Bạn chỉ có quyền quản lý trường của bạn'

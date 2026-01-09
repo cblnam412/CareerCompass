@@ -109,7 +109,7 @@ export const registerUniversityRep = async (req, res) => {
             }
         }
 
-        const university = await User.findById(universityId);
+        const university = await University.findById(universityId);
         if (!university) {
             return res.status(404).json({ 
                 success: false, 
@@ -164,7 +164,7 @@ export const registerUniversityRep = async (req, res) => {
 
         const affiliation = new UniversityAffiliation({
             studentId: savedUser._id,
-            studentIdNumber: studentId ? studentId.trim() : '',
+            studentIdNumber: studentID.trim(),
             universityId,
             studentCardFront: frontCardUpload.url,
             studentCardBack: backCardUpload.url,

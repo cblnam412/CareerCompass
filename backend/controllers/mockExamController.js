@@ -1,5 +1,5 @@
 import MockExam from '../models/MockExam.js';
-import SubjectCombination from '../models/SubjectCombination.js';
+import Subject from '../models/Subject.js';
 import User from '../models/User.js';
 import ExamResult from '../models/ExamResult.js';
 import { parseExcelQuestions, validateQuestions } from '../utils/excelParser.js';
@@ -55,7 +55,7 @@ export const getAllMockExams = async (req, res) => {
         }
 
         const exams = await MockExam.find(filter)
-            .populate('subjectCombination', 'combinationName subjects')
+            .populate('subject', 'name code')
             .skip(skip)
             .limit(parseInt(limit))
             .sort(sort);
@@ -88,7 +88,7 @@ export const getMockExamById = async (req, res) => {
         const { examId } = req.params;
 
         const exam = await MockExam.findById(examId)
-            .populate('subjectCombination', 'combinationName subjects');
+            .populate('subject', 'name code');
 
         if (!exam) {
             return res.status(404).json({
@@ -138,12 +138,12 @@ export const createMockExam = async (req, res) => {
             });
         }
 
-        const { title, subjectCombination, duration, questions } = req.body;
+        const { title, subject, duration, questions } = req.body;
 
-        if (!title || !subjectCombination || !duration || !questions) {
+        if (!title || !subject || !duration || !questions) {
             return res.status(400).json({
                 success: false,
-                message: 'Yêu cầu thiếu: title, subjectCombination, duration, questions'
+                message: 'Yêu cầu thiếu: title, subject, duration, questions'
             });
         }
 
@@ -156,11 +156,11 @@ export const createMockExam = async (req, res) => {
             });
         }
 
-        const subjectComb = await SubjectCombination.findById(subjectCombination);
-        if (!subjectComb) {
+        const subjectObj = await Subject.findById(subject);
+        if (!subjectObj) {
             return res.status(400).json({
                 success: false,
-                message: 'Tổ hợp môn không tồn tại'
+                message: 'Môn học không tồn tại'
             });
         }
 
@@ -180,14 +180,14 @@ export const createMockExam = async (req, res) => {
 
         const exam = new MockExam({
             title,
-            subjectCombination,
+            subject,
             duration,
             questions
         });
 
         await exam.save();
 
-        const populatedExam = await exam.populate('subjectCombination', 'combinationName subjects');
+        const populatedExam = await exam.populate('subject', 'name code');
 
         res.status(201).json({
             success: true,
@@ -240,21 +240,21 @@ export const updateMockExam = async (req, res) => {
             });
         }
 
-        const { title, subjectCombination, duration, questions } = req.body;
+        const { title, subject, duration, questions } = req.body;
 
         if (title !== undefined) {
             exam.title = title;
         }
 
-        if (subjectCombination !== undefined) {
-            const subjectComb = await SubjectCombination.findById(subjectCombination);
-            if (!subjectComb) {
+        if (subject !== undefined) {
+            const subjectObj = await Subject.findById(subject);
+            if (!subjectObj) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Tổ hợp môn không tồn tại'
+                    message: 'Môn học không tồn tại'
                 });
             }
-            exam.subjectCombination = subjectCombination;
+            exam.subject = subject;
         }
 
         if (duration !== undefined) {
@@ -281,7 +281,7 @@ export const updateMockExam = async (req, res) => {
 
         await exam.save();
 
-        const populatedExam = await exam.populate('subjectCombination', 'combinationName subjects');
+        const populatedExam = await exam.populate('subject', 'name code');
 
         res.status(200).json({
             success: true,
@@ -440,7 +440,7 @@ export const importQuestionsFromExcel = async (req, res) => {
             }
 
             await exam.save();
-            const populatedExam = await exam.populate('subjectCombination', 'combinationName subjects');
+            const populatedExam = await exam.populate('subject', 'name code');
 
             return res.status(200).json({
                 success: true,
@@ -485,7 +485,7 @@ export const getMockExamForStudent = async (req, res) => {
         }
 
         const exam = await MockExam.findById(examId)
-            .populate('subjectCombination', 'combinationName subjects');
+            .populate('subject', 'name code');
 
         if (!exam) {
             return res.status(404).json({
@@ -498,7 +498,7 @@ export const getMockExamForStudent = async (req, res) => {
             _id: exam._id,
             title: exam.title,
             duration: exam.duration,
-            subjectCombination: exam.subjectCombination,
+            subject: exam.subject,
             questions: exam.questions.map(q => ({
                 _id: q._id,
                 question: q.question,
@@ -551,7 +551,7 @@ export const submitMockExam = async (req, res) => {
         }
 
         const exam = await MockExam.findById(examId)
-            .populate('subjectCombination', 'combinationName subjects');
+            .populate('subject', 'name code');
 
         if (!exam) {
             return res.status(404).json({
@@ -651,7 +651,7 @@ export const getExamResult = async (req, res) => {
         }
 
         const examResult = await ExamResult.findById(resultId)
-            .populate('mockExamId', 'title duration subjectCombination')
+            .populate('mockExamId', 'title duration subject')
             .populate('studentId', 'fullName email');
 
         if (!examResult) {
@@ -714,7 +714,7 @@ export const getStudentExamResults = async (req, res) => {
         }
 
         const results = await ExamResult.find({ studentId: userId })
-            .populate('mockExamId', 'title duration subjectCombination')
+            .populate('mockExamId', 'title duration subject')
             .skip(skip)
             .limit(parseInt(limit))
             .sort(sort);

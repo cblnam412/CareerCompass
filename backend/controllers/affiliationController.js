@@ -79,6 +79,14 @@ export const approveAffiliation = async (req, res) => {
     try {
         const { id } = req.params;
         const { reviewNote } = req.body;
+        const userId = req.userId;
+        const currentUser = await User.findById(userId);
+        if (!currentUser) {
+            return res.status(401).json({
+                success: false,
+                message: 'Người dùng không tồn tại'
+            });
+        }
 
         const affiliation = await UniversityAffiliation.findById(id);
 
@@ -86,6 +94,14 @@ export const approveAffiliation = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Yêu cầu không tồn tại'
+            });
+        }
+        console.log(currentUser.universityId.toString() + ' ' + affiliation.universityId.toString())
+
+        if (currentUser.role === 'uniManager' && currentUser.universityId.toString() !== affiliation.universityId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn chỉ có quyền phê duyệt các yêu cầu của trường mình quản lý'
             });
         }
 
@@ -97,7 +113,7 @@ export const approveAffiliation = async (req, res) => {
         }
 
         affiliation.status = 'approved';
-        affiliation.reviewerId = req.user._id;
+        affiliation.reviewerId = userId;
         affiliation.reviewNote = reviewNote || '';
         affiliation.reviewedAt = new Date();
 
@@ -134,11 +150,20 @@ export const rejectAffiliation = async (req, res) => {
     try {
         const { id } = req.params;
         const { reviewNote } = req.body;
+        const userId = req.userId;
 
         if (!reviewNote || reviewNote.trim().length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'Vui lòng cung cấp lý do từ chối'
+            });
+        }
+
+        const currentUser = await User.findById(userId);
+        if (!currentUser) {
+            return res.status(401).json({
+                success: false,
+                message: 'Người dùng không tồn tại'
             });
         }
 
@@ -151,6 +176,13 @@ export const rejectAffiliation = async (req, res) => {
             });
         }
 
+        if (currentUser.role === 'uniManager' && currentUser.universityId.toString() !== affiliation.universityId.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn chỉ có quyền từ chối các yêu cầu của trường mình quản lý'
+            });
+        }
+
         if (affiliation.status !== 'pending') {
             return res.status(400).json({
                 success: false,
@@ -159,7 +191,7 @@ export const rejectAffiliation = async (req, res) => {
         }
 
         affiliation.status = 'rejected';
-        affiliation.reviewerId = req.user._id;
+        affiliation.reviewerId = userId;
         affiliation.reviewNote = reviewNote;
         affiliation.reviewedAt = new Date();
 
@@ -198,7 +230,25 @@ export const getAffiliationsByUniversity = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, limit = 10, page = 1 } = req.query;
+        const userId = req.userId;
         const skip = (page - 1) * limit;
+
+        const currentUser = await User.findById(userId);
+        if (!currentUser) {
+            return res.status(401).json({
+                success: false,
+                message: 'Người dùng không tồn tại'
+            });
+        }
+
+        if (currentUser.role === 'uniManager') {
+            if (currentUser.universityId.toString() !== id) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Bạn chỉ có quyền xem các yêu cầu của trường mình quản lý'
+                });
+            }
+        }
 
         const university = await University.findById(id);
         if (!university) {

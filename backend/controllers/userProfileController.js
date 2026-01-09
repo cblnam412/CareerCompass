@@ -6,19 +6,15 @@ export const getUserProfile = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        const user = await User.findById(userId).select(
-            'fullName DOB studentId avatar address role universityId createdAt'
-        );
+        const user = await User.findById(userId)
+            .populate('universityId', 'name code region address phone website description')
+            .select('fullName DOB studentId avatar address role universityId createdAt');
         
         if (!user) {
             return res.status(404).json({
                 success: false,
                 message: 'Người dùng không tồn tại'
             });
-        }
-
-        if ((user.role === 'uniRep' || user.role === 'uniManager') && user.universityId) {
-            await user.populate('universityId', 'name code region address phone website description');
         }
 
         res.status(200).json({
@@ -40,17 +36,15 @@ export const getMyProfile = async (req, res) => {
     try {
         const userId = req.userId;
 
-        const user = await User.findById(userId).select('-password');
+        const user = await User.findById(userId)
+            .populate('universityId', 'name code region address phone website description')
+            .select('-password');
         
         if (!user) {
             return res.status(404).json({
                 success: false,
                 message: 'Người dùng không tồn tại'
             });
-        }
-
-        if ((user.role === 'uniRep' || user.role === 'uniManager') && user.universityId) {
-            await user.populate('universityId', 'name code region address phone website description');
         }
 
         res.status(200).json({
@@ -148,17 +142,21 @@ export const uploadAvatar = async (req, res) => {
         }
 
         const file = req.files.avatar[0];
-        const fileName = `${userId}_${Date.now()}`;
-        const fileBuffer = file.buffer;
         
-        const avatarUrl = await uploadFileToSupabase(
+        const avatarResult = await uploadFileToSupabase(
+            file,
             'user-avatars',
-            fileBuffer,
-            fileName,
-            file.mimetype
+            'avatars'
         );
 
-        user.avatar = avatarUrl;
+        if (!avatarResult.success) {
+            return res.status(500).json({
+                success: false,
+                message: 'Lỗi upload avatar: ' + avatarResult.error
+            });
+        }
+
+        user.avatar = avatarResult.url;
         const updated = await user.save();
         
         const userResponse = updated.toObject();

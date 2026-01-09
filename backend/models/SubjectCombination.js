@@ -15,7 +15,6 @@ const subjectCombinationSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Validate đúng 3 môn trước khi save
 subjectCombinationSchema.pre('save', function(next) {
     if (this.subjects && this.subjects.length !== 3) {
         throw new Error('Tổ hợp môn phải gồm đúng 3 môn học');

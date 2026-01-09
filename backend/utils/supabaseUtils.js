@@ -16,7 +16,10 @@ export const uploadFileToSupabase = async (file, bucket, folder) => {
 
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
-        const fileName = `${folder}/${timestamp}-${random}-${file.originalname}`;
+        const sanitizedName = file.originalname
+            .replace(/[^a-zA-Z0-9.-]/g, '_')
+            .toLowerCase();
+        const fileName = `${folder}/${timestamp}-${random}-${sanitizedName}`;
 
         const { data, error } = await supabase.storage
             .from(bucket)
