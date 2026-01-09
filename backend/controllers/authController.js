@@ -7,7 +7,7 @@ import { uploadFileToSupabase, deleteFileFromSupabase, ensureBucketExists } from
 
 export const registerUser = async (req, res) => {
     try {
-        const { fullName, email, password, DOB, address } = req.body;
+        const { fullName, email, password, DOB, address, studentId } = req.body;
 
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
@@ -15,6 +15,16 @@ export const registerUser = async (req, res) => {
                 success: false, 
                 message: 'Email đã được sử dụng' 
             });
+        }
+
+        if (studentId) {
+            const existingStudentId = await User.findOne({ studentId: studentId.trim() });
+            if (existingStudentId) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Mã số sinh viên đã được sử dụng' 
+                });
+            }
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -25,6 +35,7 @@ export const registerUser = async (req, res) => {
             password: hashedPassword,
             DOB,
             address,
+            studentId: studentId ? studentId.trim() : null,
             role: 'user',
             status: 'active'
         });
@@ -58,6 +69,7 @@ export const registerUniversityRep = async (req, res) => {
             password, 
             DOB, 
             address, 
+            studentId,
             universityId,
             personalNote 
         } = req.body;
@@ -75,6 +87,16 @@ export const registerUniversityRep = async (req, res) => {
                 success: false, 
                 message: 'Email đã được sử dụng' 
             });
+        }
+
+        if (studentId) {
+            const existingStudentId = await User.findOne({ studentId: studentId.trim() });
+            if (existingStudentId) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Mã số sinh viên đã được sử dụng' 
+                });
+            }
         }
 
         const university = await User.findById(universityId);
@@ -122,6 +144,7 @@ export const registerUniversityRep = async (req, res) => {
             password: hashedPassword,
             DOB,
             address,
+            studentId: studentId ? studentId.trim() : null,
             role: 'uniRep',
             status: 'pending', 
             universityId
@@ -131,7 +154,7 @@ export const registerUniversityRep = async (req, res) => {
 
         const affiliation = new UniversityAffiliation({
             studentId: savedUser._id,
-            studentIdNumber: studentId || '',
+            studentIdNumber: studentId ? studentId.trim() : '',
             universityId,
             studentCardFront: frontCardUpload.url,
             studentCardBack: backCardUpload.url,
