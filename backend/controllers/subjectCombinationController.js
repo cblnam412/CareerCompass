@@ -1,4 +1,5 @@
 import SubjectCombination from '../models/SubjectCombination.js';
+import Subject from '../models/Subject.js';
 import { parseSubjectCombinationsFromDocx, validateSubjectCombinations } from '../utils/docxParser.js';
 
 export const getAllSubjectCombinations = async (req, res) => {
@@ -92,17 +93,45 @@ export const createSubjectCombination = async (req, res) => {
             });
         }
 
+        if (subjects.length !== 3) {
+            return res.status(400).json({
+                success: false,
+                message: 'Tổ hợp môn phải gồm đúng 3 môn học'
+            });
+        }
+
+        const subjectIds = [];
+        for (const subjectId of subjects) {
+            const subject = await Subject.findById(subjectId);
+            if (!subject) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Môn học với id '${subjectId}' không tồn tại`
+                });
+            }
+            subjectIds.push(subject._id);
+        }
+
+        const uniqueSubjectIds = new Set(subjectIds.map(id => id.toString()));
+        if (uniqueSubjectIds.size !== subjectIds.length) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không được chọn cùng một môn học nhiều lần'
+            });
+        }
+
         const newCombination = new SubjectCombination({
             combinationName: combinationName.trim(),
-            subjects: subjects.map(s => s.trim()).filter(s => s.length > 0)
+            subjects: subjectIds
         });
 
         const savedCombination = await newCombination.save();
+        const populatedCombination = await savedCombination.populate('subjects', 'name');
 
         res.status(201).json({
             success: true,
             message: 'Tạo kết hợp môn học thành công',
-            data: savedCombination
+            data: populatedCombination
         });
 
     } catch (error) {
@@ -146,15 +175,43 @@ export const updateSubjectCombination = async (req, res) => {
         }
 
         if (subjects && subjects.length > 0) {
-            combination.subjects = subjects.map(s => s.trim()).filter(s => s.length > 0);
+            if (subjects.length !== 3) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Tổ hợp môn phải gồm đúng 3 môn học'
+                });
+            }
+
+            const subjectIds = [];
+            for (const subjectId of subjects) {
+                const subject = await Subject.findById(subjectId);
+                if (!subject) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Môn học với id '${subjectId}' không tồn tại`
+                    });
+                }
+                subjectIds.push(subject._id);
+            }
+
+            const uniqueSubjectIds = new Set(subjectIds.map(id => id.toString()));
+            if (uniqueSubjectIds.size !== subjectIds.length) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Không được chọn cùng một môn học nhiều lần'
+                });
+            }
+
+            combination.subjects = subjectIds;
         }
 
         const updated = await combination.save();
+        const populatedCombination = await updated.populate('subjects', 'name');
 
         res.status(200).json({
             success: true,
             message: 'Cập nhật kết hợp môn học thành công',
-            data: updated
+            data: populatedCombination
         });
 
     } catch (error) {

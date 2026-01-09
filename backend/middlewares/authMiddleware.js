@@ -64,7 +64,8 @@ export const checkUniManagerRole = async (req, res, next) => {
             });
         }
 
-        if (!user.universityId || user.universityId.toString() !== id) {
+        // Nếu có id param, kiểm tra xem user có quyền quản lý trường đó không
+        if (id && user.universityId.toString() !== id) {
             return res.status(403).json({
                 success: false,
                 message: 'Bạn chỉ có quyền quản lý trường của bạn'

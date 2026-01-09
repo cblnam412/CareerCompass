@@ -12,8 +12,8 @@ const router = express.Router();
 
 router.get('/', verifyToken, checkUniManagerRole, getAffiliations);
 router.get('/stats', verifyToken, checkUniManagerRole, getAffiliationStats);
+router.get('/university/:id', verifyToken, checkUniManagerRole, getAffiliationsByUniversity);
 router.get('/:id', verifyToken, checkUniManagerRole, getAffiliationById);
 router.patch('/:id/approve', verifyToken, checkUniManagerRole, approveAffiliation);
 router.patch('/:id/reject', verifyToken, checkUniManagerRole, rejectAffiliation);
-router.get('/university/:id', verifyToken, checkUniManagerRole, getAffiliationsByUniversity);
 export default router;

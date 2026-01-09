@@ -11,6 +11,11 @@ const examResultSchema = new mongoose.Schema({
         ref: 'MockExam',
         required: true,
     },
+    subject: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
+        required: true,
+    },
     scoreTotal: {
         type: Number,
         required: true,

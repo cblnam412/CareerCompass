@@ -7,9 +7,21 @@ const subjectCombinationSchema = new mongoose.Schema({
         trim: true
     },
     subjects: [{
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Subject',
         required: true
     }]
+}, {
+    timestamps: true
 });
+
+// Validate đúng 3 môn trước khi save
+subjectCombinationSchema.pre('save', function(next) {
+    if (this.subjects && this.subjects.length !== 3) {
+        throw new Error('Tổ hợp môn phải gồm đúng 3 môn học');
+    }
+    next();
+});
+
 const SubjectCombination = mongoose.model('SubjectCombination', subjectCombinationSchema);
 export default SubjectCombination;

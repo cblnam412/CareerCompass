@@ -26,9 +26,9 @@ const mockExamSchema = new mongoose.Schema({
         type: String,
         required: true    
     },
-    subjectCombination: {
+    subject: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'SubjectCombination',
+        ref: 'Subject',
         required: true
     },
     duration: {
