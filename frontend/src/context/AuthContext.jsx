@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect, useRef, createContext } from "react";
-import API from "../API/api";
+import API from "../API/API";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 
@@ -48,9 +48,10 @@ export function AuthProvider({ children }) {
       }, remainingTime);
     }
 
-    if (!accessToken || !userID) {
+    if (!accessToken || !userID || !userInfo) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("userID");
+      localStorage.removeItem("userInfo");
     }
     console.log(`Current user id is: ${userID ? userID : "Not found"}`);
     console.log(`Current access token is: ${accessToken ? accessToken : "Not found"}`);
@@ -103,7 +104,6 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
-    console.log("Log out called");
     setUserID(null);
     setAccessToken(null);
     setUserInfo(null);

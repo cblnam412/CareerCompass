@@ -16,9 +16,7 @@ const ROLE_TRANSLATIONS = {
 export function CreatePostDialog({ onPostCreated }) {
   const { userInfo, userID, accessToken } = useAuth();
   
-  const userAvatar = userID 
-    ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}` 
-    : "/placeholder.svg";
+  const userAvatar = userInfo.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg";
   
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");

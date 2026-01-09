@@ -15,5 +15,5 @@ router.get('/stats', verifyToken, checkUniManagerRole, getAffiliationStats);
 router.get('/:id', verifyToken, checkUniManagerRole, getAffiliationById);
 router.patch('/:id/approve', verifyToken, checkUniManagerRole, approveAffiliation);
 router.patch('/:id/reject', verifyToken, checkUniManagerRole, rejectAffiliation);
-router.get('/university/:universityId', verifyToken, checkUniManagerRole, getAffiliationsByUniversity);
+router.get('/university/:id', verifyToken, checkUniManagerRole, getAffiliationsByUniversity);
 export default router;

@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, SearchX, X, Clock, Calendar, User } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "react-toastify";
-
-// Internal Imports
 import { PostCard } from "../../component/Postcard/Postcard";
-import { useAuth } from "../../context/AuthContext"; // Enabled Auth Context
-import API from "../../API/api"; // Import API
+import { useAuth } from "../../context/AuthContext"; 
+import API from "../../API/API"; 
 import styles from "./SearchScreen.module.css";
 
 export default function SearchScreen() {
-  const { userInfo, userID, accessToken } = useAuth(); // Get real user info
+  const { userID, accessToken } = useAuth(); 
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -48,10 +46,9 @@ export default function SearchScreen() {
       setPosts([]);
       setHasSearched(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryParam]); // Dependencies carefully chosen to avoid infinite loops
+  }, [queryParam]); 
 
-  // --- MAIN SEARCH FUNCTION ---
+  // MAIN SEARCH FUNCTION
   const performSearch = async (query, month, year, myPostsOnly) => {
     if (!query.trim()) {
       setPosts([]);
@@ -63,8 +60,7 @@ export default function SearchScreen() {
     setHasSearched(true);
 
     try {
-      // 1. Fetch from API (Server filters by Text content/title)
-      // Fetching a higher limit (50) to allow for client-side filtering
+      // 1. Fetch from API
       const res = await fetch(`${API}/api/forum/posts?search=${encodeURIComponent(query)}&limit=50&sort=-createdAt`, {
         method: "GET",
         headers: {
@@ -80,29 +76,13 @@ export default function SearchScreen() {
       }
 
       if (data.success) {
-        let fetchedPosts = data.data.map(post => ({
-            // Map Backend -> Frontend structure
-            id: post._id,
-            title: post.title,
-            content: post.content,
-            item_url: post.itemUrl, 
-            created_at: post.createdAt,
-            upvotes: post.upvotes || 0,
-            commentCount: post.commentCount || 0,
-            status: post.status,
-            author_id: post.authorId?._id,
-            author: {
-              fullName: post.authorId?.fullName || "Người dùng ẩn",
-              role: post.authorId?.role || "student",
-              avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${post.authorId?._id || "default"}`,
-            }
-        }));
-
-        // 2. Client-side Filtering (Backend doesn't support these filters yet)
+        let fetchedPosts = data.data;
         
-        // Filter: My Posts Only
         if (myPostsOnly && userID) {
-            fetchedPosts = fetchedPosts.filter(post => post.author_id === userID);
+            fetchedPosts = fetchedPosts.filter(post => {
+                const authorId = post.authorId?._id || post.authorId;
+                return authorId === userID;
+            });
         }
 
         // Filter: Date (Month/Year)
@@ -111,7 +91,7 @@ export default function SearchScreen() {
             const searchYear = year ? String(year) : "";
 
             fetchedPosts = fetchedPosts.filter((post) => {
-                const postDate = new Date(post.created_at);
+                const postDate = new Date(post.createdAt);
                 const postMonth = String(postDate.getMonth() + 1).padStart(2, "0");
                 const postYear = postDate.getFullYear().toString();
 
@@ -147,18 +127,16 @@ export default function SearchScreen() {
     }
   };
 
-  // --- HANDLERS ---
+  // HANDLERS
 
   const handleSearch = (e) => {
     e.preventDefault();
-    // Update URL to trigger the useEffect
     navigate(`?q=${encodeURIComponent(searchQuery)}`);
   };
 
   const handleDateChange = (month, year) => {
     setSelectedMonth(month);
     setSelectedYear(year);
-    // Trigger search immediately with new filters
     performSearch(searchQuery, month, year, showMyPostsOnly);
   };
 
@@ -194,7 +172,6 @@ export default function SearchScreen() {
   };
 
   const handlePostUpdate = () => {
-    // Refresh search results
     performSearch(searchQuery, selectedMonth, selectedYear, showMyPostsOnly);
   };
 
@@ -223,7 +200,7 @@ export default function SearchScreen() {
                     setSearchQuery("");
                     setPosts([]);
                     setHasSearched(false);
-                    navigate("/user/search"); // Clear URL param
+                    navigate("/user/search");
                   }}
                 >
                   <X size={18} />
@@ -330,7 +307,8 @@ export default function SearchScreen() {
               ) : posts.length > 0 ? (
                 <div className={styles.resultsList}>
                   {posts.map((post) => (
-                    <PostCard key={post.id} post={post} onUpdate={handlePostUpdate} />
+                    // Use _id for key since we are using raw data
+                    <PostCard key={post._id} post={post} onUpdate={handlePostUpdate} />
                   ))}
                 </div>
               ) : (

@@ -22,7 +22,7 @@
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid #dbdbdb;
+  border: 1px solid grey;
 }
 
 .avatarFallback {
@@ -191,6 +191,7 @@
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+  border: 1px solid grey;
 }
 
 .commentAvatarFallback {
@@ -680,7 +681,8 @@
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid rgb(0, 123, 255);
+  border: 2px solid grey;
+  cursor: pointer;
 }
 
 .popoverName {

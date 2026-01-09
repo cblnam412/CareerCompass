@@ -54,7 +54,10 @@ function App() {
           <Route path="quiz" element={<CareerQuizScreen />} />
           <Route path="quiz/mbti" element={<MBTIQuizScreen />} />
           <Route path="quiz/holland" element={<HollandQuizScreen />} />
+
           <Route path="profile" element={<ProfileScreen />} />
+          <Route path="profile/:userId" element={<ProfileScreen />} />
+          
           <Route path="representatives" element={isManager ? <ManageRepresentativeScreen /> : <Navigate to={homeRoute} />} />
         </Route>
 

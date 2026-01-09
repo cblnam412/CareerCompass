@@ -196,11 +196,11 @@ export const rejectAffiliation = async (req, res) => {
 
 export const getAffiliationsByUniversity = async (req, res) => {
     try {
-        const { universityId } = req.params;
+        const { id } = req.params;
         const { status, limit = 10, page = 1 } = req.query;
         const skip = (page - 1) * limit;
 
-        const university = await University.findById(universityId);
+        const university = await University.findById(id);
         if (!university) {
             return res.status(404).json({
                 success: false,
@@ -208,7 +208,7 @@ export const getAffiliationsByUniversity = async (req, res) => {
             });
         }
 
-        const filter = { universityId };
+        const filter = { universityId: id };
         if (status) {
             filter.status = status;
         }

@@ -14,7 +14,7 @@ export const getAllForumPosts = async (req, res) => {
         if (authorId) {
             filter.authorId = authorId;
         }
-        
+
         if (search) {
             filter.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -27,7 +27,7 @@ export const getAllForumPosts = async (req, res) => {
         }
 
         const posts = await ForumPost.find(filter)
-            .populate('authorId', 'fullName email role')
+            .populate('authorId', 'fullName email role avatar')
             .populate('relatedMajorIds', 'name')
             .populate('relatedUniversityIds', 'name code')
             .skip(skip)

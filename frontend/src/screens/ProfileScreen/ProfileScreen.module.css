@@ -61,6 +61,7 @@
   font-size: 28px;
   font-weight: 700;
   color: #262626;
+  text-align: left;
   margin: 0;
 }
 
@@ -201,7 +202,7 @@
 
 .infoContent {
   display: grid;
-  grid-template-columns: 120px 300px;
+  grid-template-columns: 120px 350px;
   flex: 1;
 }
 
@@ -278,6 +279,7 @@
   font-size: 14px;
   font-weight: 600;
   color: #262626;
+  text-align: left;
   margin-bottom: 8px;
 }
 
@@ -394,6 +396,10 @@
 
 /* Tablet responsive */
 @media (max-width: 768px) {
+  .container {
+    height: 85vh;
+  }
+
   .profileHeader {
     flex-direction: column;
     align-items: flex-start;

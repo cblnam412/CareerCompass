@@ -1,14 +1,15 @@
-import { Heart, MessageCircle, MoreHorizontal, Send, X, Flag, Smile, GraduationCap, School, User, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, MoreHorizontal, Send, X, Flag, Smile, GraduationCap, School, Loader2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
-import API from "../../API/api";
+import API from "../../API/API";
 import { LoadingSpinner } from "../LoadingSpinner/LoadingSpinner";
 import styles from "./Postcard.module.css";
 
 const ROLE_TRANSLATIONS = {
-  student: "Học sinh",
+  user: "Học sinh",
   admin: "Quản trị viên",
   uniManager: "Đại diện trường",
   uniRep: "Đại diện trường",
@@ -16,9 +17,20 @@ const ROLE_TRANSLATIONS = {
 
 export function PostCard({ post, onUpdate }) {
   const { userInfo, userID, accessToken } = useAuth();
+  const navigate = useNavigate(); 
   const dropdownRef = useRef(null);
 
-  const [isLiked, setIsLiked] = useState(false); 
+  // Extract data 
+  const postId = post._id;
+  const author = post.authorId || {}; 
+  const authorName = author.fullName || "Người dùng ẩn";
+  const authorRole = author.role || "student";
+  const authorAvatar = author.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg";
+  const authorId = author._id;
+  const postImage = post.itemUrl;
+  const postTimestamp = post.createdAt; 
+
+  const [isLiked, setIsLiked] = useState(post.isUpvoted || false); 
   const [likesCount, setLikesCount] = useState(post.upvotes || 0);
   const [commentsCount, setCommentsCount] = useState(post.commentCount || 0);
    
@@ -29,7 +41,7 @@ export function PostCard({ post, onUpdate }) {
    
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const COMMENTS_LIMIT = 5; // Fetch 5 at a time
+  const COMMENTS_LIMIT = 5;
 
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,14 +53,8 @@ export function PostCard({ post, onUpdate }) {
 
   const renderRoleIcon = (role) => {
     const normalizedRole = role ? role.toString().toLowerCase() : "user";
-
-    if (role === "uniRep") {
-      return <GraduationCap size={16} className={styles.roleIcon} />
-    }
-    if (role === "uniManager") {
-      return <School size={16} className={styles.roleIcon} />
-    }
-
+    if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
+    if (role === "uniManager") return <School size={16} className={styles.roleIcon} />
     return null;
   };
 
@@ -72,7 +78,7 @@ export function PostCard({ post, onUpdate }) {
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
 
     try {
-      const res = await fetch(`${API}/api/forum/posts/${post.id}/upvote`, {
+      const res = await fetch(`${API}/api/forum/posts/${postId}/upvote`, {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json",
@@ -91,7 +97,7 @@ export function PostCard({ post, onUpdate }) {
     setIsLoadingComments(true);
     try {
         const res = await fetch(
-            `${API}/api/forum/posts/${post.id}/comments?sort=-createdAt&page=${pageNum}&limit=${COMMENTS_LIMIT}`, 
+            `${API}/api/forum/posts/${postId}/comments?sort=-createdAt&page=${pageNum}&limit=${COMMENTS_LIMIT}`, 
             {
                 headers: {
                     ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
@@ -107,9 +113,10 @@ export function PostCard({ post, onUpdate }) {
                 created_at: c.createdAt,
                 liked: false,
                 author: {
+                    author_id: author?._id,
                     display_name: c.authorId?.fullName || "Người dùng ẩn",
                     role: c.authorId?.role || "student",
-                    avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.authorId?._id || "default"}`
+                    avatar_url: c.authorId?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg",
                 }
             }));
 
@@ -119,7 +126,6 @@ export function PostCard({ post, onUpdate }) {
                 setComments(prev => [...prev, ...formattedComments]);
             }
 
-            // Check if backend has more pages
             setHasMore(data.pagination.page < data.pagination.pages);
             setPage(pageNum);
             setCommentsLoaded(true);
@@ -157,7 +163,7 @@ export function PostCard({ post, onUpdate }) {
           itemUrl: ""
       };
 
-      const res = await fetch(`${API}/api/forum/posts/${post.id}/comments`, {
+      const res = await fetch(`${API}/api/forum/posts/${postId}/comments`, {
           method: "POST",
           headers: {
               "Content-Type": "application/json",
@@ -177,7 +183,7 @@ export function PostCard({ post, onUpdate }) {
               author: {
                   display_name: userInfo.fullName,
                   role: userInfo.role,
-                  avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}`
+                  avatar_url: userInfo.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}`
               }
           };
           
@@ -187,10 +193,8 @@ export function PostCard({ post, onUpdate }) {
           setShowEmojiPicker(false);
 
           if (!commentsLoaded) {
-             // If comments haven't been loaded yet, fetch the full list (which includes the new one)
              await fetchComments(1);
           } else {
-             // If comments were already loaded, just prepend the new one locally
              setComments([newCommentObj, ...comments]);
           }
 
@@ -205,11 +209,11 @@ export function PostCard({ post, onUpdate }) {
   };
 
   const handleDelete = async () => {
-    if (!userID || userID !== post.author_id) return;
+    if (!userID || userID !== authorId) return;
     if (!window.confirm("Bạn có chắc chắn muốn xóa bài viết này?")) return;
 
     try {
-        const res = await fetch(`${API}/api/forum/posts/${post.id}`, {
+        const res = await fetch(`${API}/api/forum/posts/${postId}`, {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json",
@@ -238,8 +242,11 @@ export function PostCard({ post, onUpdate }) {
   };
 
   const getTimeAgo = (dateString) => {
+    if (!dateString) return "";
     const now = Date.now();
     const time = new Date(dateString).getTime();
+    if (isNaN(time)) return "";
+
     const diff = now - time;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
@@ -251,10 +258,10 @@ export function PostCard({ post, onUpdate }) {
     return `${days} ngày trước`;
   };
 
-  const handleUserClick = (userId, userName, userAvatar, e) => {
+  const handleUserClick = (id, name, avatar, e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setSelectedUser({ id: userId, display_name: userName, avatar_url: userAvatar });
+    setSelectedUser({ id: id, display_name: name, avatar_url: avatar });
     setUserPopoverPos({
       top: rect.bottom + 8,
       left: Math.min(rect.left, window.innerWidth - 350),
@@ -266,30 +273,24 @@ export function PostCard({ post, onUpdate }) {
     <article className={styles.postCard}>
       <div className={styles.postHeader}>
         <div className={styles.authorInfo}>
-          {post.author?.avatar_url ? (
-            <img
-              src={post.author.avatar_url}
-              alt={post.author.display_name}
-              className={styles.avatar}
-              onClick={(e) => handleUserClick(post.author_id, post.author.display_name, post.author.avatar_url, e)}
-              style={{ cursor: "pointer" }}
-            />
-          ) : (
-            <div className={styles.avatarFallback}>
-              {post.author?.fullName?.[0]?.toUpperCase() || "U"}
-            </div>
-          )}
+          <img
+            src={authorAvatar}
+            alt={authorName}
+            className={styles.avatar}
+            onClick={(e) => handleUserClick(authorId, authorName, authorAvatar, e)}
+            style={{ cursor: "pointer" }}
+          />
           <div>
             <p
               className={styles.authorName}
-              onClick={(e) => handleUserClick(post.author_id, post.author.fullName, post.author.avatar_url, e)}
+              onClick={(e) => handleUserClick(authorId, authorName, authorAvatar, e)}
               style={{ cursor: "pointer" }}
             >
-              {post.author?.fullName || "Người dùng ẩn"}
-              {renderRoleIcon(post.author?.role)}
+              {authorName}
+              {renderRoleIcon(authorRole)}
             </p>
             <p className={styles.timestamp}>
-               {getTimeAgo(post.created_at)}
+               {getTimeAgo(postTimestamp)}
             </p>
           </div>
         </div>
@@ -303,7 +304,7 @@ export function PostCard({ post, onUpdate }) {
               <button className={styles.dropdownItem} onClick={() => console.log("Report")}>
                 Báo cáo vi phạm
               </button>
-              {userID === post.author_id && (
+              {userID === authorId && (
                 <button className={styles.dropdownItem} onClick={handleDelete}>
                   Xóa bài viết
                 </button>
@@ -319,9 +320,9 @@ export function PostCard({ post, onUpdate }) {
           <p><span>{post.content}</span></p>
         </div>
 
-        {post.item_url && (
+        {postImage && (
           <div className={styles.imageContainer}>
-            <img src={post.item_url} alt="Post attachment" className={styles.postImage} />
+            <img src={postImage} alt="Post attachment" className={styles.postImage} />
           </div>
         )}
 
@@ -344,7 +345,6 @@ export function PostCard({ post, onUpdate }) {
             <Send size={24} />
           </button>
         </div>
-
 
         {/* --- COMMENTS SECTION --- */}
         {showComments && (
@@ -457,7 +457,15 @@ export function PostCard({ post, onUpdate }) {
           <div className={styles.popoverBackdrop} onClick={() => setShowUserProfile(false)} />
           <div className={styles.userPopover} style={{ position: "fixed", top: `${userPopoverPos.top}px`, left: `${userPopoverPos.left}px`, zIndex: 999 }}>
             <div className={styles.userPopoverHeader}>
-              <img src={selectedUser.avatar_url} alt={selectedUser.display_name} className={styles.popoverAvatar} />
+              <img 
+                  src={selectedUser.avatar_url} 
+                  alt={selectedUser.display_name} 
+                  className={styles.popoverAvatar}
+                  onClick={() => {e: 
+                            navigate(`/user/profile/${selectedUser.id}`); 
+                            setShowUserProfile(false); 
+                  }}
+              />
               <div>
                 <h3 className={styles.popoverName}>{selectedUser.display_name}</h3>
               </div>

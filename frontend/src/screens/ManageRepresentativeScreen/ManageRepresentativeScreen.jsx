@@ -7,7 +7,8 @@ import { toast } from "react-toastify";
 import styles from "./ManageRepresentativeScreen.module.css";
 
 export default function ManageRepresentativeScreen() {
-  const { accessToken } = useAuth();
+  // 1. Get userInfo to access the universityId
+  const { accessToken, userInfo } = useAuth();
   const [activeTab, setActiveTab] = useState("manage");
   const [representatives, setRepresentatives] = useState([]); // Approved list
   const [applications, setApplications] = useState([]); // Pending list
@@ -23,17 +24,29 @@ export default function ManageRepresentativeScreen() {
   const [rejectId, setRejectId] = useState(null); 
 
   const fetchData = async () => {
+    // 2. Ensure we have the university ID before fetching
+    // Note: Ensure your User model/Login response includes 'universityId' for managers
+    const universityId = userInfo?.universityId || userInfo?.relatedUniversity; 
+
+    if (!universityId) {
+        // If it's loading or not found yet, we skip. 
+        // You might want to handle the case where a manager has no university assigned.
+        return;
+    }
+
     setLoading(true);
     try {
+      // 3. Update route to getAffiliationsByUniversity
+      
       // Fetch Approved 
-      const repRes = await fetch(`${API}/api/affiliations?status=approved&limit=100`, {
+      const repRes = await fetch(`${API}/api/affiliations/university/${universityId}?status=approved&limit=100`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const repData = await repRes.json();
       if (repData.success) setRepresentatives(repData.data);
 
       // Fetch Pending 
-      const appRes = await fetch(`${API}/api/affiliations?status=pending&limit=100`, {
+      const appRes = await fetch(`${API}/api/affiliations/university/${universityId}?status=pending&limit=100`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const appData = await appRes.json();
@@ -47,11 +60,12 @@ export default function ManageRepresentativeScreen() {
     }
   };
 
+  // 4. Update dependency array to include userInfo
   useEffect(() => {
-    if (accessToken) {
+    if (accessToken && userInfo) {
       fetchData();
     }
-  }, [accessToken]);
+  }, [accessToken, userInfo]);
 
   const handleApproveApplication = async (e, id) => {
     e.stopPropagation();
