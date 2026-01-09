@@ -131,6 +131,7 @@ export const registerUniversityRep = async (req, res) => {
 
         const affiliation = new UniversityAffiliation({
             studentId: savedUser._id,
+            studentIdNumber: studentId || '',
             universityId,
             studentCardFront: frontCardUpload.url,
             studentCardBack: backCardUpload.url,

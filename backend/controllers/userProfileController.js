@@ -7,7 +7,7 @@ export const getUserProfile = async (req, res) => {
         const { userId } = req.params;
 
         const user = await User.findById(userId).select(
-            'fullName DOB address role universityId createdAt'
+            'fullName DOB studentId address role universityId createdAt'
         );
         
         if (!user) {
@@ -71,7 +71,7 @@ export const getMyProfile = async (req, res) => {
 export const updateMyProfile = async (req, res) => {
     try {
         const userId = req.userId;
-        const { fullName, DOB, address, password } = req.body;
+        const { fullName, DOB, address, studentId, password } = req.body;
 
         const user = await User.findById(userId);
         
@@ -92,6 +92,7 @@ export const updateMyProfile = async (req, res) => {
         if (fullName) user.fullName = fullName.trim();
         if (DOB) user.DOB = DOB;
         if (address) user.address = address.trim();
+        if (studentId) user.studentId = studentId.trim();
 
         if (password) {
             const hashedPassword = await bcrypt.hash(password, 10);
