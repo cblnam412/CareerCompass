@@ -13,10 +13,10 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 
-router.get('/:userId', getUserProfile);
 router.get('/me', verifyToken, getMyProfile);
 router.patch('/me', verifyToken, updateMyProfile);
 router.post('/me/avatar', verifyToken, upload.fields([{ name: 'avatar', maxCount: 1 }]), uploadAvatar);
 router.delete('/me/avatar', verifyToken, deleteAvatar);
+router.get('/:userId', getUserProfile);
 
 export default router;

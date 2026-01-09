@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import University from '../models/University.js';
 import StudentProfile from '../models/StudentProfile.js';
 import UniversityAffiliation from '../models/UniversityAffiliation.js';
 import bcrypt from 'bcryptjs';
@@ -71,7 +72,8 @@ export const registerUniversityRep = async (req, res) => {
             address, 
             studentId,
             universityId,
-            personalNote 
+            personalNote,
+            studentID
         } = req.body;
 
         if (!req.files || !req.files.studentCardFront || !req.files.studentCardBack) {
@@ -81,6 +83,14 @@ export const registerUniversityRep = async (req, res) => {
             });
         }
 
+        if (!studentID)
+        {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Vui lòng nhập mã số sinh viên' 
+            });
+        }
+        
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             return res.status(400).json({ 
@@ -88,7 +98,7 @@ export const registerUniversityRep = async (req, res) => {
                 message: 'Email đã được sử dụng' 
             });
         }
-
+        
         if (studentId) {
             const existingStudentId = await User.findOne({ studentId: studentId.trim() });
             if (existingStudentId) {

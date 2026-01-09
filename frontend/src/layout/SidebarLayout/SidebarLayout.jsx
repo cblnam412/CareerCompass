@@ -1,14 +1,13 @@
 import { Home, Search, MessageCircle, User, Users, BookOpen, Compass, LogOut, Clock, LayoutDashboard, FileText, Library, Flag, Handshake, UserCog } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation, Outlet } from "react-router-dom"
-//import { useAuth } from "@/contexts/auth-context"
+import { useAuth } from "../../context/AuthContext"
 import styles from "./SidebarLayout.module.css"
 
 export function Sidebar({ isCollapsedForChat }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const userInfo = { role: "user" } 
-  //const { logout } = useAuth()
+  const { logout, userInfo } = useAuth()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [recentSearches, setRecentSearches] = useState([])
@@ -48,8 +47,6 @@ export function Sidebar({ isCollapsedForChat }) {
   ]
 
   const navItems = userInfo.role === "admin" ? adminNavItems : studentNavItems
-
-  // Determine the styling class based on role
   const themeClass = userInfo.role === "admin" ? styles.adminTheme : ""
 
   const handleNavigate = (href) => {
@@ -59,8 +56,7 @@ export function Sidebar({ isCollapsedForChat }) {
   }
 
   const handleLogout = () => {
-    //logout()
-    navigate("/login")
+    logout();
   }
 
   const handleSearchSubmit = (e) => {
@@ -113,6 +109,9 @@ export function Sidebar({ isCollapsedForChat }) {
 
           <nav className={styles.nav}>
             {navItems.map((item) => {
+              if (item.label === "Quản lý đại diện" && userInfo.role !== "uniManager") {
+                  return null
+    }
               const Icon = item.icon
               const isActive = item.href === "/user" || item.href === "/admin"
                                ? location.pathname === item.href

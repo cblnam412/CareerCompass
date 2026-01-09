@@ -1,84 +1,79 @@
-import { useState, useEffect } from "react"
-import { PostCard } from "../../component/Postcard/Postcard"
-import { CreatePostDialog } from "../../component/CreatePostDialog/CreatePostDialog"
-// import { mockData, inMemoryStorage } from "@/lib/mock-data"
-// import { useAuth } from "@/contexts/auth-context"
-import styles from "./ForumScreen.module.css"
+import { useState, useEffect, useCallback } from "react";
+import { toast } from "react-toastify";
+import { PostCard } from "../../component/Postcard/Postcard";
+import { CreatePostDialog } from "../../component/CreatePostDialog/CreatePostDialog";
+import { useAuth } from "../../context/AuthContext";
+import API from "../../API/API"; 
+import styles from "./ForumScreen.module.css";
 
-// Mock posts data
-  const mockPosts = [
-    {
-      id: "post1",
-      author_id: "user2",
-      author: {
-        display_name: "John Doe",
-        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user2",
-        role: "uniRep"
-      },
-      content: "Happy New Year everyone! 🎉 Wishing you all a wonderful 2026!",
-      image_url: "https://picsum.photos/400/300?random=1",
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      likes_count: 12,
-      comments_count: 3,
-      is_liked: false,
-    },
-    {
-      id: "post2",
-      author_id: "user3",
-      author: {
-        display_name: "Jane Smith",
-        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user3",
-      },
-      content: "Just finished my morning workout! Feeling great 💪",
-      image_url: null,
-      created_at: new Date(Date.now() - 7200000).toISOString(),
-      likes_count: 8,
-      comments_count: 1,
-      is_liked: true,
-    },
-  ]
-  
 export default function ForumScreen() {
-  // const { user } = useAuth()
-  
-  // Mock user for now
-  const user = { id: "user1", display_name: "Current User", avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user1" }
-  
-  const [posts, setPosts] = useState([])
+  const { accessToken } = useAuth();
+  const [posts, setPosts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Function to fetch posts from the backend
+  const fetchPosts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API}/api/forum/posts?sort=-createdAt&limit=50`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        },
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to fetch posts");
+      }
+
+      if (data.success) {
+        // Direct assignment: PostCard now handles the raw Backend structure
+        setPosts(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+      toast.error("Không thể tải bài viết.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accessToken]);
+
+  // Initial Load
   useEffect(() => {
-    // TODO: Replace with actual API call when backend is implemented
-    // const allPosts = [...inMemoryStorage.posts, ...mockData.posts].sort(
-    //   (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    // )
-    const allPosts = mockPosts.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
-    setPosts(allPosts)
-  }, [])
+    fetchPosts();
+  }, [fetchPosts]);
 
-  const handlePostCreated = () => {
-    // TODO: Replace with actual API call when backend is implemented
-    // const allPosts = [...inMemoryStorage.posts, ...mockData.posts].sort(
-    //   (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    // )
-    const allPosts = mockPosts.sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-    )
-    setPosts(allPosts)
-  }
+  const handlePostUpdate = () => {
+    fetchPosts();
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.feed}>
         <div className={styles.createPostSection}>
-          <CreatePostDialog onPostCreated={handlePostCreated} />
+          <CreatePostDialog onPostCreated={handlePostUpdate} />
         </div>
 
-        {posts.map((post) => (
-          <PostCard key={post.id} post={post} onUpdate={handlePostCreated} />
-        ))}
+        {isLoading ? (
+          <div style={{ textAlign: "center", padding: "20px", color: "#666" }}>
+            Đang tải bài viết...
+          </div>
+        ) : posts.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px", color: "#666" }}>
+            Chưa có bài viết nào. Hãy là người đầu tiên chia sẻ!
+          </div>
+        ) : (
+          posts.map((post) => (
+            <PostCard 
+              key={post._id} 
+              post={post} 
+              onUpdate={handlePostUpdate} 
+            />
+          ))
+        )}
       </div>
     </div>
-  )
+  );
 }

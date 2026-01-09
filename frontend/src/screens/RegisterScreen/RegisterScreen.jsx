@@ -1,8 +1,68 @@
-import { useState } from "react";
-import { User, Mail, Lock, Calendar, MapPin, GraduationCap, IdCard, Upload, BookOpen } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Mail, Lock, Cake, MapPin, GraduationCap, IdCard, Upload, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import API from "../../API/API";
 import styles from "./RegisterScreen.module.css";
+
+const CommonFields = ({ formData, handleChange, styles }) => (
+  <>
+    <div className={styles.inputGroup}>
+      <User className={styles.inputIcon} />
+      <input 
+        type="text" 
+        name="fullName" 
+        placeholder="Họ và tên" 
+        value={formData.fullName} 
+        onChange={handleChange} 
+        className={styles.input} 
+      />
+    </div>
+    <div className={styles.inputGroup}>
+      <Mail className={styles.inputIcon} />
+      <input 
+        type="email" 
+        name="email" 
+        placeholder="Email" 
+        value={formData.email} 
+        onChange={handleChange} 
+        className={styles.input} 
+      />
+    </div>
+    <div className={styles.inputGroup}>
+      <Lock className={styles.inputIcon} />
+      <input 
+        type="password" 
+        name="password" 
+        placeholder="Mật khẩu" 
+        value={formData.password} 
+        onChange={handleChange} 
+        className={styles.input} 
+      />
+    </div>
+    <div className={styles.inputGroup}>
+      <Cake className={styles.inputIcon} />
+      <input 
+        type="date" 
+        name="DOB" 
+        value={formData.DOB} 
+        onChange={handleChange} 
+        className={styles.input} 
+      />
+    </div>
+    <div className={styles.inputGroup}>
+      <MapPin className={styles.inputIcon} />
+      <input 
+        type="text" 
+        name="address" 
+        placeholder="Địa chỉ" 
+        value={formData.address} 
+        onChange={handleChange} 
+        className={styles.input} 
+      />
+    </div>
+  </>
+);
 
 const RegisterScreen = () => {
   const navigate = useNavigate();
@@ -13,22 +73,30 @@ const RegisterScreen = () => {
     password: "",
     DOB: "",
     address: "",
-    university: "",
+    university: "", // Now stores the University ID (mongo _id)
     studentID: "",
     studentCardFront: null,
     studentCardBack: null,
   });
   const [loading, setLoading] = useState(false);
+  const [universities, setUniversities] = useState([]);
 
-  const universities = [
-    "Đại học Bách Khoa Hà Nội",
-    "Đại học Quốc Gia Hà Nội",
-    "Đại học Kinh Tế Quốc Dân",
-    "Đại học Ngoại Thương",
-    "Đại học Y Hà Nội",
-  ];
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await fetch(`${API}/api/universities`);
+        const data = await response.json();
+        if (data.success) {
+          setUniversities(data.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch universities:", error);
+      }
+    };
+    fetchUniversities();
+  }, []);
 
-const validateInputs = () => {
+  const validateInputs = () => {
     const { fullName, email, password, DOB, address, university, studentID, studentCardFront, studentCardBack } = formData;
 
     if (!fullName.trim()) {
@@ -94,7 +162,6 @@ const validateInputs = () => {
 
   const handleToggle = (e) => {
     setIsUniversity(e.target.checked);
-    // Clear university specific data if switching back to student 
     if (!e.target.checked) {
       setFormData(prev => ({
         ...prev,
@@ -112,66 +179,73 @@ const validateInputs = () => {
     setLoading(true);
 
     try {
-      const activeType = isUniversity ? "university" : "student";
-      const response = await fetch("http://localhost:3000/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, userType: activeType }),
-      });
+      let response;
+      
+      if (isUniversity) {
+        const dataToSend = new FormData();
+        dataToSend.append("fullName", formData.fullName);
+        dataToSend.append("email", formData.email);
+        dataToSend.append("password", formData.password);
+        dataToSend.append("DOB", formData.DOB);
+        dataToSend.append("address", formData.address);
+        dataToSend.append("userType", "university"); 
+        
+        dataToSend.append("universityId", formData.university);
+        
+        dataToSend.append("studentID", formData.studentID);
+        if (formData.studentCardFront) {
+          dataToSend.append("studentCardFront", formData.studentCardFront);
+        }
+        if (formData.studentCardBack) {
+          dataToSend.append("studentCardBack", formData.studentCardBack);
+        }
+
+        response = await fetch(`${API}/auth/register-uni-rep`, {
+          method: "POST",
+          body: dataToSend, 
+        });
+
+      } else {
+        // --- STUDENT (JSON) ---
+        const payload = {
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          DOB: formData.DOB,
+          address: formData.address,
+          userType: "student"
+        };
+
+        response = await fetch(`${API}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
+
       const data = await response.json();
-      if (data.success) {
-        toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
+      
+      if (data.success || response.ok) {
+        if (isUniversity)
+            toast.success("Yêu cầu đã được gửi thành công!");
+        else
+            toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
         navigate("/login");
       } else {
         toast.error(data.message || "Đăng ký thất bại");
       }
     } catch (err) {
+      console.error(err);
       toast.error("Lỗi kết nối server");
     } finally {
       setLoading(false);
     }
   };
 
-  // Reusable input component to avoid code duplication in Front/Back faces
-  const CommonFields = () => (
-    <>
-      <div className={styles.inputGroup}>
-        <User className={styles.inputIcon} />
-        <input type="text" name="fullName" placeholder="Họ và tên" value={formData.fullName} onChange={handleChange} className={styles.input} />
-      </div>
-      <div className={styles.inputGroup}>
-        <Mail className={styles.inputIcon} />
-        <input type="email" name="email" placeholder="Email" value={formData.email} onChange={handleChange} className={styles.input} />
-      </div>
-      <div className={styles.inputGroup}>
-        <Lock className={styles.inputIcon} />
-        <input type="password" name="password" placeholder="Mật khẩu" value={formData.password} onChange={handleChange} className={styles.input} />
-      </div>
-      <div className={styles.inputGroup}>
-        <Calendar className={styles.inputIcon} />
-        <input 
-          type="text" 
-          name="DOB" 
-          placeholder="Ngày sinh" 
-          value={formData.DOB} 
-          onChange={handleChange} 
-          className={styles.input} 
-          onFocus={(e) => (e.target.type = "date")} 
-          onBlur={(e) => { if (!e.target.value) e.target.type = "text"; }} 
-        />
-      </div>
-      <div className={styles.inputGroup}>
-        <MapPin className={styles.inputIcon} />
-        <input type="text" name="address" placeholder="Địa chỉ" value={formData.address} onChange={handleChange} className={styles.input} />
-      </div>
-    </>
-  );
-
   return (
     <div className={styles.container}>
       <div className={styles.wrapper}>
         
-        {/* The Toggle */}
         <input 
           type="checkbox" 
           id="toggle-register" 
@@ -188,84 +262,90 @@ const validateInputs = () => {
 
         <div className={styles.flipCardInner}>
   
-  {/* FRONT: Student Form */}
-  <div 
-    className={`${styles.flipCardFront} ${!isUniversity ? styles.cardRelative : styles.cardAbsolute}`}
-  >
-    <div className={styles.iconWrapper}>
-      <BookOpen className={styles.icon} />
-    </div>
-    <h1 className={styles.title}>Đăng ký</h1>
-    
-    <form onSubmit={handleRegister} className={styles.form}>
-      <CommonFields />
-      <button type="submit" className={styles.submitButton} disabled={loading}>
-        {loading ? "Đang xử lý..." : "Đăng ký"}
-      </button>
-      <div className={styles.footer}>
-        <span className={styles.footerText}>Đã có tài khoản?</span>
-        <button type="button" className={styles.linkButton} onClick={() => navigate("/login")}>
-          Đăng nhập
-        </button>
-      </div>
-    </form>
-  </div>
+          {/* FRONT: Student Form */}
+          <div 
+            className={`${styles.flipCardFront} ${!isUniversity ? styles.cardRelative : styles.cardAbsolute}`}
+          >
+            <div className={styles.iconWrapper}>
+              <BookOpen className={styles.icon} />
+            </div>
+            <h1 className={styles.title}>Đăng ký</h1>
+            
+            <form onSubmit={handleRegister} className={styles.form}>
+              <CommonFields formData={formData} handleChange={handleChange} styles={styles} />
+              
+              <button type="submit" className={styles.submitButton} disabled={loading}>
+                {loading ? "Đang xử lý..." : "Đăng ký"}
+              </button>
+              <div className={styles.footer}>
+                <span className={styles.footerText}>Đã có tài khoản?</span>
+                <button type="button" className={styles.linkButton} onClick={() => navigate("/login")}>
+                  Đăng nhập
+                </button>
+              </div>
+            </form>
+          </div>
 
-  {/* BACK: University Form */}
-  <div 
-    className={`${styles.flipCardBack} ${isUniversity ? styles.cardRelative : styles.cardAbsolute}`}
-  >
-    <div className={styles.iconWrapper}>
-      <GraduationCap className={styles.icon} />
-    </div>
-    <h1 className={styles.title}>Đăng ký</h1>
-    
-    <form onSubmit={handleRegister} className={styles.form}>
-      <CommonFields />
-      
-      <div className={styles.universityFields}>
-        <div className={styles.inputGroup}>
-          <GraduationCap className={styles.inputIcon} />
-          <select name="university" value={formData.university} onChange={handleChange} className={styles.input}>
-            <option value="">Chọn trường đại học</option>
-            {universities.map((uni) => <option key={uni} value={uni}>{uni}</option>)}
-          </select>
-        </div>
-        <div className={styles.inputGroup}>
-          <IdCard className={styles.inputIcon} />
-          <input type="text" name="studentID" placeholder="Mã sinh viên" value={formData.studentID} onChange={handleChange} className={styles.input} />
-        </div>
-        
-        <div className={styles.fileUploadGroup}>
-          <label className={styles.fileLabel}>
-            <Upload className={styles.uploadIcon} /> <span>Mặt trước thẻ sinh viên</span>
-            <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, "studentCardFront")} className={styles.fileInput} />
-          </label>
-          {formData.studentCardFront && <img src={URL.createObjectURL(formData.studentCardFront)} alt="Front" className={styles.previewImage} />}
-        </div>
+          {/* BACK: University Form */}
+          <div 
+            className={`${styles.flipCardBack} ${isUniversity ? styles.cardRelative : styles.cardAbsolute}`}
+          >
+            <div className={styles.iconWrapper}>
+              <GraduationCap className={styles.icon} />
+            </div>
+            <h1 className={styles.title}>Đăng ký</h1>
+            
+            <form onSubmit={handleRegister} className={styles.form}>
+              <CommonFields formData={formData} handleChange={handleChange} styles={styles} />
+              
+              <div className={styles.universityFields}>
+                <div className={styles.inputGroup}>
+                  <GraduationCap className={styles.inputIcon} />
+                  <select name="university" value={formData.university} onChange={handleChange} className={styles.input}>
+                    <option value="">Chọn trường đại học</option>
+                    {/* FIX: Use uni._id as value instead of name */}
+                    {universities.map((uni) => (
+                      <option key={uni._id} value={uni._id}>
+                        {uni.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className={styles.inputGroup}>
+                  <IdCard className={styles.inputIcon} />
+                  <input type="text" name="studentID" placeholder="Mã sinh viên" value={formData.studentID} onChange={handleChange} className={styles.input} />
+                </div>
+                
+                <div className={styles.fileUploadGroup}>
+                  <label className={styles.fileLabel}>
+                    <Upload className={styles.uploadIcon} /> <span>Mặt trước thẻ sinh viên</span>
+                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, "studentCardFront")} className={styles.fileInput} />
+                  </label>
+                  {formData.studentCardFront && <img src={URL.createObjectURL(formData.studentCardFront)} alt="Front" className={styles.previewImage} />}
+                </div>
 
-        <div className={styles.fileUploadGroup}>
-          <label className={styles.fileLabel}>
-            <Upload className={styles.uploadIcon} /> <span>Mặt sau thẻ sinh viên</span>
-            <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, "studentCardBack")} className={styles.fileInput} />
-          </label>
-          {formData.studentCardBack && <img src={URL.createObjectURL(formData.studentCardBack)} alt="Back" className={styles.previewImage} />}
-        </div>
-      </div>
+                <div className={styles.fileUploadGroup}>
+                  <label className={styles.fileLabel}>
+                    <Upload className={styles.uploadIcon} /> <span>Mặt sau thẻ sinh viên</span>
+                    <input type="file" accept="image/*" onChange={(e) => handleFileChange(e, "studentCardBack")} className={styles.fileInput} />
+                  </label>
+                  {formData.studentCardBack && <img src={URL.createObjectURL(formData.studentCardBack)} alt="Back" className={styles.previewImage} />}
+                </div>
+              </div>
 
-      <button type="submit" className={styles.submitButton} disabled={loading}>
-        {loading ? "Đang xử lý..." : "Đăng ký"}
-      </button>
-      
-      <div className={styles.footer}>
-        <span className={styles.footerText}>Đã có tài khoản?</span>
-        <button type="button" className={styles.linkButton} onClick={() => navigate("/login")}>
-          Đăng nhập
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
+              <button type="submit" className={styles.submitButton} disabled={loading}>
+                {loading ? "Đang xử lý..." : "Đăng ký"}
+              </button>
+              
+              <div className={styles.footer}>
+                <span className={styles.footerText}>Đã có tài khoản?</span>
+                <button type="button" className={styles.linkButton} onClick={() => navigate("/login")}>
+                  Đăng nhập
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
   );

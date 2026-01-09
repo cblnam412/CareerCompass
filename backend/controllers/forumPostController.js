@@ -5,12 +5,16 @@ import { uploadFileToSupabase, deleteFileFromSupabase } from '../utils/supabaseU
 
 export const getAllForumPosts = async (req, res) => {
     try {
-        const { search, status = 'active', sort = '-createdAt', limit = 10, page = 1 } = req.query;
+        const { search, status = 'active', authorId, sort = '-createdAt', limit = 10, page = 1 } = req.query;
         const userId = req.userId;
         const skip = (page - 1) * limit;
 
         const filter = {};
         
+        if (authorId) {
+            filter.authorId = authorId;
+        }
+
         if (search) {
             filter.$or = [
                 { title: { $regex: search, $options: 'i' } },
@@ -23,7 +27,7 @@ export const getAllForumPosts = async (req, res) => {
         }
 
         const posts = await ForumPost.find(filter)
-            .populate('authorId', 'fullName email')
+            .populate('authorId', 'fullName email role avatar')
             .populate('relatedMajorIds', 'name')
             .populate('relatedUniversityIds', 'name code')
             .skip(skip)

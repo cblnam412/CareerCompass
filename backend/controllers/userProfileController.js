@@ -7,7 +7,7 @@ export const getUserProfile = async (req, res) => {
         const { userId } = req.params;
 
         const user = await User.findById(userId).select(
-            'fullName DOB studentId address role universityId createdAt'
+            'fullName DOB studentId avatar address role universityId createdAt'
         );
         
         if (!user) {
@@ -18,7 +18,7 @@ export const getUserProfile = async (req, res) => {
         }
 
         if ((user.role === 'uniRep' || user.role === 'uniManager') && user.universityId) {
-            await user.populate('universityId', 'name code region');
+            await user.populate('universityId', 'name code region address phone website description');
         }
 
         res.status(200).json({
@@ -50,7 +50,7 @@ export const getMyProfile = async (req, res) => {
         }
 
         if ((user.role === 'uniRep' || user.role === 'uniManager') && user.universityId) {
-            await user.populate('universityId', 'name code region address phone1 phone2 website');
+            await user.populate('universityId', 'name code region address phone website description');
         }
 
         res.status(200).json({

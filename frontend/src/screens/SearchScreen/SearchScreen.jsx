@@ -1,199 +1,179 @@
-import React, { useState, useEffect } from "react"
-// import { useAuth } from "../../contexts/auth-context"
-// import { inMemoryStorage, mockData } from "../../lib/mock-data"
-import { Search, SearchX, X, Clock, Calendar, User } from "lucide-react"
-import { PostCard } from "../../component/Postcard/Postcard"
-import { useNavigate, useLocation } from "react-router-dom"
-import styles from "./SearchScreen.module.css"
-
-// Mock posts data
-const mockPosts = [
-  {
-    id: "post1",
-    author_id: "user2",
-    author: {
-      display_name: "John Doe",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user2",
-    },
-    content: "Happy New Year everyone! 🎉 Wishing you all a wonderful 2026!",
-    image_url: "https://picsum.photos/400/300?random=1",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    likes_count: 12,
-    comments_count: 3,
-    is_liked: false,
-  },
-  {
-    id: "post2",
-    author_id: "user3",
-    author: {
-      display_name: "Jane Smith",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user3",
-    },
-    content: "Just finished my morning workout! Feeling great 💪",
-    image_url: null,
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    likes_count: 8,
-    comments_count: 1,
-    is_liked: true,
-  },
-  {
-    id: "post3",
-    author_id: "user4",
-    author: {
-      display_name: "Mike Johnson",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user4",
-    },
-    content: "Looking for career advice. Anyone here working in tech?",
-    image_url: null,
-    created_at: new Date(Date.now() - 10800000).toISOString(),
-    likes_count: 15,
-    comments_count: 7,
-    is_liked: false,
-  },
-]
+import React, { useState, useEffect } from "react";
+import { Search, SearchX, X, Clock, Calendar, User } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
+import { PostCard } from "../../component/Postcard/Postcard";
+import { useAuth } from "../../context/AuthContext"; 
+import API from "../../API/API"; 
+import styles from "./SearchScreen.module.css";
 
 export default function SearchScreen() {
-  // const { user } = useAuth()
-  // Mock user for now
-  const user = { id: "user1", display_name: "Current User", avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user1" }
+  const { userID, accessToken } = useAuth(); 
+  const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const queryParam = searchParams.get("q") || "";
 
-  const navigate = useNavigate()
-  const location = useLocation()
-  const searchParams = new URLSearchParams(location.search)
-  const queryParam = searchParams.get("q") || ""
+  const [searchQuery, setSearchQuery] = useState(queryParam);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Search History State
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [hasSearched, setHasSearched] = useState(!!queryParam);
+  
+  // Filter States
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [showMyPostsOnly, setShowMyPostsOnly] = useState(false);
 
-  const [searchQuery, setSearchQuery] = useState(queryParam)
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [searchHistory, setSearchHistory] = useState([])
-  const [hasSearched, setHasSearched] = useState(!!queryParam)
-  const [selectedMonth, setSelectedMonth] = useState("")
-  const [selectedYear, setSelectedYear] = useState("")
-  const [showMyPostsOnly, setShowMyPostsOnly] = useState(false)
-
+  // Load history on mount
   useEffect(() => {
-    // Load search history from localStorage
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("searchHistory")
+      const stored = localStorage.getItem("searchHistory");
       if (stored) {
-        setSearchHistory(JSON.parse(stored))
+        setSearchHistory(JSON.parse(stored));
       }
     }
-  }, [])
+  }, []);
 
+  // Sync with URL query
   useEffect(() => {
-    setSearchQuery(queryParam) 
-
+    setSearchQuery(queryParam);
     if (queryParam) {
-      searchPosts(queryParam)
+      performSearch(queryParam, selectedMonth, selectedYear, showMyPostsOnly);
     } else {
-      setPosts([]) 
-      setHasSearched(false)
+      setPosts([]);
+      setHasSearched(false);
     }
-  }, [queryParam])
+  }, [queryParam]); 
 
-  const searchPosts = (query, month = "", year = "", myPostsOnly = false) => {
+  // MAIN SEARCH FUNCTION
+  const performSearch = async (query, month, year, myPostsOnly) => {
     if (!query.trim()) {
-      setPosts([])
-      setHasSearched(false)
-      return
+      setPosts([]);
+      setHasSearched(false);
+      return;
     }
 
-    setLoading(true)
-    setHasSearched(true)
+    setLoading(true);
+    setHasSearched(true);
 
-    // Simulate search delay
-    setTimeout(() => {
-      // TODO: Replace with actual API call when backend is implemented
-      // const allPosts = [...inMemoryStorage.posts, ...mockData.posts]
-      const allPosts = [...mockPosts]
-      let filtered = allPosts.filter(
-        (post) =>
-          post.content.toLowerCase().includes(query.toLowerCase()) ||
-          post.author?.display_name.toLowerCase().includes(query.toLowerCase()),
-      )
+    try {
+      // 1. Fetch from API
+      const res = await fetch(`${API}/api/forum/posts?search=${encodeURIComponent(query)}&limit=50&sort=-createdAt`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        }
+      });
 
-      if (myPostsOnly && user) {
-        filtered = filtered.filter((post) => post.author_id === user.id)
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Lỗi tìm kiếm");
       }
 
-      if (month || year) {
-        // Normalize the input month to 2 digits (e.g., "1" -> "01")
-        const searchMonth = month ? String(month).padStart(2, "0") : ""
+      if (data.success) {
+        let fetchedPosts = data.data;
+        
+        if (myPostsOnly && userID) {
+            fetchedPosts = fetchedPosts.filter(post => {
+                const authorId = post.authorId?._id || post.authorId;
+                return authorId === userID;
+            });
+        }
 
-        filtered = filtered.filter((post) => {
-          const postDate = new Date(post.created_at)
-          const postMonth = String(postDate.getMonth() + 1).padStart(2, "0")
-          const postYear = postDate.getFullYear().toString()
+        // Filter: Date (Month/Year)
+        if (month || year) {
+            const searchMonth = month ? String(month).padStart(2, "0") : "";
+            const searchYear = year ? String(year) : "";
 
-          if (month && year) {
-            return postMonth === searchMonth && postYear === year
-          } else if (month) {
-            return postMonth === searchMonth
-          } else if (year) {
-            return postYear === year
-          }
-          return true
-        })
+            fetchedPosts = fetchedPosts.filter((post) => {
+                const postDate = new Date(post.createdAt);
+                const postMonth = String(postDate.getMonth() + 1).padStart(2, "0");
+                const postYear = postDate.getFullYear().toString();
+
+                if (searchMonth && searchYear) {
+                    return postMonth === searchMonth && postYear === searchYear;
+                } else if (searchMonth) {
+                    return postMonth === searchMonth;
+                } else if (searchYear) {
+                    return postYear === searchYear;
+                }
+                return true;
+            });
+        }
+
+        setPosts(fetchedPosts);
+
+        // 3. Save History
+        const newHistory = {
+          id: Date.now().toString(),
+          query: query,
+          timestamp: new Date(),
+        };
+        const updatedHistory = [newHistory, ...searchHistory.filter((h) => h.query !== query)].slice(0, 10);
+        setSearchHistory(updatedHistory);
+        localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
       }
 
-      setPosts(filtered)
-      setLoading(false)
+    } catch (error) {
+      console.error("Search error:", error);
+      toast.error("Không thể tìm kiếm lúc này");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      // Save to search history
-      const newHistory = {
-        id: Date.now().toString(),
-        query,
-        timestamp: new Date(),
-      }
-      const updated = [newHistory, ...searchHistory.filter((h) => h.query !== query)].slice(0, 10)
-      setSearchHistory(updated)
-      localStorage.setItem("searchHistory", JSON.stringify(updated))
-    }, 300)
-  }
+  // HANDLERS
 
   const handleSearch = (e) => {
-    e.preventDefault()
-    searchPosts(searchQuery, selectedMonth, selectedYear, showMyPostsOnly)
-  }
+    e.preventDefault();
+    navigate(`?q=${encodeURIComponent(searchQuery)}`);
+  };
 
   const handleDateChange = (month, year) => {
-    setSelectedMonth(month)
-    setSelectedYear(year)
-    searchPosts(searchQuery, month, year, showMyPostsOnly)
-  }
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    performSearch(searchQuery, month, year, showMyPostsOnly);
+  };
 
   const clearDateFilter = () => {
-    setSelectedMonth("")
-    setSelectedYear("")
-    searchPosts(searchQuery, "", "", showMyPostsOnly)
-  }
+    setSelectedMonth("");
+    setSelectedYear("");
+    performSearch(searchQuery, "", "", showMyPostsOnly);
+  };
 
   const handleMyPostsChange = (checked) => {
-    setShowMyPostsOnly(checked)
-    searchPosts(searchQuery, selectedMonth, selectedYear, checked)
-  }
+    if (checked && !userID) {
+        toast.info("Vui lòng đăng nhập để lọc bài viết của bạn");
+        return;
+    }
+    setShowMyPostsOnly(checked);
+    performSearch(searchQuery, selectedMonth, selectedYear, checked);
+  };
 
   const handleHistoryClick = (query) => {
-    setSearchQuery(query)
-    searchPosts(query, selectedMonth, selectedYear, showMyPostsOnly)
-  }
+    setSearchQuery(query);
+    navigate(`?q=${encodeURIComponent(query)}`);
+  };
 
   const removeHistoryItem = (id) => {
-    const updated = searchHistory.filter((h) => h.id !== id)
-    setSearchHistory(updated)
-    localStorage.setItem("searchHistory", JSON.stringify(updated))
-  }
+    const updated = searchHistory.filter((h) => h.id !== id);
+    setSearchHistory(updated);
+    localStorage.setItem("searchHistory", JSON.stringify(updated));
+  };
 
   const clearHistory = () => {
-    setSearchHistory([])
-    localStorage.removeItem("searchHistory")
-  }
+    setSearchHistory([]);
+    localStorage.removeItem("searchHistory");
+  };
 
   const handlePostUpdate = () => {
-    // Refresh posts after update
-    searchPosts(searchQuery, selectedMonth, selectedYear, showMyPostsOnly)
-  }
+    performSearch(searchQuery, selectedMonth, selectedYear, showMyPostsOnly);
+  };
 
   return (
     <div className={styles.container}>
@@ -206,7 +186,7 @@ export default function SearchScreen() {
               <Search size={20} className={styles.searchIcon} />
               <input
                 type="text"
-                placeholder="Tìm kiếm bài viết, người dùng..."
+                placeholder="Tìm kiếm bài viết..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={styles.searchInput}
@@ -217,9 +197,10 @@ export default function SearchScreen() {
                   type="button"
                   className={styles.clearButton}
                   onClick={() => {
-                    setSearchQuery("")
-                    setPosts([])
-                    setHasSearched(false)
+                    setSearchQuery("");
+                    setPosts([]);
+                    setHasSearched(false);
+                    navigate("/user/search");
                   }}
                 >
                   <X size={18} />
@@ -268,18 +249,20 @@ export default function SearchScreen() {
                 </div>
               </div>
 
-              <div className={styles.filterGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    checked={showMyPostsOnly}
-                    onChange={(e) => handleMyPostsChange(e.target.checked)}
-                    className={styles.checkbox}
-                  />
-                  <User size={16} />
-                  <span>Bài viết của tôi</span>
-                </label>
-              </div>
+              {userID && (
+                <div className={styles.filterGroup}>
+                    <label className={styles.checkboxLabel}>
+                    <input
+                        type="checkbox"
+                        checked={showMyPostsOnly}
+                        onChange={(e) => handleMyPostsChange(e.target.checked)}
+                        className={styles.checkbox}
+                    />
+                    <User size={16} />
+                    <span>Bài viết của tôi</span>
+                    </label>
+                </div>
+              )}
             </div>
           )}
 
@@ -324,7 +307,8 @@ export default function SearchScreen() {
               ) : posts.length > 0 ? (
                 <div className={styles.resultsList}>
                   {posts.map((post) => (
-                    <PostCard key={post.id} post={post} onUpdate={handlePostUpdate} />
+                    // Use _id for key since we are using raw data
+                    <PostCard key={post._id} post={post} onUpdate={handlePostUpdate} />
                   ))}
                 </div>
               ) : (
@@ -339,5 +323,5 @@ export default function SearchScreen() {
         </div>
       </div>
     </div>
-  )
+  );
 }

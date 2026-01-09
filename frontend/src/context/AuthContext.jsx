@@ -1,5 +1,5 @@
 import { useState, useContext, useEffect, useRef, createContext } from "react";
-import API from "../API/api";
+import API from "../API/API";
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 
@@ -15,24 +15,25 @@ export function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
   const [isFetchingAuth, setFetchingAuth] = useState(true);
-  const [isFetchingUserInfo, setFetchingUserInfo] = useState(true);
 
   const timeOutRef = useRef(null);
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
     const id = localStorage.getItem("userID");
-    if (token) setAccessToken(token); // What about token is found but not id?
+    const info = localStorage.getItem("userInfo");
+
+    if (token) setAccessToken(token); 
     if (id) setUserID(id);
+    if (info) setUserInfo(JSON.parse(info));
 
-
-    setFetchingUserInfo(false);
     setFetchingAuth(false);
   }, []);
 
   useEffect(() => {
-    if (accessToken && userID) {
+    if (accessToken && userID && userInfo) {
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("userID", userID);
+      localStorage.setItem("userInfo", JSON.stringify(userInfo));
 
       const { exp } = jwtDecode(accessToken);
       const remainingTime = exp * 1000 - Date.now();
@@ -45,19 +46,15 @@ export function AuthProvider({ children }) {
         toast.warning("Your session has expired!");
         logout();
       }, remainingTime);
-
-      setFetchingUserInfo(true);
-      fetchUserInfo(accessToken);
     }
 
-    if (!accessToken || !userID) {
+    if (!accessToken || !userID || !userInfo) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("userID");
+      localStorage.removeItem("userInfo");
     }
     console.log(`Current user id is: ${userID ? userID : "Not found"}`);
-    console.log(
-      `Current access token is: ${accessToken ? accessToken : "Not found"}`
-    );
+    console.log(`Current access token is: ${accessToken ? accessToken : "Not found"}`);
 
     return () => {
       if (timeOutRef.current) {
@@ -65,26 +62,7 @@ export function AuthProvider({ children }) {
         timeOutRef.current = null;
       }
     };
-  }, [userID, accessToken]);
-
-  async function fetchUserInfo(token) {
-    try {
-      const res = await fetch(`${API}/user/view-profile`, {
-        headers: {
-          Authorization: `Bearer ${token}`, 
-        },
-      });
-      if (res.ok) {
-        const {user} = await res.json();
-        setUserInfo(user);
-      }
-    } catch (error) {
-      console.error("Failed to fetch user info", error);
-    }
-    finally {
-      setFetchingUserInfo(false);
-    }
-  }
+  }, [userID, accessToken, userInfo]);
 
   async function login(username, password) {
     if (!username.trim()) {
@@ -100,7 +78,7 @@ export function AuthProvider({ children }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        emailOrPhone: username.trim(),
+        email: username.trim(),
         password: password,
       }),
     });
@@ -108,18 +86,21 @@ export function AuthProvider({ children }) {
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      toast.warning(body.message || "Đăng nhập thất bại");
-      return;
+      throw new Error(body.message || "Đăng nhập thất bại");
     }
 
-    const { token, userId } = body;
+    const { token } = body.data;
+    const userId = body.data.user._id;
+    const userInfo = body.data.user;
+
+    console.log(userInfo);
 
     if (!token || !userId)
       throw new Error("Server trả thiếu thông tin người dùng");
 
-    setFetchingUserInfo(true);
     setUserID(userId);
     setAccessToken(token);
+    setUserInfo(userInfo);
   }
 
   function logout() {
@@ -130,11 +111,13 @@ export function AuthProvider({ children }) {
       clearTimeout(timeOutRef.current);
       timeOutRef.current = null;
     }
+
+    toast.success("Đăng xuất thành công");
   }
 
   return (
     <AuthContext.Provider
-      value={{ userID, accessToken, login, logout, userInfo, setUserInfo, isFetchingAuth, isFetchingUserInfo}}
+      value={{ userID, accessToken, login, logout, userInfo, isFetchingAuth}}
     >
       {children}
     </AuthContext.Provider>

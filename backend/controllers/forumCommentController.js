@@ -18,7 +18,7 @@ export const getForumComments = async (req, res) => {
         }
 
         const comments = await ForumComment.find({ postId })
-            .populate('authorId', 'fullName email')
+            .populate('authorId', 'fullName email role')
             .populate('parentCommentId', 'content authorId')
             .skip(skip)
             .limit(parseInt(limit))
