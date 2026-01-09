@@ -66,7 +66,6 @@ export function CreatePostDialog({ onPostCreated }) {
         title: title.trim(),
         content: content.trim(),
         itemUrl: imageUrl || "",
-        userId: userID,
         relatedMajorIds: [],
         relatedUniversityIds: []
       };
@@ -75,7 +74,6 @@ export function CreatePostDialog({ onPostCreated }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": userID,
           ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         },
         body: JSON.stringify(payload),

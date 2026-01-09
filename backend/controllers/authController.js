@@ -60,7 +60,8 @@ export const registerUniversityRep = async (req, res) => {
             DOB, 
             address, 
             universityId,
-            personalNote 
+            personalNote,
+            studentID
         } = req.body;
 
         if (!req.files || !req.files.studentCardFront || !req.files.studentCardBack) {
@@ -70,6 +71,14 @@ export const registerUniversityRep = async (req, res) => {
             });
         }
 
+        if (!studentID)
+        {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Vui lòng nhập mã số sinh viên' 
+            });
+        }
+        
         const existingUser = await User.findOne({ email: email.toLowerCase() });
         if (existingUser) {
             return res.status(400).json({ 
@@ -132,7 +141,7 @@ export const registerUniversityRep = async (req, res) => {
 
         const affiliation = new UniversityAffiliation({
             studentId: savedUser._id,
-            studentIdNumber: studentId || '',
+            studentIdNumber: studentID || '',
             universityId,
             studentCardFront: frontCardUpload.url,
             studentCardBack: backCardUpload.url,

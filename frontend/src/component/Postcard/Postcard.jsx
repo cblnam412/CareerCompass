@@ -154,7 +154,6 @@ export function PostCard({ post, onUpdate }) {
     try {
       const payload = {
           content: comment,
-          userId: userID,
           itemUrl: ""
       };
 
@@ -214,7 +213,6 @@ export function PostCard({ post, onUpdate }) {
             method: "DELETE",
             headers: {
                 "Content-Type": "application/json",
-                "x-user-id": userID,
                 ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
             },
         });

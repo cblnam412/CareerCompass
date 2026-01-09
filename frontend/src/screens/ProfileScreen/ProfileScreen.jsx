@@ -1,70 +1,100 @@
 import { useState, useEffect } from "react"
 import { PostCard } from "../../component/Postcard/Postcard"
 import { useAuth } from "../../context/AuthContext"
-import { MoreVertical, Edit2, User, Mail, Calendar, MapPin } from "lucide-react"
+import { MoreVertical, Edit2, User, Mail, Calendar, MapPin, Camera } from "lucide-react"
+import { toast } from "react-toastify"
+import API from "../../API/API"
 import styles from "./ProfileScreen.module.css"
 
-// Mock posts data
-const mockPosts = [
-  {
-    id: "post1",
-    author_id: "695fc6f07785a9d1ff4b64d0",
-    author: {
-      display_name: "Phạm Bảo Khang",
-      avatar_url: "https://i.redd.it/21imnctdkr771.jpg",
-    },
-    content: "This is my first post! Excited to be here 🎉",
-    image_url: "https://picsum.photos/400/300?random=3",
-    created_at: new Date(Date.now() - 1800000).toISOString(),
-    likes_count: 15,
-    comments_count: 2,
-    is_liked: false,
-  },
-  {
-    id: "post2",
-    author_id: "695fc6f07785a9d1ff4b64d0",
-    author: {
-      display_name: "Phạm Bảo Khang",
-      avatar_url: "https://i.redd.it/21imnctdkr771.jpg",
-    },
-    content: "Beautiful sunset today! 🌅",
-    image_url: "https://picsum.photos/400/300?random=4",
-    created_at: new Date(Date.now() - 86400000).toISOString(),
-    likes_count: 23,
-    comments_count: 5,
-    is_liked: true,
-  },
-]
+const DEFAULT_AVATAR = "https://www.svgrepo.com/show/452030/avatar-default.svg"
 
 export default function ProfileScreen() {
-  const { userInfo } = useAuth()
+  const { userInfo, accessToken } = useAuth()
   
   const [posts, setPosts] = useState([])
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("posts")
   const [fullName, setFullName] = useState(userInfo?.fullName || "")
-  const [bio, setBio] = useState("")
-  const [avatar, setAvatar] = useState("https://i.redd.it/21imnctdkr771.jpg")
+  const [address, setAddress] = useState(userInfo?.address || "")
+  const [bio, setBio] = useState("") 
 
   useEffect(() => {
-    // Filter posts by current user
-    if (userInfo) {
-      const userPosts = mockPosts.filter(
-        (post) => post.author_id === userInfo._id
-      ).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      )
-      setPosts(userPosts)
+    if (userInfo?._id) {
+      fetchUserPosts()
       setFullName(userInfo.fullName)
+      setAddress(userInfo.address || "")
     }
   }, [userInfo])
 
-  const handleSave = () => {
-    // TODO: Send updated profile to backend
-    setIsEditOpen(false)
+  const fetchUserPosts = async () => {
+    try {
+      const res = await fetch(`${API}/api/forum/posts?authorId=${userInfo._id}`, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`
+        }
+      })
+      const data = await res.json()
+      if (data.success) {
+        setPosts(data.data)
+      }
+    } catch (error) {
+      console.error("Error fetching posts:", error)
+    }
+  }
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const formData = new FormData()
+    formData.append("avatar", file)
+
+    try {
+      const res = await fetch(`${API}/api/users/me/avatar`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: formData
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Cập nhật ảnh đại diện thành công")
+        window.location.reload() // Refresh to update AuthContext userInfo
+      } else {
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error("Lỗi upload ảnh")
+    }
+  }
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${API}/api/users/me`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          fullName,
+          address
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success("Cập nhật thông tin thành công")
+        setIsEditOpen(false)
+        window.location.reload()
+      }
+    } catch (error) {
+      toast.error("Lỗi cập nhật thông tin")
+    }
   }
 
   const formatDate = (dateString) => {
+    if (!dateString) return "Chưa cập nhật"
     return new Date(dateString).toLocaleDateString('vi-VN')
   }
 
@@ -75,22 +105,38 @@ export default function ProfileScreen() {
   return (
     <div className={styles.container}>
       <div className={styles.profileSection}>
-        {/* Cover photo */}
         <div className={styles.coverPhoto}>
           <img
             src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=300&fit=crop"
-            alt="Cover photo"
+            alt="Cover"
             className={styles.coverImage}
           />
         </div>
 
-        {/* Profile header with overlapping avatar */}
         <div className={styles.profileHeader}>
           <div className={styles.headerContent}>
-            <img src={avatar} alt={userInfo.fullName} className={styles.avatar} />
+            <div className={styles.avatarContainer}>
+              <img 
+                src={userInfo.avatar || DEFAULT_AVATAR} 
+                alt={userInfo.fullName} 
+                className={styles.avatar} 
+              />
+              <label htmlFor="avatar-upload" className={styles.uploadBadge}>
+                <Camera size={18} />
+                <input 
+                  id="avatar-upload" 
+                  type="file" 
+                  accept="image/*" 
+                  className={styles.hiddenInput} 
+                  onChange={handleAvatarChange}
+                />
+              </label>
+            </div>
             <div className={styles.userInfo}>
               <h1 className={styles.userName}>{userInfo.fullName}</h1>
-              <p className={styles.userHandle}>@{userInfo.fullName?.toLowerCase().replace(/\s+/g, "") || "username"}</p>
+              <p className={styles.userHandle}>
+                @{userInfo.fullName?.toLowerCase().replace(/\s+/g, "") || "username"}
+              </p>
             </div>
           </div>
 
@@ -105,7 +151,6 @@ export default function ProfileScreen() {
           </div>
         </div>
 
-        {/* Navigation tabs */}
         <div className={styles.tabsContainer}>
           <button
             className={`${styles.tab} ${activeTab === "posts" ? styles.tabActive : ""}`}
@@ -122,13 +167,16 @@ export default function ProfileScreen() {
         </div>
       </div>
 
-      {/* Posts section */}
       <div className={styles.postsSection}>
         {activeTab === "posts" && (
           <div className={styles.postsGrid}>
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
+            {posts.length > 0 ? (
+              posts.map((post) => (
+                <PostCard key={post._id} post={post} />
+              ))
+            ) : (
+              <p className={styles.emptyText}>Chưa có bài viết nào</p>
+            )}
           </div>
         )}
         {activeTab === "about" && (
@@ -160,7 +208,7 @@ export default function ProfileScreen() {
                 <MapPin className={styles.infoIcon} size={20} />
                 <div className={styles.infoContent}>
                   <span className={styles.infoLabel}>Địa chỉ:</span>
-                  <span className={styles.infoValue}>{userInfo.address}</span>
+                  <span className={styles.infoValue}>{userInfo.address || "Chưa cập nhật"}</span>
                 </div>
               </div>
             </div>
@@ -179,13 +227,13 @@ export default function ProfileScreen() {
             </div>
 
             <div className={styles.formGroup}>
-              <label className={styles.label}>Tiểu sử</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} className={styles.textarea} rows={3} />
+              <label className={styles.label}>Địa chỉ</label>
+              <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} className={styles.input} />
             </div>
 
             <div className={styles.formGroup}>
-              <label className={styles.label}>URL ảnh đại diện</label>
-              <input type="text" value={avatar} onChange={(e) => setAvatar(e.target.value)} className={styles.input} />
+              <label className={styles.label}>Tiểu sử</label>
+              <textarea value={bio} onChange={(e) => setBio(e.target.value)} className={styles.textarea} rows={3} />
             </div>
 
             <div className={styles.modalActions}>

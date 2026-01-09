@@ -26,14 +26,14 @@ export default function ManageRepresentativeScreen() {
     setLoading(true);
     try {
       // Fetch Approved 
-      const repRes = await fetch(`${API}/admin/affiliations?status=approved&limit=100`, {
+      const repRes = await fetch(`${API}/api/affiliations?status=approved&limit=100`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const repData = await repRes.json();
       if (repData.success) setRepresentatives(repData.data);
 
       // Fetch Pending 
-      const appRes = await fetch(`${API}/admin/affiliations?status=pending&limit=100`, {
+      const appRes = await fetch(`${API}/api/affiliations?status=pending&limit=100`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const appData = await appRes.json();
@@ -56,7 +56,7 @@ export default function ManageRepresentativeScreen() {
   const handleApproveApplication = async (e, id) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`${API}/admin/affiliations/${id}/approve`, {
+      const res = await fetch(`${API}/api/affiliations/${id}/approve`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +82,7 @@ export default function ManageRepresentativeScreen() {
       return;
     }
     try {
-      const res = await fetch(`${API}/admin/affiliations/${id}/reject`, {
+      const res = await fetch(`${API}/api/affiliations/${id}/reject`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

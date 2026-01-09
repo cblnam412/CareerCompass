@@ -40,7 +40,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
-app.use('/affiliations', affiliationRoutes);
+app.use('/api/affiliations', affiliationRoutes);
 app.use('/api', subjectCombinationRoutes);
 app.use('/api', softSkillRoutes);
 app.use('/api/forum', forumRoutes);
