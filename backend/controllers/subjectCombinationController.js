@@ -1,6 +1,32 @@
 import SubjectCombination from '../models/SubjectCombination.js';
 import Subject from '../models/Subject.js';
 import { parseSubjectCombinationsFromDocx, validateSubjectCombinations } from '../utils/docxParser.js';
+import { error } from 'console';
+
+const normalizeVietnamese = (str) => {
+    return str
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+};
+
+const SUBJECT_ABBREVIATIONS = {
+    'lý': 'vật lí',
+    'hóa': 'hóa học',
+    'sinh': 'sinh học',
+    'địa': 'địa lí',
+    'anh': 'tiếng anh',
+    'việt': 'tiếng việt',
+    'sử': 'lịch sử',
+    'công dân': 'giáo dục công dân',
+    'xã hội': 'lịch sử',
+    'vật lý': 'vật lí',
+    'Vật lý': 'vật lí',
+    'Năng kiếu': 'năng khiếu',
+    'nghệ thuật': 'năng khiếu',
+    'Địa lý': 'địa lí',
+};
 
 export const getAllSubjectCombinations = async (req, res) => {
     try {
@@ -337,16 +363,46 @@ export const importSubjectCombinationsFromDocx = async (req, res) => {
 
         for (const combo of toCreate) {
             try {
+                const subjectIds = [];
+                
+                for (const subjectName of combo.subjects) {
+                    try {
+                        const inputName = subjectName.trim().toLowerCase();
+                        
+                        let resolvedName = SUBJECT_ABBREVIATIONS[inputName] || inputName;
+                        
+                        let subject = await Subject.findOne({
+                            name: resolvedName.trim().toLowerCase()
+                        });
+                        
+                        if (!subject) {
+                            const allSubjects = await Subject.find();
+                            const normalizedResolved = normalizeVietnamese(resolvedName);
+                            subject = allSubjects.find(s => 
+                                normalizeVietnamese(s.name) === normalizedResolved
+                            );
+                        }
+                        
+                        if (!subject) {
+                            throw new Error(`Môn học "${subjectName}" không tồn tại`);
+                        }
+                        subjectIds.push(subject._id);
+                    } catch (subjectError) {
+                        throw subjectError;
+                    }
+                }
+                
                 const newCombination = new SubjectCombination({
                     combinationName: combo.combinationName.trim(),
-                    subjects: combo.subjects.map(s => s.trim())
+                    subjects: subjectIds
                 });
                 const saved = await newCombination.save();
                 createdCombos.push(saved);
             } catch (error) {
+                console.error(`Error processing combo ${combo.combinationName}:`, error.message);
                 createErrors.push({
                     combinationName: combo.combinationName,
-                    error: error.message
+                    error: error?.message || String(error)
                 });
             }
         }
@@ -356,10 +412,39 @@ export const importSubjectCombinationsFromDocx = async (req, res) => {
 
         for (const combo of toUpdate) {
             try {
+                const subjectIds = [];
+                
+                for (const subjectName of combo.subjects) {
+                    try {
+                        const inputName = subjectName.trim().toLowerCase();
+                        
+                        let resolvedName = SUBJECT_ABBREVIATIONS[inputName] || inputName;
+                        
+                        let subject = await Subject.findOne({
+                            name: resolvedName.trim().toLowerCase()
+                        });
+                        
+                        if (!subject) {
+                            const allSubjects = await Subject.find();
+                            const normalizedResolved = normalizeVietnamese(resolvedName);
+                            subject = allSubjects.find(s => 
+                                normalizeVietnamese(s.name) === normalizedResolved
+                            );
+                        }
+                        
+                        if (!subject) {
+                            throw new Error(`Môn học "${subjectName}" không tồn tại`);
+                        }
+                        subjectIds.push(subject._id);
+                    } catch (subjectError) {
+                        throw subjectError;
+                    }
+                }
+                
                 const updated = await SubjectCombination.findOneAndUpdate(
                     { combinationName: { $regex: `^${combo.combinationName}$`, $options: 'i' } },
                     {
-                        subjects: combo.subjects.map(s => s.trim())
+                        subjects: subjectIds
                     },
                     { new: true }
                 );
@@ -367,9 +452,10 @@ export const importSubjectCombinationsFromDocx = async (req, res) => {
                     updatedCombos.push(updated);
                 }
             } catch (error) {
+                console.error(`Error updating combo ${combo.combinationName}:`, error.message);
                 updateErrors.push({
                     combinationName: combo.combinationName,
-                    error: error.message
+                    error: error?.message || String(error)
                 });
             }
         }

@@ -15,11 +15,10 @@ const subjectCombinationSchema = new mongoose.Schema({
     timestamps: true
 });
 
-subjectCombinationSchema.pre('save', function(next) {
-    if (this.subjects && this.subjects.length !== 3) {
-        throw new Error('Tổ hợp môn phải gồm đúng 3 môn học');
+subjectCombinationSchema.pre('save', async function() {
+    if (!this.subjects || this.subjects.length === 0) {
+        throw new Error('Tổ hợp môn phải có ít nhất 1 môn học');
     }
-    next();
 });
 
 const SubjectCombination = mongoose.model('SubjectCombination', subjectCombinationSchema);

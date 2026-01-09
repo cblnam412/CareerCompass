@@ -121,3 +121,36 @@ export const createSampleUniversityFile = async (filePath) => {
 
     await workbook.xlsx.writeFile(filePath);
 };
+
+export const parseSubjectsFromExcel = async (filePath) => {
+    try {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+        const sheet = workbook.getWorksheet('Subjects') || workbook.worksheets[0];
+
+        if (!sheet) {
+            throw new Error('Sheet "Subjects" not found in Excel file');
+        }
+
+        const subjects = [];
+        const rows = sheet.getSheetValues();
+
+        for (let i = 2; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || !row[2]) continue; 
+
+            const name = row[2]?.toString().trim(); // Column B (name)
+
+            if (name) {
+                subjects.push({
+                    name: name,
+                    rowNumber: i
+                });
+            }
+        }
+
+        return subjects;
+    } catch (error) {
+        throw new Error(`Excel parsing error: ${error.message}`);
+    }
+};

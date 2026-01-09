@@ -1,4 +1,6 @@
 import Subject from '../models/Subject.js';
+import SubjectCombination from '../models/SubjectCombination.js';
+import { parseSubjectsFromExcel } from '../utils/excelParserUtils.js';
 
 export const getAllSubjects = async (req, res) => {
     try {
@@ -193,6 +195,80 @@ export const deleteSubject = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi xóa môn học',
+            error: error.message
+        });
+    }
+};
+export const bulkImportSubjects = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng chọn file Excel'
+            });
+        }
+
+        const subjects = await parseSubjectsFromExcel(req.file.path);
+
+        if (!subjects || subjects.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'File Excel không có dữ liệu môn học'
+            });
+        }
+
+        const results = {
+            created: [],
+            duplicated: [],
+            errors: []
+        };
+
+        for (const subjectData of subjects) {
+            try {
+                const existingSubject = await Subject.findOne({
+                    name: { $regex: `^${subjectData.name}$`, $options: 'i' }
+                });
+
+                if (existingSubject) {
+                    results.duplicated.push({
+                        name: subjectData.name,
+                        rowNumber: subjectData.rowNumber,
+                        message: 'Tên môn học đã tồn tại'
+                    });
+                    continue;
+                }
+
+                const newSubject = new Subject({
+                    name: subjectData.name.trim().toLowerCase()
+                });
+
+                const savedSubject = await newSubject.save();
+                results.created.push({
+                    name: savedSubject.name,
+                    id: savedSubject._id,
+                    rowNumber: subjectData.rowNumber
+                });
+
+            } catch (error) {
+                results.errors.push({
+                    name: subjectData.name,
+                    rowNumber: subjectData.rowNumber,
+                    message: error.message
+                });
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Import thành công ${results.created.length} môn học`,
+            data: results
+        });
+
+    } catch (error) {
+        console.error('Bulk import subjects error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi import môn học từ Excel',
             error: error.message
         });
     }
