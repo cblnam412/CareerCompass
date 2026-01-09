@@ -2,6 +2,8 @@ import { useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "./layout/SidebarLayout/SidebarLayout";
+import { useAuth } from "../src/context/AuthContext";
+import { LoadingSpinner } from "./component/LoadingSpinner/LoadingSpinner";
 import {
   MessageScreen,
   ForumScreen,
@@ -25,15 +27,25 @@ import {
 } from "./screens";
 
 function App() {
+  const { userInfo, accessToken, isFetchingAuth } = useAuth();
+
+  if (isFetchingAuth) {
+      return <LoadingSpinner label="Đang lấy thông tin đăng nhập" overlay />;
+  }
+
+  const isAdmin = userInfo?.role === "admin";
+  const isManager = userInfo?.role === "uniManager";
+
+  const homeRoute = (!accessToken) ? "/" : (isAdmin ? "/admin" : "/user");
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Sidebar />} />
-        <Route path="/login" element={<LoginScreen />} />
-        <Route path="/register" element={<RegisterScreen />} />
-        <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
+        <Route path="/" element={accessToken ? <Navigate to={homeRoute} /> : <LoginScreen />} />
+        <Route path="/login" element={accessToken ? <Navigate to={homeRoute} /> : <LoginScreen />} />
+        <Route path="/register" element={accessToken ? <Navigate to={homeRoute} /> : <RegisterScreen />} />
+        <Route path="/forgot-password" element={accessToken ? <Navigate to={homeRoute} /> : <ForgotPasswordScreen />} />
 
-        <Route path="/user" element={<Sidebar />}>
+        <Route path="/user" element={accessToken ? <Sidebar /> : <Navigate to ="/login" />}>
           <Route index element={<ForumScreen />} />
           <Route path="search" element={<SearchScreen />} />
           <Route path="messages" element={<MessageScreen />} />
@@ -43,10 +55,10 @@ function App() {
           <Route path="quiz/mbti" element={<MBTIQuizScreen />} />
           <Route path="quiz/holland" element={<HollandQuizScreen />} />
           <Route path="profile" element={<ProfileScreen />} />
-          <Route path="representatives" element={<ManageRepresentativeScreen />} />
+          <Route path="representatives" element={isManager ? <ManageRepresentativeScreen /> : <Navigate to={homeRoute} />} />
         </Route>
 
-        <Route path="/admin" element={<Sidebar />}>
+        <Route path="/admin" element={accessToken ? <Sidebar /> : <Navigate to ="/login" />}>
           <Route index element={<AdminDashboard />} />
           <Route path="tests" element={<ManageTestScreen/> } />
           <Route path="combinations" element={<ManageCombinationScreen />} />

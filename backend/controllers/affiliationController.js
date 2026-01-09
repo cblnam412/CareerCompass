@@ -1,4 +1,5 @@
 import UniversityAffiliation from '../models/UniversityAffiliation.js';
+import University from '../models/University.js';
 import User from '../models/User.js';
 import { deleteFileFromSupabase } from '../utils/supabaseUtils.js';
 
@@ -199,7 +200,7 @@ export const getAffiliationsByUniversity = async (req, res) => {
         const { status, limit = 10, page = 1 } = req.query;
         const skip = (page - 1) * limit;
 
-        const university = await User.findById(universityId);
+        const university = await University.findById(universityId);
         if (!university) {
             return res.status(404).json({
                 success: false,

@@ -17,7 +17,7 @@ export const getForumComments = async (req, res) => {
         }
 
         const comments = await ForumComment.find({ postId })
-            .populate('authorId', 'fullName email')
+            .populate('authorId', 'fullName email role')
             .populate('parentCommentId', 'content authorId')
             .skip(skip)
             .limit(parseInt(limit))
@@ -170,7 +170,7 @@ export const updateForumComment = async (req, res) => {
 export const deleteForumComment = async (req, res) => {
     try {
         const { commentId } = req.params;
-        const userId = req.body.userId || req.headers['x-user-id'];
+        const userId = req.body?.userId || req.headers['x-user-id'];
 
         const comment = await ForumComment.findById(commentId);
 

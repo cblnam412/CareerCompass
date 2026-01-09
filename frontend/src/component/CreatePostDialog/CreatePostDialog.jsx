@@ -1,135 +1,185 @@
-import { ImageIcon, X, Smile, Paperclip } from "lucide-react"
-import { useState } from "react"
-import EmojiPicker from "emoji-picker-react"
-import styles from "./CreatePostDialog.module.css"
+import { ImageIcon, X, Smile, Paperclip } from "lucide-react";
+import { useState } from "react";
+import EmojiPicker from "emoji-picker-react";
+import { toast } from "react-toastify";
+import { useAuth } from "../../context/AuthContext";
+import API from "../../API/api";
+import styles from "./CreatePostDialog.module.css";
+
+const ROLE_TRANSLATIONS = {
+  user: "Học sinh",
+  admin: "Quản trị viên",
+  uniRep: "Đại diện trường", 
+  university: "Trường đại học",
+};
 
 export function CreatePostDialog({ onPostCreated }) {
-  // Mock user for now
-  const user = { id: "user1", display_name: "Current User", avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=user1" }
+  const { userInfo, userID, accessToken } = useAuth();
   
-  const [open, setOpen] = useState(false)
-  const [content, setContent] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
-  const [imagePreview, setImagePreview] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const userAvatar = userID 
+    ? `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}` 
+    : "/placeholder.svg";
+  
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
 
   const handleImageChange = (e) => {
-    const url = e.target.value
-    setImageUrl(url)
+    const url = e.target.value;
+    setImageUrl(url);
     if (url) {
-      setImagePreview(url)
+      setImagePreview(url);
     } else {
-      setImagePreview(null)
+      setImagePreview(null);
     }
-  }
+  };
 
   const handleEmojiClick = (emojiData) => {
-    setContent(prev => prev + emojiData.emoji)
-  }
-
-  const handleTextareaClick = () => {
-    if (showEmojiPicker) {
-      setShowEmojiPicker(false)
-    }
-  }
+    setContent((prev) => prev + emojiData.emoji);
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!user || !content.trim()) return
+    e.preventDefault();
+    
+    if (!title.trim()) {
+      toast.warning("Vui lòng nhập tiêu đề bài viết");
+      return;
+    }
+    if (!content.trim()) {
+      toast.warning("Vui lòng nhập nội dung");
+      return;
+    }
+    if (!userID) {
+      toast.error("Vui lòng đăng nhập lại");
+      return;
+    }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300))
-
-      const newPost = {
-        id: `post-${Date.now()}`,
-        author_id: user.id,
+      const payload = {
+        title: title.trim(),
         content: content.trim(),
-        image_url: imageUrl || null,
-        created_at: new Date().toISOString(),
-        author: {
-          display_name: user.display_name,
-          avatar_url: user.avatar_url,
+        itemUrl: imageUrl || "",
+        userId: userID,
+        relatedMajorIds: [],
+        relatedUniversityIds: []
+      };
+
+      const res = await fetch(`${API}/api/forum/posts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-id": userID,
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         },
-        likes_count: 0,
-        comments_count: 0,
-        is_liked: false,
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Lỗi tạo bài viết");
       }
 
-      console.log("New post created:", newPost)
+      toast.success("Đăng bài thành công!");
 
-      setContent("")
-      setImageUrl("")
-      setImagePreview(null)
-      setShowEmojiPicker(false)
-      setOpen(false)
-      onPostCreated?.()
+      setTitle("");
+      setContent("");
+      setImageUrl("");
+      setImagePreview(null);
+      setShowEmojiPicker(false);
+      setShowUrlInput(false);
+      setOpen(false);
+      
+      onPostCreated?.();
+
     } catch (error) {
-      console.error("Error creating post:", error)
+      console.error("Error creating post:", error);
+      toast.error(error.message || "Có lỗi xảy ra");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   return (
     <>
-      {/* Dialog Trigger */}
       <div className={styles.createPostTrigger} onClick={() => setOpen(true)}>
         <img
-          src={user?.avatar_url || "/placeholder.svg"}
-          alt={user?.display_name || "User"}
+          src={userAvatar}
+          alt={userInfo?.fullName || "User"}
           className={styles.triggerAvatar}
         />
-        <input type="text" placeholder="What's on your mind?" readOnly className={styles.triggerInput} />
+        <input 
+          type="text" 
+          placeholder={`Bạn đang nghĩ gì, ${userInfo?.fullName?.trim().split(' ').pop() || "bạn"} ơi?`} 
+          readOnly 
+          className={styles.triggerInput} 
+        />
       </div>
 
-      {/* Dialog */}
       {open && (
         <>
           <div className={styles.dialogBackdrop} onClick={() => setOpen(false)} />
           <div className={styles.dialogContent}>
             <div className={styles.dialogHeader}>
-              <h2 className={styles.dialogTitle}>Create post</h2>
+              <h2 className={styles.dialogTitle}>Tạo bài viết</h2>
               <button className={styles.closeButton} onClick={() => setOpen(false)}>
                 <X size={20} />
               </button>
             </div>
             
             <form onSubmit={handleSubmit} className={styles.form}>
-              {/* User info section */}
               <div className={styles.userInfo}>
                 <img
-                  src={user?.avatar_url || "/placeholder.svg"}
-                  alt={user?.display_name || "User"}
+                  src={userAvatar}
+                  alt={userInfo?.fullName || "User"}
                   className={styles.userAvatar}
                 />
                 <div>
-                  <div className={styles.userName}>{user?.display_name || "User"}</div>
+                  <div className={styles.userName}>{userInfo?.fullName || "Khách"}</div>
+                  {/* Applied Role Mapping Here */}
+                  <div className={styles.userRole}>
+                    {ROLE_TRANSLATIONS[userInfo?.role] || "Người dùng"}
+                  </div>
                 </div>
               </div>
 
+              <input
+                type="text"
+                placeholder="Tiêu đề bài viết..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={styles.titleInput}
+                autoFocus
+              />
+
               <textarea
-                placeholder={`What's on your mind, ${user?.display_name.split(' ')[0]}?`}
+                placeholder={`Chia sẻ suy nghĩ của bạn...`}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                onClick={handleTextareaClick}
+                onClick={() => setShowEmojiPicker(false)}
                 className={styles.textarea}
                 required
                 rows={4}
               />
 
-              {/* Hidden file input for image URL
-              <input
-                id="imageInput"
-                type="text"
-                placeholder="Enter image URL"
-                value={imageUrl}
-                onChange={handleImageChange}
-                className={styles.hiddenImageInput}
-              /> */}
+              {showUrlInput && (
+                <input
+                  id="imageInput"
+                  type="text"
+                  placeholder="Dán liên kết hình ảnh vào đây..."
+                  value={imageUrl}
+                  onChange={handleImageChange}
+                  className={styles.hiddenImageInput}
+                />
+              )}
 
-              {/* Image preview */}
               {imagePreview && (
                 <div className={styles.imagePreviewContainer}>
                   <img src={imagePreview || "/placeholder.svg"} alt="Preview" className={styles.imagePreview} />
@@ -137,8 +187,9 @@ export function CreatePostDialog({ onPostCreated }) {
                     type="button"
                     className={styles.removeImageButton}
                     onClick={() => {
-                      setImageUrl("")
-                      setImagePreview(null)
+                      setImageUrl("");
+                      setImagePreview(null);
+                      setShowUrlInput(false);
                     }}
                   >
                     <X size={16} />
@@ -146,24 +197,22 @@ export function CreatePostDialog({ onPostCreated }) {
                 </div>
               )}
 
-              {/* Action buttons */}
               <div className={styles.bottomActions}>
                 <div className={styles.actionsRow}>
                   <button 
                     type="button"
-                    className={styles.attachButton}
-                    title="Attach file"
+                    className={styles.imageIconButton} 
+                    title="Thêm ảnh"
+                    onClick={() => setShowUrlInput(!showUrlInput)}
                   >
-                    <Paperclip size={24} />
-                  </button>
-                  <label htmlFor="imageInput" className={styles.imageIconButton} title="Add image">
                     <ImageIcon size={24} />
-                  </label>
+                  </button>
+
                   <div className={styles.emojiPickerContainer}>
                     <button 
                       type="button"
                       className={styles.emojiIcon}
-                      title="Add emoji"
+                      title="Thêm biểu tượng cảm xúc"
                       onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                     >
                       <Smile size={24} />
@@ -173,22 +222,21 @@ export function CreatePostDialog({ onPostCreated }) {
                         <EmojiPicker 
                           onEmojiClick={handleEmojiClick}
                           width={300}
-                          height={400}
+                          height={350}
                           skinTonesDisabled={true}
-                          previewConfig={{
-                            showPreview: false
-                          }}
+                          previewConfig={{ showPreview: false }}
                           emojiStyle="native"
                         />
                       </div>
                     )}
                   </div>
+                  
                   <button 
                     type="submit" 
-                    disabled={isSubmitting || !content.trim()} 
+                    disabled={isSubmitting || !content.trim() || !title.trim()} 
                     className={styles.postButton}
                   >
-                    {isSubmitting ? "Posting..." : "Post"}
+                    {isSubmitting ? "Đang đăng..." : "Đăng"}
                   </button>
                 </div>
               </div>
@@ -197,5 +245,5 @@ export function CreatePostDialog({ onPostCreated }) {
         </>
       )}
     </>
-  )
+  );
 }

@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { BookOpen, User, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../context/AuthContext';
 import styles from './LoginScreen.module.css';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [formData, setFormData] = useState({
         email: '',
         password: ''
@@ -43,25 +45,11 @@ const LoginScreen = () => {
         setLoading(true);
         
         try {
-            const response = await fetch('http://localhost:3000/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                toast.success("Đăng nhập thành công");
-                localStorage.setItem('user', JSON.stringify(data.data));
-                navigate('/');
-            } else {
-                toast.error(data.message || 'Đăng nhập thất bại');
-            }
+            await login(formData.email, formData.password);
+            toast.success("Đăng nhập thành công");
+            navigate('/');
         } catch (err) {
-            toast.error('Lỗi kết nối server');
+            toast.error(err.message || 'Đăng nhập thất bại');
             console.error('Login error:', err);
         } finally {
             setLoading(false);

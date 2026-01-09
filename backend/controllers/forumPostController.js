@@ -21,7 +21,7 @@ export const getAllForumPosts = async (req, res) => {
         }
 
         const posts = await ForumPost.find(filter)
-            .populate('authorId', 'fullName email')
+            .populate('authorId', 'fullName email role')
             .populate('relatedMajorIds', 'name')
             .populate('relatedUniversityIds', 'name code')
             .skip(skip)

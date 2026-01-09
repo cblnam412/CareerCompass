@@ -1,27 +1,16 @@
 import { useState, useEffect } from "react"
 import { PostCard } from "../../component/Postcard/Postcard"
-// import { useAuth } from "@/contexts/auth-context"
+import { useAuth } from "../../context/AuthContext"
 import { MoreVertical, Edit2, User, Mail, Calendar, MapPin } from "lucide-react"
 import styles from "./ProfileScreen.module.css"
-
-// Mock user data
-const mockUser = {
-  id: "user1",
-  name: "Current User",
-  avatar: "https://i.redd.it/21imnctdkr771.jpg",
-  fullName: "Nguyễn Văn A",
-  email: "nguyenvana@example.com",
-  birthDate: "01/01/1990",
-  address: "123 Đường ABC, Quận 1, TP. Hồ Chí Minh",
-}
 
 // Mock posts data
 const mockPosts = [
   {
     id: "post1",
-    author_id: "user1",
+    author_id: "695fc6f07785a9d1ff4b64d0",
     author: {
-      display_name: "Current User",
+      display_name: "Phạm Bảo Khang",
       avatar_url: "https://i.redd.it/21imnctdkr771.jpg",
     },
     content: "This is my first post! Excited to be here 🎉",
@@ -33,9 +22,9 @@ const mockPosts = [
   },
   {
     id: "post2",
-    author_id: "user1",
+    author_id: "695fc6f07785a9d1ff4b64d0",
     author: {
-      display_name: "Current User",
+      display_name: "Phạm Bảo Khang",
       avatar_url: "https://i.redd.it/21imnctdkr771.jpg",
     },
     content: "Beautiful sunset today! 🌅",
@@ -48,32 +37,39 @@ const mockPosts = [
 ]
 
 export default function ProfileScreen() {
-  // const { user } = useAuth()
-  const user = mockUser
+  const { userInfo } = useAuth()
   
   const [posts, setPosts] = useState([])
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("posts")
-  const [name, setName] = useState(user?.name || "")
+  const [fullName, setFullName] = useState(userInfo?.fullName || "")
   const [bio, setBio] = useState("")
-  const [avatar, setAvatar] = useState(user?.avatar || "")
+  const [avatar, setAvatar] = useState("https://i.redd.it/21imnctdkr771.jpg")
 
   useEffect(() => {
     // Filter posts by current user
-    const userPosts = mockPosts.filter(
-      (post) => post.author_id === user?.id
-    ).sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
-    setPosts(userPosts)
-  }, [user])
+    if (userInfo) {
+      const userPosts = mockPosts.filter(
+        (post) => post.author_id === userInfo._id
+      ).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      setPosts(userPosts)
+      setFullName(userInfo.fullName)
+    }
+  }, [userInfo])
 
   const handleSave = () => {
-    if (user) {
-      user.name = name
-      user.avatar = avatar
-    }
+    // TODO: Send updated profile to backend
     setIsEditOpen(false)
+  }
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('vi-VN')
+  }
+
+  if (!userInfo) {
+    return <div className={styles.container}>Loading...</div>
   }
 
   return (
@@ -91,10 +87,10 @@ export default function ProfileScreen() {
         {/* Profile header with overlapping avatar */}
         <div className={styles.profileHeader}>
           <div className={styles.headerContent}>
-            <img src={user?.avatar || "/placeholder-user.jpg"} alt={user?.name} className={styles.avatar} />
+            <img src={avatar} alt={userInfo.fullName} className={styles.avatar} />
             <div className={styles.userInfo}>
-              <h1 className={styles.userName}>{user?.name || "Người dùng"}</h1>
-              <p className={styles.userHandle}>@{user?.name?.toLowerCase().replace(/\s+/g, "") || "username"}</p>
+              <h1 className={styles.userName}>{userInfo.fullName}</h1>
+              <p className={styles.userHandle}>@{userInfo.fullName?.toLowerCase().replace(/\s+/g, "") || "username"}</p>
             </div>
           </div>
 
@@ -143,28 +139,28 @@ export default function ProfileScreen() {
                 <User className={styles.infoIcon} size={20} />
                 <div className={styles.infoContent}>
                   <span className={styles.infoLabel}>Họ và tên:</span>
-                  <span className={styles.infoValue}>{user?.fullName}</span>
+                  <span className={styles.infoValue}>{userInfo.fullName}</span>
                 </div>
               </div>
               <div className={styles.infoItem}>
                 <Mail className={styles.infoIcon} size={20} />
                 <div className={styles.infoContent}>
                   <span className={styles.infoLabel}>Địa chỉ email:</span>
-                  <span className={styles.infoValue}>{user?.email}</span>
+                  <span className={styles.infoValue}>{userInfo.email}</span>
                 </div>
               </div>
               <div className={styles.infoItem}>
                 <Calendar className={styles.infoIcon} size={20} />
                 <div className={styles.infoContent}>
                   <span className={styles.infoLabel}>Ngày sinh:</span>
-                  <span className={styles.infoValue}>{user?.birthDate}</span>
+                  <span className={styles.infoValue}>{formatDate(userInfo.DOB)}</span>
                 </div>
               </div>
               <div className={styles.infoItem}>
                 <MapPin className={styles.infoIcon} size={20} />
                 <div className={styles.infoContent}>
                   <span className={styles.infoLabel}>Địa chỉ:</span>
-                  <span className={styles.infoValue}>{user?.address}</span>
+                  <span className={styles.infoValue}>{userInfo.address}</span>
                 </div>
               </div>
             </div>
@@ -178,8 +174,8 @@ export default function ProfileScreen() {
             <h2 className={styles.modalTitle}>Chỉnh sửa trang cá nhân</h2>
 
             <div className={styles.formGroup}>
-              <label className={styles.label}>Tên</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={styles.input} />
+              <label className={styles.label}>Họ và tên</label>
+              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className={styles.input} />
             </div>
 
             <div className={styles.formGroup}>

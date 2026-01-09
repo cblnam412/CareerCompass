@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import University from '../models/University.js';
 import StudentProfile from '../models/StudentProfile.js';
 import UniversityAffiliation from '../models/UniversityAffiliation.js';
 import bcrypt from 'bcryptjs';
@@ -77,7 +78,7 @@ export const registerUniversityRep = async (req, res) => {
             });
         }
 
-        const university = await User.findById(universityId);
+        const university = await University.findById(universityId);
         if (!university) {
             return res.status(404).json({ 
                 success: false, 
