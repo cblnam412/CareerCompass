@@ -3,7 +3,7 @@ import { useState } from "react";
 import EmojiPicker from "emoji-picker-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
-import API from "../../API/api";
+import API from "../../API/API";
 import styles from "./CreatePostDialog.module.css";
 
 const ROLE_TRANSLATIONS = {
@@ -113,8 +113,7 @@ export function CreatePostDialog({ onPostCreated }) {
         />
         <input 
           type="text" 
-          placeholder={`Bạn đang nghĩ gì, ${userInfo?.fullName?.trim().split(' ').pop() || "bạn"} ơi?`} 
-          readOnly 
+          placeholder={`Bạn đang nghĩ gì, ${userInfo?.role !== "uniManager" ? (userInfo?.fullName?.trim().split(' ').pop() || "bạn") : userInfo?.universityId?.name} ơi?`}          readOnly 
           className={styles.triggerInput} 
         />
       </div>

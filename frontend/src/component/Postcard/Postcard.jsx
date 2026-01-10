@@ -20,7 +20,7 @@ export function PostCard({ post, onUpdate }) {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
 
-  // --- HELPER: Logic to determine display name ---
+  // Logic to determine display name
   const getDisplayName = (user) => {
     if (!user) return "Người dùng ẩn";
     // If role is uniManager and universityId is populated (is an object with name), return Uni name
@@ -65,7 +65,6 @@ export function PostCard({ post, onUpdate }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const renderRoleIcon = (role) => {
-    // const normalizedRole = role ? role.toString().toLowerCase() : "user";
     if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
     if (role === "uniManager") return <School size={16} className={styles.roleIcon} />
     return null;
@@ -86,8 +85,12 @@ export function PostCard({ post, onUpdate }) {
         toast.error("Vui lòng đăng nhập để thích bài viết");
         return;
     }
+
+    // Store the state before the click for potential rollback
     const previousState = isLiked;
-    setIsLiked(!isLiked);
+
+    setIsLiked(!isLiked); // Toggle the visual heart immediately
+    
     setLikesCount(prev => isLiked ? prev - 1 : prev + 1);
 
     try {
@@ -101,8 +104,11 @@ export function PostCard({ post, onUpdate }) {
       if (!res.ok) throw new Error("Lỗi upvote");
     } catch (error) {
       console.error("Error toggling like:", error);
+      
+      // Rollback changes if API fails
       setIsLiked(previousState);
-      setLikesCount(prev => isLiked ? prev + 1 : prev - 1);
+      // Reverse the math: if we tried to unlike (was true), add 1 back.
+      setLikesCount(prev => previousState ? prev + 1 : prev - 1);
     }
   };
 

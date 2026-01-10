@@ -21,7 +21,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: scale-down;
   border: 1px solid grey;
 }
 
@@ -663,8 +663,8 @@
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   padding: 12px;
-  min-width: 300px;
-  max-width: 350px;
+  min-width: 380px;
+  max-width: 600px;
   border: 1px solid #dbdbdb;
 }
 

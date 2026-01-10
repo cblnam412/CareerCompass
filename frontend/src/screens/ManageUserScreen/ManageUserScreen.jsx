@@ -1,55 +1,19 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "../../component/Button/Button"
 import { Card, CardContent } from "../../component/Card/Card"
 import { Plus, Search, Edit2, Save, X, Unlock, User as UserIcon } from "lucide-react"
+import { useAuth } from "../../context/AuthContext"
+import API from "../../API/API"
+import { toast } from "react-toastify"
 import styles from "./ManageUserScreen.module.css"
 
-const mockUniversities = [
-    { _id: "uni-1", name: "Đại học Bách Khoa" },
-    { _id: "uni-2", name: "Đại học Quốc Gia" },
-    { _id: "uni-3", name: "Đại học FPT" },
-    { _id: "uni-4", name: "Đại học Ngoại Thương" },
-]
-
-const mockUsers = [
-    {
-        _id: "u1",
-        fullName: "Nguyễn Văn A",
-        email: "nguyenvana@example.com",
-        role: "user",
-        DOB: "2001-05-15",
-        address: "Hồ Chí Minh",
-        status: "active",
-        createdAt: "2024-01-10T00:00:00.000Z"
-    },
-    {
-        _id: "u2",
-        fullName: "Trần Thị B",
-        email: "tranthib@uni.edu.vn",
-        role: "uniManager",
-        universityId: "uni-1", // Mock data association
-        DOB: "1985-08-20",
-        address: "Hà Nội",
-        status: "active",
-        createdAt: "2024-02-15T00:00:00.000Z"
-    },
-    {
-        _id: "u3",
-        fullName: "Lê Văn C",
-        email: "levanc@gmail.com",
-        role: "user",
-        DOB: "2002-12-01",
-        address: "Đà Nẵng",
-        status: "banned",
-        banReleaseDate: "2025-01-01T00:00:00.000Z",
-        createdAt: "2024-03-01T00:00:00.000Z"
-    },
-]
-
 export default function ManageUserScreen() {
-    const [users, setUsers] = useState(mockUsers)
+    const { accessToken } = useAuth()
+    const [users, setUsers] = useState([])
+    const [universities, setUniversities] = useState([])
     const [searchQuery, setSearchQuery] = useState("")
     const [isAddingNew, setIsAddingNew] = useState(false)
+    const [loading, setLoading] = useState(false)
     
     // State for new user form
     const [newUser, setNewUser] = useState({
@@ -72,6 +36,47 @@ export default function ManageUserScreen() {
         DOB: "",
         address: ""
     })
+
+    // Fetch users and universities on mount
+    useEffect(() => {
+        fetchUsers()
+        fetchUniversities()
+    }, [])
+
+    const fetchUsers = async () => {
+        try {
+            setLoading(true)
+            const response = await fetch(`${API}/api/admin/users`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            })
+            const data = await response.json()
+            if (data.success) {
+                setUsers(data.users)
+            } else {
+                toast.error(data.message || 'Lỗi khi tải danh sách người dùng')
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error)
+            toast.error('Không thể tải danh sách người dùng')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const fetchUniversities = async () => {
+        try {
+            const response = await fetch(`${API}/api/universities`)
+            const data = await response.json()
+            if (data.success) {
+                setUniversities(data.data)
+            }
+        } catch (error) {
+            console.error('Error fetching universities:', error)
+            toast.error('Không thể tải danh sách trường đại học')
+        }
+    }
 
     const filteredUsers = users.filter((user) =>
         user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -100,19 +105,51 @@ export default function ManageUserScreen() {
         }))
     }
 
-    const handleAddUser = () => {
-        if (newUser.fullName.trim() && newUser.email.trim() && newUser.password.trim()) {
-            const userToAdd = {
-                _id: `u-${Date.now()}`,
-                ...newUser,
-                status: "active",
-                createdAt: new Date().toISOString(),
-            }
-            delete userToAdd.password 
+    const handleAddUser = async () => {
+        // Validate required fields
+        if (!newUser.fullName.trim()) {
+            toast.warning('Vui lòng nhập họ tên')
+            return
+        }
+        if (!newUser.email.trim()) {
+            toast.warning('Vui lòng nhập email')
+            return
+        }
+        if (!newUser.password.trim()) {
+            toast.warning('Vui lòng nhập mật khẩu')
+            return
+        }
+        if (isUniRole(newUser.role) && !newUser.universityId) {
+            toast.warning('Vui lòng chọn trường đại học cho vai trò này')
+            return
+        }
+
+        try {
+            setLoading(true)
+            const response = await fetch(`${API}/api/admin/users`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(newUser)
+            })
             
-            setUsers([userToAdd, ...users])
-            setNewUser({ fullName: "", email: "", password: "", role: "user", universityId: "", DOB: "", address: "" })
-            setIsAddingNew(false)
+            const data = await response.json()
+            
+            if (data.success) {
+                toast.success('Tạo người dùng thành công')
+                await fetchUsers()
+                setNewUser({ fullName: "", email: "", password: "", role: "user", universityId: "", DOB: "", address: "" })
+                setIsAddingNew(false)
+            } else {
+                toast.error(data.message || 'Lỗi khi tạo người dùng')
+            }
+        } catch (error) {
+            console.error('Error creating user:', error)
+            toast.error('Không thể tạo người dùng')
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -122,25 +159,79 @@ export default function ManageUserScreen() {
             fullName: user.fullName,
             email: user.email,
             role: user.role,
-            universityId: user.universityId || "",
+            universityId: user.universityId?._id || user.universityId || "",
             DOB: user.DOB ? user.DOB.split('T')[0] : "",
             address: user.address || ""
         })
     }
 
-    const handleSaveEdit = (id) => {
-        if (editingData.fullName.trim() && editingData.email.trim()) {
-            setUsers(
-                users.map((u) => (u._id === id ? { ...u, ...editingData } : u))
-            )
-            setEditingId(null)
+    const handleSaveEdit = async (id) => {
+        // Validate required fields
+        if (!editingData.fullName.trim()) {
+            toast.warning('Vui lòng nhập họ tên')
+            return
+        }
+        if (!editingData.email.trim()) {
+            toast.warning('Vui lòng nhập email')
+            return
+        }
+        if (isUniRole(editingData.role) && !editingData.universityId) {
+            toast.warning('Vui lòng chọn trường đại học cho vai trò này')
+            return
+        }
+
+        try {
+            setLoading(true)
+            const response = await fetch(`${API}/api/admin/users/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(editingData)
+            })
+            
+            const data = await response.json()
+            
+            if (data.success) {
+                toast.success('Cập nhật người dùng thành công')
+                await fetchUsers()
+                setEditingId(null)
+            } else {
+                toast.error(data.message || 'Lỗi khi cập nhật người dùng')
+            }
+        } catch (error) {
+            console.error('Error updating user:', error)
+            toast.error('Không thể cập nhật người dùng')
+        } finally {
+            setLoading(false)
         }
     }
 
-    const handleUnbanUser = (id) => {
-        setUsers(
-            users.map((u) => (u._id === id ? { ...u, status: "active", banReleaseDate: null } : u))
-        )
+    const handleUnbanUser = async (id) => {
+        try {
+            setLoading(true)
+            const response = await fetch(`${API}/api/admin/users/${id}/unban`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            })
+            
+            const data = await response.json()
+            
+            if (data.success) {
+                toast.success('Gỡ cấm người dùng thành công')
+                await fetchUsers()
+            } else {
+                toast.error(data.message || 'Lỗi khi gỡ cấm người dùng')
+            }
+        } catch (error) {
+            console.error('Error unbanning user:', error)
+            toast.error('Không thể gỡ cấm người dùng')
+        } finally {
+            setLoading(false)
+        }
     }
 
     const handleCancelEdit = () => {
@@ -167,8 +258,14 @@ export default function ManageUserScreen() {
     }
 
     // Helper to get Uni Name for display
-    const getUniName = (uniId) => {
-        const uni = mockUniversities.find(u => u._id === uniId)
+    const getUniName = (uniData) => {
+        if (!uniData) return ""
+        // If it's already populated with name
+        if (typeof uniData === 'object' && uniData.name) {
+            return uniData.name
+        }
+        // If it's just an ID, find it in universities list
+        const uni = universities.find(u => u._id === uniData)
         return uni ? uni.name : ""
     }
 
@@ -295,7 +392,7 @@ export default function ManageUserScreen() {
                     disabled={!isUniRole(newUser.role)}
                   >
                     <option value="">Chọn trường</option>
-                    {mockUniversities.map((uni) => (
+                    {universities.map((uni) => (
                       <option key={uni._id} value={uni._id}>
                         {uni.name}
                       </option>
@@ -327,7 +424,9 @@ export default function ManageUserScreen() {
         )}
 
         <div className={styles.listContainer}>
-          {filteredUsers.length === 0 ? (
+          {loading ? (
+            <p className={styles.emptyState}>Đang tải...</p>
+          ) : filteredUsers.length === 0 ? (
             <p className={styles.emptyState}>Không tìm thấy tài khoản nào</p>
           ) : (
             filteredUsers.map((user) => (
@@ -396,7 +495,7 @@ export default function ManageUserScreen() {
                             disabled={!isUniRole(editingData.role)}
                           >
                             <option value="">Chọn trường</option>
-                            {mockUniversities.map((uni) => (
+                            {universities.map((uni) => (
                               <option key={uni._id} value={uni._id}>
                                 {uni.name}
                               </option>

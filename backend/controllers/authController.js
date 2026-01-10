@@ -231,6 +231,11 @@ export const login = async (req, res) => {
             });
         }
 
+        if (user.role === "uniManager" || user.role === "uniRep")
+        {
+            await user.populate('universityId', 'name description address')
+        }
+
         const userResponse = user.toObject();
         delete userResponse.password;
 

@@ -26,7 +26,7 @@ export default function ManageRepresentativeScreen() {
   const fetchData = async () => {
     // 2. Ensure we have the university ID before fetching
     // Note: Ensure your User model/Login response includes 'universityId' for managers
-    const universityId = userInfo?.universityId || userInfo?.relatedUniversity; 
+    const universityId = userInfo?.universityId._id; 
 
     if (!universityId) {
         // If it's loading or not found yet, we skip. 
@@ -197,9 +197,11 @@ export default function ManageRepresentativeScreen() {
                   onClick={() => openRepModal(rep)} 
                 >
                   <div className={styles.cardHeader}>
-                    <div className={styles.avatarPlaceholder}>
-                       {rep.studentId?.fullName?.charAt(0).toUpperCase()}
-                    </div>
+                    <img 
+                      src={rep.studentId?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg"} 
+                      alt="Avatar"
+                      className={styles.avatar} 
+                    />
                     <div className={styles.cardInfo}>
                       <h3 className={styles.name}>{rep.studentId?.fullName}</h3>
                       <div className={styles.meta}>
@@ -267,9 +269,11 @@ export default function ManageRepresentativeScreen() {
                   <CardContent>
                     <div className={styles.cardHeaderWrapper}>
                       <div className={styles.applicantHeader}>
-                        <div className={styles.applicantAvatar}>
-                          {app.studentId?.fullName?.charAt(0).toUpperCase()}
-                        </div>
+                        <img 
+                          src={app.studentId?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg"} 
+                          alt="Avatar"
+                          className={styles.avatar} 
+                        />
                         <div className={styles.applicantHeaderInfo}>
                           <h3 className={styles.applicantName}>{app.studentId?.fullName}</h3>
                           <div className={styles.applicantStatus}>Chờ phê duyệt</div>
@@ -392,9 +396,11 @@ export default function ManageRepresentativeScreen() {
             <button className={styles.modalCloseBtn} onClick={closeRepModal}><X size={24} /></button>
             
             <div className={styles.modalHeader}>
-              <div className={styles.modalAvatar}>
-                {selectedRep.studentId?.fullName?.charAt(0).toUpperCase()}
-              </div>
+              <img 
+                src={selectedRep.studentId?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg"} 
+                alt="Avatar"
+                className={styles.avatar} 
+              />
               <div>
                 <h2 className={styles.modalTitle}>{selectedRep.studentId?.fullName}</h2>
                 <span className={styles.modalSubtitle}>{selectedRep.studentId?.email}</span>

@@ -32,6 +32,7 @@ export default function ProfileScreen() {
   const [dob, setDob] = useState("") 
 
   const isOwnProfile = !userId || (userInfo && userId === userInfo._id)
+  const isNotManager = userInfo?.role !== "uniManager"
 
   // 1. Fetch Profile Data
   useEffect(() => {
@@ -237,7 +238,7 @@ export default function ProfileScreen() {
           </div>
 
           <div className={styles.actionButtons}>
-            {isOwnProfile && (
+            {isOwnProfile && isNotManager && (
               <button className={styles.editButton} onClick={() => setIsEditOpen(true)}>
                 <Edit2 size={16} />
                 Chỉnh sửa
@@ -398,7 +399,7 @@ export default function ProfileScreen() {
         )}
       </div>
 
-      {isOwnProfile && isEditOpen && (
+      {isOwnProfile && isNotManager && isEditOpen && (
         <div className={styles.modal} onClick={() => setIsEditOpen(false)}>
           <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Chỉnh sửa trang cá nhân</h2>

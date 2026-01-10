@@ -1,41 +1,78 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '../../component/Card/Card';
-import { Book, FileText, Users, GraduationCap, Globe, AlertCircle, School } from 'lucide-react';
+import { Library, FileText, Users, GraduationCap, FileQuestionMark , AlertCircle, School } from 'lucide-react';
 import { BarChart } from '@mui/x-charts/BarChart';
 import { PieChart } from '@mui/x-charts/PieChart';
+import { useAuth } from '../../context/AuthContext';
+import API from '../../API/API';
 import styles from './AdminDashboard.module.css';
+import { toast } from 'react-toastify';
 
 export default function AdminDashboard() {
+  const { accessToken } = useAuth();
+  const [statsData, setStatsData] = useState({
+    totalUsers: 0,
+    totalUniversities: 0,
+    totalUniReps: 0,
+    totalSubjects: 0,
+    totalSubjectCombinations: 0,
+    totalMockExams: 0
+  });
+  const [testResultsData, setTestResultsData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAdminStats();
+  }, []);
+
+  const fetchAdminStats = async () => {
+    try {
+      const response = await fetch(`${API}/api/admin/stats`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch stats');
+      }
+
+      const data = await response.json();
+      setStatsData(data.stats);
+      setTestResultsData(data.testResultsData);
+    } catch (error) {
+      console.error('Error fetching admin stats:', error);
+      toast.error('Không thể tải thống kê');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = [
-    { icon: Globe, label: "Người dùng trực tuyến", count: 24 },
-    { icon: Users, label: "Tổng người dùng", count: 156 },
-    { icon: School, label: "Trường đại học", count: 32 },
-    { icon: Users, label: "Đại diện trường đại học", count: 8 },
-    { icon: GraduationCap, label: "Môn học", count: 12 },
-    { icon: Book, label: "Tổ hợp môn", count: 15 },
-    { icon: FileText, label: "Đề thi", count: 48 },
+    { icon: Users, label: "Tổng người dùng", count: statsData.totalUsers },
+    { icon: School, label: "Trường đại học", count: statsData.totalUniversities },
+    { icon: Users, label: "Đại diện trường đại học", count: statsData.totalUniReps },
+    { icon: GraduationCap, label: "Môn học", count: statsData.totalSubjects },
+    { icon: Library, label: "Tổ hợp môn", count: statsData.totalSubjectCombinations },
+    { icon: FileText, label: "Đề thi", count: statsData.totalMockExams },
+    { icon: FileQuestionMark, label: "Câu hỏi", count: statsData.totalQuestions }, 
     { icon: AlertCircle, label: "Báo cáo vi phạm", count: 7 },
   ];
 
-  // Test results data (points 1-10)
-  const testResultsData = [
-    { point: 1, count: 5 },
-    { point: 2, count: 8 },
-    { point: 3, count: 12 },
-    { point: 4, count: 18 },
-    { point: 5, count: 25 },
-    { point: 6, count: 32 },
-    { point: 7, count: 28 },
-    { point: 8, count: 22 },
-    { point: 9, count: 15 },
-    { point: 10, count: 10 },
-  ];
-
-  // Violation report status data
   const violationData = [
     { id: 0, value: 15, label: 'Đang chờ' },
     { id: 1, value: 8, label: 'Từ chối' },
     { id: 2, value: 12, label: 'Chấp thuận' },
   ];
+
+  if (loading) {
+    return (
+      <div className={styles.container}>
+        <h1 className={styles.title}>Dashboard quản trị viên</h1>
+        <p>Đang tải dữ liệu...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

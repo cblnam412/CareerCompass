@@ -14,7 +14,7 @@ export const getAffiliations = async (req, res) => {
         }
 
         const affiliations = await UniversityAffiliation.find(filter)
-            .populate('studentId', 'fullName email DOB studentId address')
+            .populate('studentId', 'fullName email DOB studentId address avatar')
             .populate('universityId', 'name code')
             .populate('reviewerId', 'fullName email')
             .skip(skip)
@@ -49,7 +49,7 @@ export const getAffiliationById = async (req, res) => {
         const { id } = req.params;
 
         const affiliation = await UniversityAffiliation.findById(id)
-            .populate('studentId', 'fullName email DOB studentId address status role')
+            .populate('studentId', 'fullName email DOB studentId address status  avatar')
             .populate('universityId', 'name code')
             .populate('reviewerId', 'fullName email');
 
@@ -264,7 +264,7 @@ export const getAffiliationsByUniversity = async (req, res) => {
         }
 
         const affiliations = await UniversityAffiliation.find(filter)
-            .populate('studentId', 'fullName email DOB studentId address')
+            .populate('studentId', 'fullName email DOB studentId address avatar')
             .populate('reviewerId', 'fullName email')
             .skip(skip)
             .limit(parseInt(limit))
