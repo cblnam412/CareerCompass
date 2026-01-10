@@ -18,6 +18,7 @@ import majorRoutes from './routes/majorRoutes.js';
 import universityRoutes from './routes/universityRoutes.js';
 import universityMajorRoutes from './routes/universityMajorRoutes.js';
 import studentSubjectScoreRoutes from './routes/studentSubjectScoreRoutes.js';
+import majorRecommentdationRoutes from './routes/majorRecommendationRoutes.js' ;
 import { initializeSocket } from './socket.js';
 
 dotenv.config();
@@ -53,6 +54,7 @@ app.use('/api/majors', majorRoutes);
 app.use('/api/universities', universityRoutes);
 app.use('/api/university-majors', universityMajorRoutes);
 app.use('/api/scores', studentSubjectScoreRoutes);
+app.use('/api/major-recommendations', majorRecommentdationRoutes);
 
 initializeSocket(io);
 

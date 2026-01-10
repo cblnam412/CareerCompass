@@ -37,15 +37,12 @@ const trainingDataSchema = new mongoose.Schema({
     },
     
     subjectScores: {
-        math: { type: Number, min: 0, max: 10 },
-        physics: { type: Number, min: 0, max: 10 },
-        chemistry: { type: Number, min: 0, max: 10 },
-        biology: { type: Number, min: 0, max: 10 },
-        literature: { type: Number, min: 0, max: 10 },
-        history: { type: Number, min: 0, max: 10 },
-        geography: { type: Number, min: 0, max: 10 },
-        civic: { type: Number, min: 0, max: 10 },
-        english: { type: Number, min: 0, max: 10 },
+        type: Map,
+        of: {
+            type: Number,
+            min: 0,
+            max: 10
+        }
     },
     
     gpa: {
@@ -55,12 +52,13 @@ const trainingDataSchema = new mongoose.Schema({
     },
     
     softSkills: {
-        communication: { type: Number, min: 0, max: 10 },    
-        problemSolving: { type: Number, min: 0, max: 10 },   
-        teamwork: { type: Number, min: 0, max: 10 },         
-        leadership: { type: Number, min: 0, max: 10 },     
-        creativity: { type: Number, min: 0, max: 10 },       
-        timeManagement: { type: Number, min: 0, max: 10 },   
+        type: Map,
+        of: {
+            type: Number,
+            min: 0,
+            max: 1,
+            enum: [0, 1]
+        }
     },
     
     interests: [String],
@@ -86,6 +84,18 @@ const trainingDataSchema = new mongoose.Schema({
             default: false,
         },
     }],
+    
+    actualMajorId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Major',
+    },
+    
+    majorMappingConfidence: {
+        type: Number,
+        min: 0,
+        max: 1,
+        default: 1.0,
+    },
     
     completenessScore: {
         type: Number,
