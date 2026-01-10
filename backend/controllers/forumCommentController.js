@@ -18,7 +18,15 @@ export const getForumComments = async (req, res) => {
         }
 
         const comments = await ForumComment.find({ postId })
-            .populate('authorId', 'fullName email role')
+            // Updated populate logic for authorId
+            .populate({
+                path: 'authorId',
+                select: 'fullName email role universityId', // Ensure universityId is selected
+                populate: {
+                    path: 'universityId',
+                    select: 'name code region address phone website description'
+                }
+            })
             .populate('parentCommentId', 'content authorId')
             .skip(skip)
             .limit(parseInt(limit))

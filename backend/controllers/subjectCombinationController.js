@@ -39,6 +39,7 @@ export const getAllSubjectCombinations = async (req, res) => {
         }
 
         const combinations = await SubjectCombination.find(filter)
+            .populate('subjects', 'name')
             .skip(skip)
             .limit(parseInt(limit))
             .sort({ combinationName: 1 });

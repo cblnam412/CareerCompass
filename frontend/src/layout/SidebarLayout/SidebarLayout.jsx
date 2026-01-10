@@ -39,8 +39,8 @@ export function Sidebar({ isCollapsedForChat }) {
   const adminNavItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/admin" },
     { icon: FileText, label: "Quản lý đề thi", href: "/admin/tests" },
-    { icon: Library, label: "Quản lý tổ hợp môn", href: "/admin/combinations" },
     { icon: Compass, label: "Quản lý trắc nghiệm nghề", href: "/admin/quiz" },
+    { icon: Library, label: "Quản lý tổ hợp môn", href: "/admin/combinations" },
     { icon: Handshake, label: "Quản lý kĩ năng mềm", href: "/admin/soft-skills" },
     { icon: UserCog, label: "Quản lý người dùng", href: "/admin/users" },
     { icon: Flag, label: "Quản lý tố cáo", href: "/admin/report" },

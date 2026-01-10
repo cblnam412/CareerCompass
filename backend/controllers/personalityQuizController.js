@@ -574,6 +574,54 @@ export const getQuizStatistics = async (req, res) => {
     }
 };
 
+export const getPersonalityQuizByType = async (req, res) => {
+    try {
+        const { type } = req.params;
+
+        if (!['MBTI', 'Holland'].includes(type)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Loại trắc nghiệm không hợp lệ. Chỉ chấp nhận MBTI hoặc Holland.'
+            });
+        }
+
+        // Find the active quiz by type
+        const quiz = await PersonalityQuiz.findOne({ 
+            type: type, 
+            isActive: true 
+        }).lean();
+
+        if (!quiz) {
+            return res.status(404).json({
+                success: false,
+                message: `Không tìm thấy bài trắc nghiệm loại ${type}`
+            });
+        }
+
+        // Find all questions associated with this quiz ID
+        const questions = await QuizQuestion.find({ quizId: quiz._id })
+            .sort({ order: 1 })
+            .select('-__v')
+            .lean();
+
+        // Return combined data
+        res.status(200).json({
+            success: true,
+            data: {
+                ...quiz,
+                questions
+            }
+        });
+    } catch (error) {
+        console.error(`Error fetching ${req.params.type} quiz:`, error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy thông tin bài trắc nghiệm',
+            error: error.message
+        });
+    }
+};
+
 export default {
     getAllPersonalityQuizzes,
     getPersonalityQuizById,
@@ -586,5 +634,6 @@ export default {
     submitPersonalityQuiz,
     getAttemptResult,
     getStudentQuizAttempts,
-    getQuizStatistics
+    getQuizStatistics,
+    getPersonalityQuizByType
 };

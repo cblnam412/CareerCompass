@@ -7,7 +7,7 @@ const quizAttemptSchema = new mongoose.Schema({
     },
     quizId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Quiz',
+        ref: 'PersonalityQuiz',
         required: true,
     },
     attemptedAt: {
@@ -22,7 +22,7 @@ const quizAttemptSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.Mixed,
         required: true,
     },
-    imterpretation: {
+    interpretation: {
         type: String,
     },
 }, {

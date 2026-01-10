@@ -12,12 +12,14 @@ import {
     submitPersonalityQuiz,
     getAttemptResult,
     getStudentQuizAttempts,
-    getQuizStatistics
+    getQuizStatistics,
+    getPersonalityQuizByType
 } from '../controllers/personalityQuizController.js';
 
 const router = express.Router();
 
 router.get('/personality-quizzes', getAllPersonalityQuizzes);
+router.get('/personality-quizzes/type/:type', getPersonalityQuizByType);
 router.get('/personality-quizzes/:quizId', getPersonalityQuizById);
 
 

@@ -279,7 +279,12 @@ export default function ManageRepresentativeScreen() {
                     </div>
 
                     <h4 className={styles.sectionTitle}>Thông tin cá nhân</h4>
+                    
                     <div className={styles.infoGrid}>
+                      <div className={styles.infoPair}>
+                        <label className={styles.infoLabel}>MSSV</label>
+                        <p className={styles.infoValue}>{app.studentIdNumber || "Chưa cập nhật"}</p>
+                      </div>
                       <div className={styles.infoPair}>
                         <label className={styles.infoLabel}>Email</label>
                         <p className={styles.infoValue}>{app.studentId?.email}</p>

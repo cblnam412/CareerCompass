@@ -17,28 +17,41 @@ const ROLE_TRANSLATIONS = {
 
 export function PostCard({ post, onUpdate }) {
   const { userInfo, userID, accessToken } = useAuth();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const dropdownRef = useRef(null);
+
+  // --- HELPER: Logic to determine display name ---
+  const getDisplayName = (user) => {
+    if (!user) return "Người dùng ẩn";
+    // If role is uniManager and universityId is populated (is an object with name), return Uni name
+    if (user.role === "uniManager" && user.universityId?.name) {
+      return user.universityId.name;
+    }
+    return user.fullName || "Người dùng ẩn";
+  };
 
   // Extract data 
   const postId = post._id;
-  const author = post.authorId || {}; 
-  const authorName = author.fullName || "Người dùng ẩn";
+  const author = post.authorId || {};
+  
+  // Apply helper to Post Author
+  const authorName = getDisplayName(author);
+  
   const authorRole = author.role || "student";
   const authorAvatar = author.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg";
   const authorId = author._id;
   const postImage = post.itemUrl;
-  const postTimestamp = post.createdAt; 
+  const postTimestamp = post.createdAt;
 
-  const [isLiked, setIsLiked] = useState(post.isUpvoted || false); 
+  const [isLiked, setIsLiked] = useState(post.isUpvoted || false);
   const [likesCount, setLikesCount] = useState(post.upvotes || 0);
   const [commentsCount, setCommentsCount] = useState(post.commentCount || 0);
-   
+  
   const [showComments, setShowComments] = useState(false);
   const [comments, setComments] = useState([]);
   const [commentsLoaded, setCommentsLoaded] = useState(false);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
-   
+  
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const COMMENTS_LIMIT = 5;
@@ -52,7 +65,7 @@ export function PostCard({ post, onUpdate }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const renderRoleIcon = (role) => {
-    const normalizedRole = role ? role.toString().toLowerCase() : "user";
+    // const normalizedRole = role ? role.toString().toLowerCase() : "user";
     if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
     if (role === "uniManager") return <School size={16} className={styles.roleIcon} />
     return null;
@@ -113,8 +126,9 @@ export function PostCard({ post, onUpdate }) {
                 created_at: c.createdAt,
                 liked: false,
                 author: {
-                    author_id: author?._id,
-                    display_name: c.authorId?.fullName || "Người dùng ẩn",
+                    author_id: c.authorId?._id,
+                    // Apply helper to Comment Author
+                    display_name: getDisplayName(c.authorId), 
                     role: c.authorId?.role || "student",
                     avatar_url: c.authorId?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg",
                 }
@@ -175,13 +189,14 @@ export function PostCard({ post, onUpdate }) {
       const data = await res.json();
       
       if (data.success) {
+          // Optimistic update
           const newCommentObj = {
               id: data.data._id,
               content: data.data.content,
               created_at: new Date().toISOString(),
               liked: false,
               author: {
-                  display_name: userInfo.fullName,
+                  display_name: userInfo.fullName, // Note: We use fullName here because userInfo might not have the populated university object yet
                   role: userInfo.role,
                   avatar_url: userInfo.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}`
               }
@@ -461,7 +476,7 @@ export function PostCard({ post, onUpdate }) {
                   src={selectedUser.avatar_url} 
                   alt={selectedUser.display_name} 
                   className={styles.popoverAvatar}
-                  onClick={() => {e: 
+                  onClick={() => {
                             navigate(`/user/profile/${selectedUser.id}`); 
                             setShowUserProfile(false); 
                   }}

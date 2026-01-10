@@ -26,8 +26,16 @@ export const getAllForumPosts = async (req, res) => {
             filter.status = status;
         }
 
+        // Updated populate logic for authorId
         const posts = await ForumPost.find(filter)
-            .populate('authorId', 'fullName email role avatar')
+            .populate({
+                path: 'authorId',
+                select: 'fullName email role avatar universityId', 
+                populate: {
+                    path: 'universityId',
+                    select: 'name code region address phone website description'
+                }
+            })
             .populate('relatedMajorIds', 'name')
             .populate('relatedUniversityIds', 'name code')
             .skip(skip)

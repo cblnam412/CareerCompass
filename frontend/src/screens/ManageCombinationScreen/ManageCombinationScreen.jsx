@@ -1,195 +1,231 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "../../component/Button/Button";
 import { Card } from "../../component/Card/Card";
-import { Trash2, Plus, Search, Edit2, Save, X } from "lucide-react";
+import { LoadingSpinner } from "../../component/LoadingSpinner/LoadingSpinner";
+import { Trash2, Plus, Search, Edit2, Save, X, Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
+import API from "../../API/API";
+import { useAuth } from "../../context/AuthContext";
 import styles from "./ManageCombinationScreen.module.css";
 
-// Mock data
-const mockSubjects = [
-  {
-    id: "subj-1",
-    name: "Toán",
-    description: "Môn Toán học",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-2",
-    name: "Văn",
-    description: "Môn Ngữ văn",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-3",
-    name: "Tiếng Anh",
-    description: "Môn Tiếng Anh",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-4",
-    name: "Vật lí",
-    description: "Môn Vật lí",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-5",
-    name: "Hóa học",
-    description: "Môn Hóa học",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-6",
-    name: "Sinh học",
-    description: "Môn Sinh học",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-7",
-    name: "Lịch sử",
-    description: "Môn Lịch sử",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-8",
-    name: "Địa lí",
-    description: "Môn Địa lí",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "subj-9",
-    name: "Giáo dục công dân",
-    description: "Môn Giáo dục công dân",
-    created_at: new Date().toISOString(),
-  },
-];
-
-const mockInitialCombinations = [
-  {
-    id: "comb-1",
-    code: "A00",
-    subjects: ["Toán", "Vật lí", "Hóa học"],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "comb-2",
-    code: "A01",
-    subjects: ["Toán", "Vật lí", "Tiếng Anh"],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "comb-3",
-    code: "A02",
-    subjects: ["Toán", "Vật lí", "Sinh học"],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "comb-4",
-    code: "A03",
-    subjects: ["Toán", "Vật lí", "Lịch sử"],
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "comb-5",
-    code: "A04",
-    subjects: ["Toán", "Vật lí", "Địa lí"],
-    created_at: new Date().toISOString(),
-  },
-];
-
 export default function ManageCombinationScreen() {
-  const [combinations, setCombinations] = useState(mockInitialCombinations);
+  const { accessToken } = useAuth();
+  
+  // Data States
+  const [subjects, setSubjects] = useState([]);
+  const [combinations, setCombinations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // UI States
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [newCombination, setNewCombination] = useState({
-    code: "",
-    selectedSubjects: [],
-  });
   const [editingId, setEditingId] = useState(null);
-  const [editingData, setEditingData] = useState({
-    code: "",
-    selectedSubjects: [],
+
+  // Form States
+  const [newCombination, setNewCombination] = useState({
+    combinationName: "",
+    selectedSubjects: [], // Stores IDs
   });
 
-  const filteredCombinations = combinations.filter(
-    (comb) =>
-      comb.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      comb.subjects.some(subject => subject.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const [editingData, setEditingData] = useState({
+    combinationName: "",
+    selectedSubjects: [], // Stores IDs
+  });
 
-  const handleAddCombination = () => {
-    if (
-      newCombination.code.trim() &&
-      newCombination.selectedSubjects.length > 0
-    ) {
-      const combination = {
-        id: `comb-${Date.now()}`,
-        code: newCombination.code,
-        subjects: newCombination.selectedSubjects,
-        created_at: new Date().toISOString(),
-      };
-      setCombinations([...combinations, combination]);
-      setNewCombination({ code: "", selectedSubjects: [] });
-      setIsAddingNew(false);
+  // 1. Fetch Data on Mount
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch Subjects
+      const subjRes = await fetch(`${API}/api/subjects?limit=100`);
+      const subjData = await subjRes.json();
+      
+      // Fetch Combinations
+      const combRes = await fetch(`${API}/api/subject-combinations?limit=100`);
+      const combData = await combRes.json();
+
+      if (subjData.success) {
+        setSubjects(subjData.data);
+      }
+      
+      if (combData.success) {
+        setCombinations(combData.data);
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast.error("Lỗi tải dữ liệu. Vui lòng thử lại.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDeleteCombination = (id) => {
-    setCombinations(combinations.filter((c) => c.id !== id));
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Filter Logic
+  const filteredCombinations = combinations.filter((comb) => {
+    const term = searchQuery.toLowerCase();
+    const codeMatch = comb.combinationName.toLowerCase().includes(term);
+    const subjectMatch = comb.subjects.some(s => s.name.toLowerCase().includes(term));
+    return codeMatch || subjectMatch;
+  });
+
+  const handleAddCombination = async () => {
+    if (!newCombination.combinationName.trim()) {
+      toast.warning("Vui lòng nhập mã tổ hợp");
+      return;
+    }
+    if (newCombination.selectedSubjects.length !== 3) {
+      toast.warning("Tổ hợp phải bao gồm đúng 3 môn học");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/api/subject-combinations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          combinationName: newCombination.combinationName,
+          subjects: newCombination.selectedSubjects,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Thêm tổ hợp thành công");
+        setCombinations((prev) => [...prev, data.data]);
+        setNewCombination({ combinationName: "", selectedSubjects: [] });
+        setIsAddingNew(false);
+      } else {
+        toast.error(data.message || "Lỗi khi thêm tổ hợp");
+      }
+    } catch (error) {
+      toast.error("Lỗi kết nối server");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteCombination = async (id) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa tổ hợp này?")) return;
+
+    try {
+      const res = await fetch(`${API}/api/subject-combinations/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Xóa tổ hợp thành công");
+        setCombinations((prev) => prev.filter((c) => c._id !== id));
+      } else {
+        toast.error(data.message || "Lỗi khi xóa");
+      }
+    } catch (error) {
+      toast.error("Lỗi kết nối server");
+    }
   };
 
   const handleEditCombination = (combination) => {
-    if (editingId === combination.id) {
+    if (editingId === combination._id) {
       handleCancelEdit();
     } else {
-      setEditingId(combination.id);
+      setEditingId(combination._id);
       setEditingData({
-        code: combination.code,
-        selectedSubjects: combination.subjects,
+        combinationName: combination.combinationName,
+        selectedSubjects: combination.subjects.map(s => s._id),
       });
     }
   };
 
-  const handleSaveEdit = (id) => {
-    if (
-      editingData.code.trim() &&
-      editingData.selectedSubjects.length > 0
-    ) {
-      setCombinations(
-        combinations.map((c) =>
-          c.id === id
-            ? {
-                ...c,
-                code: editingData.code,
-                subjects: editingData.selectedSubjects,
-              }
-            : c
-        )
-      );
-      setEditingId(null);
-      setEditingData({ code: "", selectedSubjects: [] });
+  const handleSaveEdit = async (id) => {
+    if (!editingData.combinationName.trim()) {
+        toast.warning("Vui lòng nhập mã tổ hợp");
+        return;
+    }
+    if (editingData.selectedSubjects.length !== 3) {
+        toast.warning("Tổ hợp phải bao gồm đúng 3 môn học");
+        return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`${API}/api/subject-combinations/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          combinationName: editingData.combinationName,
+          subjects: editingData.selectedSubjects,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Cập nhật thành công");
+        setCombinations((prev) =>
+          prev.map((c) => (c._id === id ? data.data : c))
+        );
+        setEditingId(null);
+        setEditingData({ combinationName: "", selectedSubjects: [] });
+      } else {
+        toast.error(data.message || "Lỗi cập nhật");
+      }
+    } catch (error) {
+      toast.error("Lỗi kết nối server");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setEditingData({ code: "", selectedSubjects: [] });
+    setEditingData({ combinationName: "", selectedSubjects: [] });
   };
 
-  const handleSubjectToggle = (subjectName) => {
-    setNewCombination((prev) => ({
-      ...prev,
-      selectedSubjects: prev.selectedSubjects.includes(subjectName)
-        ? prev.selectedSubjects.filter((s) => s !== subjectName)
-        : [...prev.selectedSubjects, subjectName],
-    }));
+  // Toggle Checkboxes for ADD mode
+  const handleSubjectToggle = (subjectId) => {
+    setNewCombination((prev) => {
+      const isSelected = prev.selectedSubjects.includes(subjectId);
+      if (isSelected) {
+        return {
+          ...prev,
+          selectedSubjects: prev.selectedSubjects.filter((id) => id !== subjectId),
+        };
+      } else {
+        return {
+          ...prev,
+          selectedSubjects: [...prev.selectedSubjects, subjectId],
+        };
+      }
+    });
   };
 
-  const handleEditSubjectToggle = (subjectName) => {
-    setEditingData((prev) => ({
-      ...prev,
-      selectedSubjects: prev.selectedSubjects.includes(subjectName)
-        ? prev.selectedSubjects.filter((s) => s !== subjectName)
-        : [...prev.selectedSubjects, subjectName],
-    }));
+  // Toggle Checkboxes for EDIT mode
+  const handleEditSubjectToggle = (subjectId) => {
+    setEditingData((prev) => {
+      const isSelected = prev.selectedSubjects.includes(subjectId);
+      return {
+        ...prev,
+        selectedSubjects: isSelected
+          ? prev.selectedSubjects.filter((id) => id !== subjectId)
+          : [...prev.selectedSubjects, subjectId],
+      };
+    });
   };
 
   return (
@@ -215,6 +251,7 @@ export default function ManageCombinationScreen() {
         <Button
           onClick={() => setIsAddingNew(true)}
           className={styles.addButton}
+          disabled={isLoading}
         >
           <Plus size={18} />
           Thêm tổ hợp
@@ -230,62 +267,70 @@ export default function ManageCombinationScreen() {
             <div className={styles.formGrid}>
               <div className={styles.formGroup}>
                 <label htmlFor="code" className={styles.label}>
-                  Mã tổ hợp
+                  Mã tổ hợp (Ví dụ: A00)
                 </label>
                 <input
                   type="text"
                   id="code"
-                  placeholder="Ví dụ: A00"
-                  value={newCombination.code}
+                  placeholder="A00"
+                  value={newCombination.combinationName}
                   onChange={(e) =>
                     setNewCombination({
                       ...newCombination,
-                      code: e.target.value,
+                      combinationName: e.target.value,
                     })
                   }
                   className={styles.input}
                 />
               </div>
               <div className={styles.formGroupFull}>
-                <label className={styles.label}>Chọn các môn học</label>
+                <label className={styles.label}>
+                    Chọn 3 môn học ({newCombination.selectedSubjects.length}/3)
+                </label>
                 <div className={styles.subjectCheckboxes}>
-                  {mockSubjects.map((subject) => (
-                    <label key={subject.id} className={styles.checkboxLabel}>
+                  {subjects.map((subject) => (
+                    <label key={subject._id} className={styles.checkboxLabel}>
                       <input
                         type="checkbox"
-                        checked={newCombination.selectedSubjects.includes(
-                          subject.name
-                        )}
-                        onChange={() => handleSubjectToggle(subject.name)}
+                        checked={newCombination.selectedSubjects.includes(subject._id)}
+                        onChange={() => handleSubjectToggle(subject._id)}
                         className={styles.checkbox}
                       />
-                      <span>{subject.name}</span>
+                      <span style={{textTransform: 'capitalize'}}>{subject.name}</span>
                     </label>
                   ))}
                 </div>
               </div>
             </div>
             <div className={styles.formActions}>
-              <Button variant="outline" onClick={() => setIsAddingNew(false)}>
+              <Button variant="outline" onClick={() => setIsAddingNew(false)} disabled={isSubmitting}>
                 Hủy
               </Button>
-              <Button onClick={handleAddCombination}>Thêm tổ hợp</Button>
+              <Button onClick={handleAddCombination} disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className={styles.spin} size={16}/> : "Thêm tổ hợp"}
+              </Button>
             </div>
           </div>
         </Card>
       )}
 
       <div className={styles.combinationsList}>
-        {filteredCombinations.length === 0 ? (
+        {isLoading ? (
+            <LoadingSpinner label="Đang tải danh sách tổ hợp..." />
+        ) : filteredCombinations.length === 0 ? (
           <p className={styles.emptyState}>Không tìm thấy tổ hợp môn nào</p>
         ) : (
           filteredCombinations.map((combination) => (
-            <div key={combination.id} className={styles.combinationWrapper}>
+            <div key={combination._id} className={styles.combinationWrapper}>
               <Card className={styles.combinationCard}>
                 <div className={styles.cardHeader}>
                   <div className={styles.cardTitleWrapper}>
-                    <div className={styles.codeBadge}>{combination.code}</div>
-                    <h3 className={styles.cardTitle}>{combination.subjects.join(" – ")}</h3>
+                    <div className={styles.codeBadge}>{combination.combinationName}</div>
+                    <h3 className={styles.cardTitle}>
+                        {combination.subjects && combination.subjects.length > 0 
+                            ? combination.subjects.map(s => s.name).join(" – ") 
+                            : "Chưa có môn"}
+                    </h3>
                   </div>
                   <div className={styles.actions}>
                     <button
@@ -296,7 +341,7 @@ export default function ManageCombinationScreen() {
                       <Edit2 size={16} />
                     </button>
                     <button
-                      onClick={() => handleDeleteCombination(combination.id)}
+                      onClick={() => handleDeleteCombination(combination._id)}
                       className={styles.deleteBtn}
                       title="Xóa"
                     >
@@ -306,7 +351,7 @@ export default function ManageCombinationScreen() {
                 </div>
               </Card>
 
-              {editingId === combination.id && (
+              {editingId === combination._id && (
                 <Card
                   className={styles.editCard}
                   style={{ marginTop: "12px" }}
@@ -320,51 +365,53 @@ export default function ManageCombinationScreen() {
                         <input
                           type="text"
                           id="edit-code"
-                          value={editingData.code}
+                          value={editingData.combinationName}
                           onChange={(e) =>
                             setEditingData({
                               ...editingData,
-                              code: e.target.value,
+                              combinationName: e.target.value,
                             })
                           }
                           className={styles.input}
                         />
                       </div>
                       <div className={styles.formGroupFull}>
-                        <label className={styles.label}>Chọn các môn học</label>
+                        <label className={styles.label}>
+                            Chọn 3 môn học ({editingData.selectedSubjects.length}/3)
+                        </label>
                         <div className={styles.subjectCheckboxes}>
-                          {mockSubjects.map((subject) => (
+                          {subjects.map((subject) => (
                             <label
-                              key={subject.id}
+                              key={subject._id}
                               className={styles.checkboxLabel}
                             >
                               <input
                                 type="checkbox"
-                                checked={editingData.selectedSubjects.includes(
-                                  subject.name
-                                )}
+                                checked={editingData.selectedSubjects.includes(subject._id)}
                                 onChange={() =>
-                                  handleEditSubjectToggle(subject.name)
+                                  handleEditSubjectToggle(subject._id)
                                 }
                                 className={styles.checkbox}
                               />
-                              <span>{subject.name}</span>
+                              <span style={{textTransform: 'capitalize'}}>{subject.name}</span>
                             </label>
                           ))}
                         </div>
                       </div>
                       <div className={styles.formActions}>
                         <Button
-                          onClick={() => handleSaveEdit(combination.id)}
+                          onClick={() => handleSaveEdit(combination._id)}
                           className={styles.saveBtn}
+                          disabled={isSubmitting}
                         >
                           <Save size={16} />
-                          Lưu
+                          {isSubmitting ? "Đang lưu..." : "Lưu"}
                         </Button>
                         <Button
                           variant="outline"
                           onClick={handleCancelEdit}
                           className={styles.cancelBtn}
+                          disabled={isSubmitting}
                         >
                           <X size={16} />
                           Hủy
