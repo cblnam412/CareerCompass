@@ -13,6 +13,8 @@ const quizQuestionSchema = new mongoose.Schema({
         type: Number,
         required: true,
     },
+    // MBTI: E/I, S/N, T/F, J/P
+    // Holland: R, I, A, S, E, C
     dimension: {
         type: String,
         enum: ['E/I', 'S/N', 'T/F', 'J/P', null],
@@ -23,24 +25,16 @@ const quizQuestionSchema = new mongoose.Schema({
         enum: ['R', 'I', 'A', 'S', 'E', 'C', null],
         default: null,
     },
-    options: [{
-        text: {
-            type: String,
-            required: true,
-        },
-        // MBTI: preference (E, I, S, N, T, F, J, P)
-        preference: {
-            type: String,
-            enum: ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P', null],
-            default: null,
-        },
-        score: {
-            type: Number,
-            min: 1,
-            max: 5,
-            default: null,
-        },
-    }],
+    agreePreference: {
+        type: String,
+        enum: ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P', null],
+        default: null,
+    },
+    disagreePreference: {
+        type: String,
+        enum: ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P', null],
+        default: null,
+    },
 }, {
     timestamps: true
 });

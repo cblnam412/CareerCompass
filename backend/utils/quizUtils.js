@@ -14,17 +14,24 @@ export const calculateMBTIResult = (answers, questions) => {
         answers.forEach((selectedIndex, questionIndex) => {
             if (questionIndex < questions.length) {
                 const question = questions[questionIndex];
+                const dim = question.dimension;
                 
-                if (question.options && question.options[selectedIndex]) {
-                    const selectedOption = question.options[selectedIndex];
+                if (dim && dimensions[dim]) {
+                    let selectedPref;
                     
-                    if (selectedOption.preference && question.dimension) {
-                        const dim = question.dimension;
-                        const pref = selectedOption.preference;
-                        
-                        if (dimensions[dim] && dimensions[dim].hasOwnProperty(pref)) {
-                            dimensions[dim][pref]++;
-                        }
+                    if (selectedIndex === 0 && question.agreePreference) {
+                        selectedPref = question.agreePreference;
+                    } else if (selectedIndex === 1 && question.disagreePreference) {
+                        selectedPref = question.disagreePreference;
+                    } else {
+                        const preferences = dim === 'E/I' ? ['E', 'I'] :
+                                          dim === 'S/N' ? ['S', 'N'] :
+                                          dim === 'T/F' ? ['T', 'F'] : ['J', 'P'];
+                        selectedPref = preferences[selectedIndex];
+                    }
+                    
+                    if (selectedPref && dimensions[dim].hasOwnProperty(selectedPref)) {
+                        dimensions[dim][selectedPref]++;
                     }
                 }
             }
@@ -120,43 +127,20 @@ export const validateQuestionData = (data, quizType) => {
     }
     
     if (quizType === 'MBTI') {
-        if (!data.options || !Array.isArray(data.options) || data.options.length !== 2) {
-            errors.push('MBTI phải có chính xác 2 lựa chọn (Đồng ý / Không đồng ý)');
-        }
-        
         if (!data.dimension || !['E/I', 'S/N', 'T/F', 'J/P'].includes(data.dimension)) {
             errors.push('MBTI phải gán một chiều hợp lệ: E/I, S/N, T/F, hoặc J/P');
         }
         
-        if (data.options && Array.isArray(data.options)) {
-            data.options.forEach((option, index) => {
-                if (!option.text || option.text.trim() === '') {
-                    errors.push(`Đáp án ${index + 1} phải có nội dung`);
-                }
-                if (!option.preference || !['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P'].includes(option.preference)) {
-                    errors.push(`Đáp án ${index + 1} phải gán preference hợp lệ`);
-                }
-            });
+        if (data.agreePreference && !['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P'].includes(data.agreePreference)) {
+            errors.push('agreePreference không hợp lệ: phải là E, I, S, N, T, F, J, hoặc P');
+        }
+        if (data.disagreePreference && !['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P'].includes(data.disagreePreference)) {
+            errors.push('disagreePreference không hợp lệ: phải là E, I, S, N, T, F, J, hoặc P');
         }
     } 
     else if (quizType === 'Holland') {
-        if (!data.options || !Array.isArray(data.options) || data.options.length !== 5) {
-            errors.push('Holland phải có 5 lựa chọn (1-5)');
-        }
-        
         if (!data.attribute || !['R', 'I', 'A', 'S', 'E', 'C'].includes(data.attribute)) {
             errors.push('Holland phải gán một thuộc tính: R, I, A, S, E, hoặc C');
-        }
-        
-        if (data.options && Array.isArray(data.options)) {
-            data.options.forEach((option, index) => {
-                if (!option.text || option.text.trim() === '') {
-                    errors.push(`Đáp án ${index + 1} phải có nội dung`);
-                }
-                if (option.score !== index + 1) {
-                    errors.push(`Đáp án ${index + 1} phải có score ${index + 1}`);
-                }
-            });
         }
     }
     
@@ -192,11 +176,40 @@ export const getQuizStats = (quizId, attempts) => {
     return stats;
 };
 
+export const generateOptions = (quizType, dimension = null, attribute = null, agreePreference = null, disagreePreference = null) => {
+    if (quizType === 'MBTI') {
+        return [
+            {
+                text: 'Đồng ý',
+                preference: agreePreference || (dimension === 'E/I' ? 'E' : 
+                           dimension === 'S/N' ? 'S' : 
+                           dimension === 'T/F' ? 'T' : 'J')
+            },
+            {
+                text: 'Không đồng ý',
+                preference: disagreePreference || (dimension === 'E/I' ? 'I' : 
+                           dimension === 'S/N' ? 'N' : 
+                           dimension === 'T/F' ? 'F' : 'P')
+            }
+        ];
+    } else if (quizType === 'Holland') {
+        return [
+            { text: 'Rất không thích', score: 1 },
+            { text: 'Không thích', score: 2 },
+            { text: 'Bình thường', score: 3 },
+            { text: 'Thích', score: 4 },
+            { text: 'Rất thích', score: 5 }
+        ];
+    }
+    return [];
+};
+
 export default {
     isValidObjectId,
     calculateMBTIResult,
     calculateHollandResult,
     validatePersonalityQuizData,
     validateQuestionData,
-    getQuizStats
+    getQuizStats,
+    generateOptions
 };

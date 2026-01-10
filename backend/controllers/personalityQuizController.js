@@ -8,6 +8,7 @@ import {
     calculateHollandResult,
     validatePersonalityQuizData,
     validateQuestionData,
+    generateOptions,
     getQuizStats
 } from '../utils/quizUtils.js';
 
@@ -71,11 +72,17 @@ export const getPersonalityQuizById = async (req, res) => {
             .select('-__v')
             .lean();
 
+        // Thêm options on-the-fly
+        const questionsWithOptions = questions.map(q => ({
+            ...q,
+            options: generateOptions(quiz.type, q.dimension, q.attribute, q.agreePreference, q.disagreePreference)
+        }));
+
         res.status(200).json({
             success: true,
             data: {
                 ...quiz,
-                questions
+                questions: questionsWithOptions
             }
         });
     } catch (error) {
@@ -222,7 +229,7 @@ export const deletePersonalityQuiz = async (req, res) => {
 export const createQuizQuestion = async (req, res) => {
     try {
         const { quizId } = req.params;
-        const { content, options, order, dimension, attribute } = req.body;
+        const { content, order, dimension, attribute, agreePreference, disagreePreference } = req.body;
 
         if (!isValidObjectId(quizId)) {
             return res.status(400).json({
@@ -241,7 +248,6 @@ export const createQuizQuestion = async (req, res) => {
 
         const validation = validateQuestionData({ 
             content, 
-            options, 
             dimension, 
             attribute 
         }, quiz.type);
@@ -264,18 +270,24 @@ export const createQuizQuestion = async (req, res) => {
         const newQuestion = new QuizQuestion({
             quizId,
             content,
-            options,
             order: questionOrder,
             dimension: quiz.type === 'MBTI' ? dimension : null,
-            attribute: quiz.type === 'Holland' ? attribute : null
+            attribute: quiz.type === 'Holland' ? attribute : null,
+            agreePreference: quiz.type === 'MBTI' ? agreePreference : null,
+            disagreePreference: quiz.type === 'MBTI' ? disagreePreference : null
         });
 
         await newQuestion.save();
 
+        const questionWithOptions = {
+            ...newQuestion.toObject(),
+            options: generateOptions(quiz.type, newQuestion.dimension, newQuestion.attribute, newQuestion.agreePreference, newQuestion.disagreePreference)
+        };
+
         res.status(201).json({
             success: true,
             message: 'Tạo câu hỏi thành công',
-            data: newQuestion
+            data: questionWithOptions
         });
     } catch (error) {
         console.error('Error creating quiz question:', error);
@@ -290,7 +302,7 @@ export const createQuizQuestion = async (req, res) => {
 export const updateQuizQuestion = async (req, res) => {
     try {
         const { quizId, questionId } = req.params;
-        const { content, options, order, dimension, attribute } = req.body;
+        const { content, order, dimension, attribute, agreePreference, disagreePreference } = req.body;
 
         if (!isValidObjectId(quizId) || !isValidObjectId(questionId)) {
             return res.status(400).json({
@@ -313,10 +325,9 @@ export const updateQuizQuestion = async (req, res) => {
 
         const quiz = await PersonalityQuiz.findById(quizId);
 
-        if (content || options || dimension || attribute) {
+        if (content || dimension || attribute) {
             const validation = validateQuestionData({ 
                 content: content || question.content, 
-                options: options || question.options,
                 dimension: dimension || question.dimension,
                 attribute: attribute || question.attribute
             }, quiz.type);
@@ -331,10 +342,11 @@ export const updateQuizQuestion = async (req, res) => {
 
         const updateData = {};
         if (content) updateData.content = content;
-        if (options) updateData.options = options;
         if (order !== undefined) updateData.order = order;
         if (dimension !== undefined) updateData.dimension = quiz.type === 'MBTI' ? dimension : null;
         if (attribute !== undefined) updateData.attribute = quiz.type === 'Holland' ? attribute : null;
+        if (agreePreference !== undefined) updateData.agreePreference = quiz.type === 'MBTI' ? agreePreference : null;
+        if (disagreePreference !== undefined) updateData.disagreePreference = quiz.type === 'MBTI' ? disagreePreference : null;
 
         const updatedQuestion = await QuizQuestion.findByIdAndUpdate(
             questionId,
@@ -342,10 +354,16 @@ export const updateQuizQuestion = async (req, res) => {
             { new: true, runValidators: true }
         );
 
+        // Trả về với options on-the-fly
+        const questionWithOptions = {
+            ...updatedQuestion.toObject(),
+            options: generateOptions(quiz.type, updatedQuestion.dimension, updatedQuestion.attribute, updatedQuestion.agreePreference, updatedQuestion.disagreePreference)
+        };
+
         res.status(200).json({
             success: true,
             message: 'Cập nhật câu hỏi thành công',
-            data: updatedQuestion
+            data: questionWithOptions
         });
     } catch (error) {
         console.error('Error updating quiz question:', error);
@@ -446,7 +464,6 @@ export const submitPersonalityQuiz = async (req, res) => {
             });
         }
 
-        // Tính toán kết quả dựa trên loại quiz
         let resultScore, interpretation;
 
         if (quiz.type === 'MBTI') {
@@ -468,7 +485,6 @@ export const submitPersonalityQuiz = async (req, res) => {
 
         await newAttempt.save();
 
-        // Cập nhật StudentProfile
         const studentProfile = await StudentProfile.findOne({ userId: studentId });
         if (studentProfile) {
             if (quiz.type === 'MBTI') {
@@ -636,18 +652,21 @@ export const getPersonalityQuizByType = async (req, res) => {
             });
         }
 
-        // Find all questions associated with this quiz ID
         const questions = await QuizQuestion.find({ quizId: quiz._id })
             .sort({ order: 1 })
             .select('-__v')
             .lean();
 
-        // Return combined data
+        const questionsWithOptions = questions.map(q => ({
+            ...q,
+            options: generateOptions(quiz.type, q.dimension, q.attribute, q.agreePreference, q.disagreePreference)
+        }));
+
         res.status(200).json({
             success: true,
             data: {
                 ...quiz,
-                questions
+                questions: questionsWithOptions
             }
         });
     } catch (error) {
@@ -730,40 +749,11 @@ export const importQuestionsFromExcel = async (req, res) => {
 
                 if (quiz.type === 'MBTI') {
                     questionData.dimension = row[2]?.toString().trim();
-                    questionData.options = [
-                        {
-                            text: row[3]?.toString().trim(),
-                            preference: row[4]?.toString().trim()
-                        },
-                        {
-                            text: row[5]?.toString().trim(),
-                            preference: row[6]?.toString().trim()
-                        }
-                    ];
+                    // Optional: custom mapping nếu có cột 3 và 4
+                    questionData.agreePreference = row[3]?.toString().trim() || null;
+                    questionData.disagreePreference = row[4]?.toString().trim() || null;
                 } else if (quiz.type === 'Holland') {
                     questionData.attribute = row[2]?.toString().trim();
-                    questionData.options = [
-                        {
-                            text: row[3]?.toString().trim(),
-                            score: parseInt(row[4]) || 1
-                        },
-                        {
-                            text: row[5]?.toString().trim(),
-                            score: parseInt(row[6]) || 2
-                        },
-                        {
-                            text: row[7]?.toString().trim(),
-                            score: parseInt(row[8]) || 3
-                        },
-                        {
-                            text: row[9]?.toString().trim(),
-                            score: parseInt(row[10]) || 4
-                        },
-                        {
-                            text: row[11]?.toString().trim(),
-                            score: parseInt(row[12]) || 5
-                        }
-                    ];
                 }
 
                 const validation = validateQuestionData(questionData, quiz.type);
@@ -785,10 +775,11 @@ export const importQuestionsFromExcel = async (req, res) => {
                 const newQuestion = new QuizQuestion({
                     quizId,
                     content: questionData.content,
-                    options: questionData.options,
                     order,
                     dimension: quiz.type === 'MBTI' ? questionData.dimension : null,
-                    attribute: quiz.type === 'Holland' ? questionData.attribute : null
+                    attribute: quiz.type === 'Holland' ? questionData.attribute : null,
+                    agreePreference: quiz.type === 'MBTI' ? questionData.agreePreference : null,
+                    disagreePreference: quiz.type === 'MBTI' ? questionData.disagreePreference : null
                 });
 
                 await newQuestion.save();
