@@ -6,172 +6,157 @@ import { Button } from "../../component/Button/Button"
 import { Card, CardContent } from "../../component/Card/Card"
 import { Progress } from "../../component/Progress/Progress"
 import { RadioGroup, RadioGroupItem } from "../../component/RadioGroup/RadioGroup"
-import { Clock } from "lucide-react"
+import { Clock, CheckCircle } from "lucide-react"
+import { useAuth } from "../../context/AuthContext"
+import API from "../../API/API"
 import styles from "./TestTakingScreen.module.css"
-
-// Mock Data
-const mockTests = [
-  {
-    id: "test-1",
-    title: "Đề thi thử THPT Quốc gia 2024 - Toán",
-    description: "Đề thi thử môn Toán theo cấu trúc đề thi THPT Quốc gia mới nhất",
-    subject: "Toán",
-    duration_minutes: 90,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "test-2",
-    title: "Đề thi thử THPT Quốc gia 2024 - Văn",
-    description: "Đề thi thử môn Ngữ văn với các dạng bài phân tích và làm văn",
-    subject: "Văn",
-    duration_minutes: 120,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "test-3",
-    title: "Đề thi thử THPT Quốc gia 2024 - Tiếng Anh",
-    description: "Đề thi thử môn Tiếng Anh với 50 câu hỏi trắc nghiệm",
-    subject: "Tiếng Anh",
-    duration_minutes: 60,
-    created_at: new Date().toISOString(),
-  },
-]
-
-const mockQuestions = [
-  {
-    id: "q1",
-    test_id: "test-1",
-    question_text: "Cho hàm số y = x³ - 3x + 1. Đạo hàm của hàm số là:",
-    option_a: "y' = 3x² - 3",
-    option_b: "y' = 3x² + 3",
-    option_c: "y' = x² - 3",
-    option_d: "y' = 3x² - 1",
-    correct_answer: "A",
-    order_number: 1,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "q2",
-    test_id: "test-1",
-    question_text: "Tích phân ∫(2x + 1)dx từ 0 đến 1 bằng:",
-    option_a: "1",
-    option_b: "2",
-    option_c: "3",
-    option_d: "4",
-    correct_answer: "B",
-    order_number: 2,
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "q3",
-    test_id: "test-1",
-    question_text: "Giá trị nhỏ nhất của hàm số y = x² - 4x + 5 trên đoạn [0, 3] là:",
-    option_a: "1",
-    option_b: "2",
-    option_c: "3",
-    option_d: "5",
-    correct_answer: "A",
-    order_number: 3,
-    created_at: new Date().toISOString(),
-  },
-]
 
 export default function TestTakingScreen() {
   const { id: testId } = useParams()
   const navigate = useNavigate()
+  const { accessToken, userID } = useAuth()
+
   const [test, setTest] = useState(null)
   const [questions, setQuestions] = useState([])
-  const [answers, setAnswers] = useState({})
+  const [answers, setAnswers] = useState({}) 
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showResults, setShowResults] = useState(false)
-  const [score, setScore] = useState(0)
+  
+  const [serverResult, setServerResult] = useState({
+    score: 0,
+    total: 0,
+    percentage: 0
+  })
 
+  // Fetch Exam Data
   useEffect(() => {
     const fetchTest = async () => {
+      if (!accessToken) return;
+      
       try {
-        await new Promise((resolve) => setTimeout(resolve, 300))
+        const res = await fetch(`${API}/api/student/mock-exams/${testId}`, {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "x-user-id": userID
+            }
+        });
+        
+        const data = await res.json();
 
-        const testData = mockTests.find((t) => t.id === testId)
-        if (!testData) throw new Error("Test not found")
+        if (!data.success) throw new Error(data.message);
 
-        setTest(testData)
-        setTimeLeft(testData.duration_minutes * 60)
+        const testData = data.data;
 
-        const questionsData = mockQuestions.filter((q) => q.test_id === testId)
-        setQuestions(questionsData)
+        const formattedQuestions = testData.questions.map((q, index) => ({
+            // Use q._id if available, otherwise fallback to index to ensure uniqueness
+            id: q._id || `question_${index}`, 
+            question_text: q.question,
+            option_a: q.options[0],
+            option_b: q.options[1],
+            option_c: q.options[2],
+            option_d: q.options[3],
+            order_number: index + 1
+        }));
+
+        setTest(testData);
+        setQuestions(formattedQuestions);
+        setTimeLeft(testData.duration * 60); 
       } catch (error) {
         console.error("Error fetching test:", error)
-        toast.error("Không thể tải bài thi. Vui lòng thử lại!")
+        toast.error("Không thể tải bài thi. " + (error.message || ""));
       } finally {
         setLoading(false)
       }
     }
 
     fetchTest()
-  }, [testId])
+  }, [testId, accessToken, userID])
 
+  // Timer Logic
   useEffect(() => {
-    if (timeLeft <= 0 || showResults) return
+    if (loading || showResults) return; 
+
+    if (timeLeft <= 0) {
+        if (!submitting && !loading && questions.length > 0) {
+             toast.warning("Hết thời gian! Bài thi được nộp tự động.")
+             handleSubmit()
+        }
+        return
+    }
 
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          toast.warning("Hết thời gian! Bài thi được nộp tự động.")
-          handleSubmit()
-          return 0
-        }
-        return prev - 1
-      })
+      setTimeLeft((prev) => prev - 1)
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [timeLeft, showResults])
+  }, [timeLeft, showResults, loading, questions.length])
 
   const handleAnswerChange = (questionId, answer) => {
     setAnswers((prev) => {
-      if (answer === undefined) {
-        const { [questionId]: _, ...rest } = prev
-        return rest
+      // If the answer is undefined (unselected), we delete the key
+      if (answer === undefined || answer === null) {
+        const { [questionId]: unused, ...rest } = prev;
+        return rest;
       }
-      return { ...prev, [questionId]: answer }
+      // Otherwise, add or update the key
+      return { ...prev, [questionId]: answer };
     })
   }
 
+  // Submit Logic
   const handleSubmit = async () => {
-    // Check if all questions are answered
-    if (Object.keys(answers).length !== questions.length) {
+    if (Object.keys(answers).length < questions.length && timeLeft > 0) {
       const unansweredCount = questions.length - Object.keys(answers).length
       toast.error(`Vui lòng trả lời hết ${unansweredCount} câu hỏi còn lại!`)
       return
     }
 
-    if (!test) return
-
     setSubmitting(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300))
+      const answerPayload = questions.map(q => {
+        const selectedLetter = answers[q.id]; // e.g., "A"
+        
+        if (!selectedLetter) return ""; // Unanswered
 
-      let correctCount = 0
-      questions.forEach((q) => {
-        if (answers[q.id] === q.correct_answer) {
-          correctCount++
-        }
-      })
+        // Map "A" -> q.option_a, "B" -> q.option_b dynamically
+        const optionKey = `option_${selectedLetter.toLowerCase()}`;
+        return q[optionKey] || "";
+      });
 
-      setScore(correctCount)
+      const res = await fetch(`${API}/api/student/mock-exams/${testId}/submit`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+            "x-user-id": userID
+        },
+        body: JSON.stringify({ answers: answerPayload })
+      });
+
+      const data = await res.json();
+
+      if (!data.success) throw new Error(data.message);
+
+      setServerResult({
+        score: data.data.correctCount,
+        total: data.data.totalQuestions,
+        percentage: data.data.scorePercentage / 10
+      });
+
       setShowResults(true)
       toast.success("Nộp bài thành công!")
     } catch (error) {
       console.error("Error submitting test:", error)
-      toast.error("Lỗi khi nộp bài. Vui lòng thử lại!")
+      toast.error("Lỗi khi nộp bài: " + error.message)
     } finally {
       setSubmitting(false)
     }
   }
 
   const formatTime = (seconds) => {
+    if (seconds < 0) return "0:00";
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
@@ -180,20 +165,21 @@ export default function TestTakingScreen() {
   if (loading) {
     return (
       <div className={styles.loading}>
-        <div>Loading...</div>
+        <div className="spinner"></div>
+        <div style={{marginLeft: '10px'}}>Đang tải đề thi...</div>
       </div>
     )
   }
 
   if (showResults) {
-    const percentage = Math.round((score / questions.length) * 100)
-
     return (
       <div className={styles.resultsContainer}>
-        <Card className={styles.resultsCard}>
+        <Card className={styles.resultsCard} variant="glow">
           <CardContent>
             <div className={styles.resultsContent}>
-              <div className={styles.successIcon}>✓</div>
+              <div className={styles.successIcon}>
+                 <CheckCircle size={80} strokeWidth={1.5} />
+              </div>
               <div>
                 <h2 className={styles.resultsTitle}>Hoàn thành!</h2>
                 <p className={styles.resultsSubtitle}>Bạn đã hoàn thành bài thi</p>
@@ -201,14 +187,14 @@ export default function TestTakingScreen() {
 
               <div className={styles.scoreDisplay}>
                 <div className={styles.scoreNumber}>
-                  {score}/{questions.length}
+                  {serverResult.score}/{serverResult.total}
                 </div>
-                <p className={styles.scorePercentage}>Điểm số: {percentage}%</p>
+                <p className={styles.scorePercentage}>Điểm số: {serverResult.percentage}</p>
               </div>
 
               <div className={styles.resultsActions}>
                 <Button variant="outline" onClick={() => navigate('/user/tests')}>
-                  Quay lại danh sách
+                  Quay lại thi thử
                 </Button>
                 <Button onClick={() => window.location.reload()}>Làm lại</Button>
               </div>
@@ -224,26 +210,14 @@ export default function TestTakingScreen() {
 
   return (
     <div className={styles.container}>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={true}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <ToastContainer position="top-right" autoClose={3000} />
 
       <div className={styles.content}>
         <div className={styles.header}>
           <div className={styles.headerContent}>
             <div className={styles.headerInfo}>
               <h1>{test?.title}</h1>
-              <p>
-                Đã làm {Object.keys(answers).length}/{questions.length} câu
-              </p>
+              <p>Đã làm {Object.keys(answers).length}/{questions.length} câu</p>
             </div>
             <div className={styles.headerActions}>
               <div className={styles.timer}>
@@ -254,8 +228,8 @@ export default function TestTakingScreen() {
               </div>
               <Button 
                 onClick={handleSubmit} 
-                disabled={submitting || !allAnswered}
-                title={!allAnswered ? `Vui lòng trả lời hết tất cả các câu hỏi (${questions.length - Object.keys(answers).length} câu còn lại)` : ''}
+                disabled={submitting} 
+                title={!allAnswered ? `Bạn còn ${questions.length - Object.keys(answers).length} câu chưa làm` : ''}
               >
                 {submitting ? "Đang nộp..." : "Nộp bài"}
               </Button>

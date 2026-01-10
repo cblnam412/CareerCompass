@@ -1,22 +1,20 @@
-/* 1. Make the main screen take exactly the viewport height */
 .container {
-  height: 100vh; /* Changed from min-height to height */
+  height: 100vh;
   background-color: #fafafa;
   padding: 20px;
-  box-sizing: border-box; /* Ensures padding doesn't break 100vh */
-  display: flex;         /* Prepare for column layout */
+  box-sizing: border-box; 
+  display: flex;         
   flex-direction: column;
-  overflow: hidden;      /* Prevent the outer window from scrolling */
+  overflow: hidden;      
 }
 
-/* 2. Make content a flex column that spans the full height */
 .content {
   max-width: 1200px;
-  width: 100%;           /* Ensure it takes width */
+  width: 100%;          
   margin: 0 auto;
-  display: flex;         /* Make this a flex container */
+  display: flex;       
   flex-direction: column;
-  height: 100%;          /* Fill the .container */
+  height: 100%;         
 }
 
 .title {
@@ -42,13 +40,13 @@
   margin-bottom: 24px;
   padding: 0;
   transition: color 0.2s ease;
+  outline: none !important;
 }
 
 .backButton:hover {
   color: #0056b3;
 }
 
-/* Subject selection grid layout */
 .subjectGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -93,6 +91,7 @@
   font-size: 20px;
   font-weight: 700;
   color: #262626;
+  text-transform: capitalize;
   margin: 0 0 8px 0;
 }
 
@@ -104,71 +103,124 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); 
+  gap: 24px;
+  padding-bottom: 40px;
 }
 
 .card {
-  background-color: #fff;
-  border: 1px solid #dbdbdb;
-  border-radius: 8px;
-  padding: 24px;
-  transition: all 0.2s ease;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0; 
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: auto;
 }
 
 .card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
+  border-color: #bfdbfe;
+}
+
+.cardDecoration {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cardInner {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  z-index: 1;
 }
 
 .cardHeader {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+  flex: 1;
 }
 
 .cardTitle {
-  font-size: 20px;
-  font-weight: 600;
-  color: #262626;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
   margin: 0 0 8px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2; 
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cardDescription {
   font-size: 14px;
-  color: #8e8e8e;
+  color: #6b7280;
   margin: 0;
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .cardFooter {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  margin-top: auto; 
 }
 
 .duration {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #8e8e8e;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  background-color: #f9fafb;
+  padding: 6px 12px;
+  border-radius: 20px;
 }
 
 .startButton {
-  padding: 10px 20px;
+  padding: 8px 20px;
   background-color: #007bff;
   color: #fff;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
-  text-decoration: none;
-  transition: background-color 0.2s ease;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .startButton:hover {
-  background-color: #0056b3;
+  background-color: #0069d9;
 }
 
-/* Add styles for tabs */
+.startButton:active {
+    transform: scale(0.98);
+}
+
 .tabs {
   display: flex;
   gap: 12px;
@@ -203,8 +255,6 @@
   border-bottom-color: #007bff;
 }
 
-/* Add styles for results view */
-/* 3. The scrollable area takes the REMAINING space */
 .resultsContainer {
   display: flex;
   flex-direction: column;
@@ -334,6 +384,249 @@
   color: white;
 }
 
+.loadMoreButton {
+  background: none;
+  border: 1px solid #d1d5db;
+  padding: 12px;
+  border-radius: 8px;
+  color: #6b7280;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+  margin-top: 10px;
+  outline: none !important;
+}
+
+.loadMoreButton:hover {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.loadMoreButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- MODAL STYLES --- */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(2px);
+}
+
+.modalContent {
+  background-color: white;
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh; /* Keep it within screen */
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  animation: modalSlideUp 0.3s ease-out;
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.closeModalButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #4b5563;
+  transition: background 0.2s;
+  z-index: 10;
+}
+
+.closeModalButton:hover {
+  background: #e5e7eb;
+}
+
+.closeModalButton svg {
+  color: #4b5563;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px; 
+}
+
+.modalHeader {
+  padding: 24px 70px 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.modalScoreBadge {
+  background-color: #007bff;
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.modalBody {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.feedbackSection {
+  background-color: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.feedbackSection p {
+  margin: 4px 0;
+  font-size: 14px;
+  text-align: left;
+  color: #0c4a6e;
+}
+
+.weakText {
+  color: #b91c1c !important;
+  font-weight: 500;
+}
+
+.filterTabs {
+  display: flex;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background-color: #f3f4f6;
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.filterTab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  outline: none !important;
+}
+
+.filterTab:hover {
+  color: #374151;
+}
+
+.filterTabActive {
+  background-color: white;
+  color: #007bff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.emptyFilterState {
+  text-align: center;
+  padding: 40px;
+  color: #8e8e8e;
+  font-size: 14px;
+  background-color: #fafafa;
+  border-radius: 8px;
+  border: 1px dashed #d4d4d4;
+}
+
+.detailsList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailItem {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  background-color: #ffffff;
+}
+
+.detailCorrect {
+  border-left: 4px solid #22c55e;
+}
+
+.detailWrong {
+  border-left: 4px solid #ef4444;
+}
+
+.detailHeader {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.questionIndex {
+  font-weight: 600;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.detailQuestion {
+  font-weight: 500;
+  color: #1f2937;
+  text-align: left;
+  margin: 0 0 12px 0;
+  font-size: 15px;
+}
+
+.answerRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  background-color: #f9fafb;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+.studentAns, .correctAns {
+  display: flex;
+  gap: 8px;
+}
+
+.textGreen { color: #16a34a; font-weight: 600; }
+.textRed { color: #dc2626; font-weight: 600; text-decoration: line-through; }
+
 /* Tablet responsive */
 @media (max-width: 1024px) {
   .grid {
@@ -418,5 +711,18 @@
 
   .resultsContainer {
     padding-bottom: 50px;
+  }
+
+  /* Adjust filter tabs for mobile */
+  .filterTabs {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .filterTab {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 13px;
   }
 }

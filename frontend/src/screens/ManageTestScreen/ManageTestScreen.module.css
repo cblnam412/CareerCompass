@@ -22,6 +22,30 @@
   margin: 0;
 }
 
+.cardTitleWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.cardTitleWrapper .cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.codeBadge {
+  font-size: 16px;
+  font-weight: 600;
+  color: #007bff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
 .searchBar {
   display: flex;
   gap: 12px;
@@ -189,6 +213,8 @@
 
 .testCardActions {
   display: flex;
+  align-self: center;
+  align-items: center;
   gap: 8px;
 }
 
@@ -365,6 +391,7 @@
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 14px;
+  text-transform: capitalize;
   background-color: #ffffff;
   cursor: pointer;
 }

@@ -114,7 +114,7 @@ export const getMockExamById = async (req, res) => {
 
 export const createMockExam = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.body.userId;
+        const userId = req.userId;
         
         if (!userId) {
             return res.status(401).json({
@@ -207,7 +207,7 @@ export const createMockExam = async (req, res) => {
 
 export const updateMockExam = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.body.userId;
+        const userId = req.userId;
         const { examId } = req.params;
 
         if (!userId) {
@@ -301,7 +301,7 @@ export const updateMockExam = async (req, res) => {
 
 export const deleteMockExam = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.body.userId;
+        const userId = req.userId;
         const { examId } = req.params;
 
         if (!userId) {
@@ -352,7 +352,7 @@ export const deleteMockExam = async (req, res) => {
 
 export const importQuestionsFromExcel = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.body.userId;
+        const userId = req.userId;
         const { examId } = req.params;
 
         if (!userId) {
@@ -475,7 +475,7 @@ export const importQuestionsFromExcel = async (req, res) => {
 export const getMockExamForStudent = async (req, res) => {
     try {
         const { examId } = req.params;
-        const userId = req.headers['x-user-id'] || req.query.userId;
+        const userId = req.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -525,7 +525,7 @@ export const getMockExamForStudent = async (req, res) => {
 export const submitMockExam = async (req, res) => {
     try {
         const { examId } = req.params;
-        const userId = req.headers['x-user-id'] || req.body.userId;
+        const userId = req.userId;
         const { answers } = req.body;
 
         if (!userId) {
@@ -604,6 +604,7 @@ export const submitMockExam = async (req, res) => {
         const examResult = new ExamResult({
             studentId: userId,
             mockExamId: examId,
+            subject: exam.subject._id, 
             scoreTotal: scoreTotal,
             scoreDetails: scoringDetails,
             weaknesses: weaknesses.length > 0 ? weaknesses : ['Không có'],
@@ -613,7 +614,7 @@ export const submitMockExam = async (req, res) => {
 
         await examResult.save();
 
-        const populatedResult = await examResult
+        const populatedResult = await ExamResult.findById(examResult._id)
             .populate('mockExamId', 'title duration')
             .populate('studentId', 'fullName email');
 
@@ -641,7 +642,7 @@ export const submitMockExam = async (req, res) => {
 export const getExamResult = async (req, res) => {
     try {
         const { resultId } = req.params;
-        const userId = req.headers['x-user-id'] || req.query.userId;
+        const userId = req.userId;
 
         if (!userId) {
             return res.status(401).json({
@@ -694,7 +695,7 @@ export const getExamResult = async (req, res) => {
 
 export const getStudentExamResults = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.query.userId;
+        const userId = req.userId;
         const { limit = 10, page = 1, sort = '-takenAt' } = req.query;
         const skip = (page - 1) * limit;
 
@@ -744,7 +745,7 @@ export const getStudentExamResults = async (req, res) => {
 
 export const getAllExamResults = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.body.userId;
+        const userId = req.userId;
         const { limit = 10, page = 1, sort = '-takenAt', studentId } = req.query;
         const skip = (page - 1) * limit;
 
@@ -807,7 +808,7 @@ export const getAllExamResults = async (req, res) => {
 
 export const getStudentExamStats = async (req, res) => {
     try {
-        const userId = req.headers['x-user-id'] || req.query.userId;
+        const userId = req.userId;
 
         if (!userId) {
             return res.status(401).json({
