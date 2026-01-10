@@ -413,7 +413,56 @@ export const getMajorRecommendation = async (req, res) => {
         
         const topKPredictions = model.predictTopK(featureArray, 3);
         
-        const majors = await Major.find({ _id: { $in: topKPredictions.map(p => p.majorId) } });
+        // Lấy reverseMajorIdMap từ ModelVersion document
+        // Mongoose Map có thể cần convert khác nhau
+        let reverseMajorIdMap = {};
+        console.log('[Prediction] modelVersion.reverseMajorIdMap type:', typeof modelVersion.reverseMajorIdMap);
+        console.log('[Prediction] modelVersion.reverseMajorIdMap is Map:', modelVersion.reverseMajorIdMap instanceof Map);
+        
+        if (modelVersion.reverseMajorIdMap) {
+            // Thử cách 1: nếu là Map object
+            if (modelVersion.reverseMajorIdMap instanceof Map) {
+                reverseMajorIdMap = Object.fromEntries(modelVersion.reverseMajorIdMap);
+            }
+            // Thử cách 2: nếu có toObject method
+            else if (typeof modelVersion.reverseMajorIdMap.toObject === 'function') {
+                reverseMajorIdMap = modelVersion.reverseMajorIdMap.toObject();
+            }
+            // Thử cách 3: plain object
+            else {
+                reverseMajorIdMap = modelVersion.reverseMajorIdMap;
+            }
+        }
+        
+        console.log('[Prediction] reverseMajorIdMap after convert:', Object.keys(reverseMajorIdMap).slice(0, 5));
+        console.log('[Prediction] topKPredictions:', topKPredictions);
+        
+        const majorIdsToFetch = topKPredictions
+            .map(p => {
+                const key = String(p.majorId);
+                const id = reverseMajorIdMap[key];
+                console.log(`[Prediction] Lookup key "${key}" → "${id}"`);
+                return id;
+            })
+            .filter(id => id && id !== 'undefined');
+        
+        console.log('[Prediction] majorIdsToFetch:', majorIdsToFetch);
+        
+        if (majorIdsToFetch.length === 0) {
+            return res.status(500).json({
+                success: false,
+                message: 'Không thể chuyển đổi kết quả dự đoán sang ObjectId',
+                error: 'reverseMajorIdMap lookup failed',
+                debug: { 
+                    reverseMajorIdMapKeys: Object.keys(reverseMajorIdMap),
+                    reverseMajorIdMapSample: Object.fromEntries(Object.entries(reverseMajorIdMap).slice(0, 3)),
+                    topKPredictions, 
+                    majorIdsToFetch 
+                }
+            });
+        }
+        
+        const majors = await Major.find({ _id: { $in: majorIdsToFetch } });
         const majorMap = {};
         majors.forEach(m => {
             majorMap[m._id.toString()] = m;
@@ -432,8 +481,14 @@ export const getMajorRecommendation = async (req, res) => {
                 description: hollandDescriptions[code]
             }));
         
-        const recommendations = topKPredictions.map(pred => {
-            const major = majorMap[pred.majorId];
+        const recommendations = topKPredictions.map((pred, index) => {
+            const majorId = reverseMajorIdMap[String(pred.majorId)];
+            const major = majorId ? majorMap[majorId] : null;
+            
+            if (!major) {
+                console.warn(`Major not found for ID: ${majorId}`);
+                return null;
+            }
             
             let reason = [];
             
@@ -454,7 +509,7 @@ export const getMajorRecommendation = async (req, res) => {
                 matchScore: pred.probability,
                 reason: reason.length > 0 ? reason[0] : 'Dựa trên phân tích dữ liệu học sinh'
             };
-        });
+        }).filter(r => r !== null);
         
         const majorRecommendation = await MajorRecommendation.findOneAndUpdate(
             { studentId },
@@ -1294,6 +1349,12 @@ export const trainRecommendationModel = async (req, res) => {
         
         console.log(`[Training] Model trained. Accuracy: ${accuracy.toFixed(2)}%`);
         
+        // Tạo reverse majorIdMap (numeric index → ObjectId)
+        const reverseMajorIdMap = {};
+        Object.entries(majorIdMap).forEach(([majorId, numericIndex]) => {
+            reverseMajorIdMap[numericIndex] = majorId;
+        });
+        
         // Lưu model vào file
         const modelsDir = path.join(__dirname, '../models_ml');
         if (!fs.existsSync(modelsDir)) {
@@ -1303,6 +1364,9 @@ export const trainRecommendationModel = async (req, res) => {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const modelPath = path.join(modelsDir, `model_${timestamp}.json`);
         const modelJSON = model.toJSON();
+        
+        // Thêm reverseMajorIdMap vào model JSON để dùng khi predict
+        modelJSON.reverseMajorIdMap = reverseMajorIdMap;
         
         fs.writeFileSync(modelPath, JSON.stringify(modelJSON, null, 2));
         console.log(`[Training] Model saved to: ${modelPath}`);
@@ -1315,6 +1379,7 @@ export const trainRecommendationModel = async (req, res) => {
             trainingDataCount: features.length,
             accuracy: accuracy,
             majorIdMap: majorIdMap,
+            reverseMajorIdMap: reverseMajorIdMap,
             featureNames: [
                 'MBTI Type',
                 'Holland - Realistic',
