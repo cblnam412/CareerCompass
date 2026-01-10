@@ -43,6 +43,20 @@ export const registerUser = async (req, res) => {
 
         const savedUser = await newUser.save();
 
+        const studentProfile = new StudentProfile({
+            userId: savedUser._id,
+            province: '',
+            gpa: null,
+            currentGradeLevel: null,
+            academicTranscript: {},
+            mbtiResult: {},
+            hollandResult: {},
+            softSkills: [],
+            targetUniversityIds: []
+        });
+
+        await studentProfile.save();
+
         const userResponse = savedUser.toObject();
         delete userResponse.password;
 

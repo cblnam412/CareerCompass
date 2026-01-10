@@ -10,12 +10,21 @@ const studentProfileSchema = new mongoose.Schema({
     province: {
         type: String,
     },
-    academicTranscript: {
-        type: mongoose.Schema.Types.Mixed,
-        default: {},
-    }, 
+    academicTranscript: [{
+        subjectId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Subject',
+        },
+        score: {
+            type: Number,
+            min: 0,
+            max: 10,
+        }
+    }], 
     gpa: {
         type: Number,
+        min: 0,
+        max: 10,
     },
     mbtiResult: {
         type: mongoose.Schema.Types.Mixed,

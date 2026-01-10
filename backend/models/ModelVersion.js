@@ -31,6 +31,16 @@ const modelVersionSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    majorIdMap: {
+        type: Map,
+        of: Number,
+        default: new Map()
+    },
+    reverseMajorIdMap: {
+        type: Map,
+        of: String,
+        default: new Map()
+    },
     trainingDate: {
         type: Date,
         default: Date.now,
