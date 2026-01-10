@@ -23,7 +23,8 @@ import {
   ManageCombinationScreen,
   ManageQuizScreen,
   ManageSoftSkillScreen,
-  ManageUserScreen
+  ManageUserScreen,
+  ManageSubjectScreen
 } from "./screens";
 
 function App() {
@@ -68,6 +69,7 @@ function App() {
           <Route path="quiz" element={<ManageQuizScreen />} />
           <Route path="soft-skills" element={<ManageSoftSkillScreen />} />
           <Route path="users" element={<ManageUserScreen />} />
+          <Route path="subjects" element={<ManageSubjectScreen />} />
           <Route path="report" />
         </Route>
       </Routes>
