@@ -1,4 +1,4 @@
-import { Home, Search, MessageCircle, User, Users, Book, BookOpen, Compass, LogOut, Clock, LayoutDashboard, FileText, Library, Flag, Handshake, UserCog } from "lucide-react"
+import { Home, Search, MessageCircle, User, Users, Book, BookOpen, Compass, LogOut, Clock, LayoutDashboard, FileText, Library, Flag, Handshake, UserCog, School } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation, Outlet } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
@@ -43,6 +43,7 @@ export function Sidebar({ isCollapsedForChat }) {
     { icon: Book, label: "Quản lý môn học", href: "/admin/subjects" },
     { icon: Library, label: "Quản lý tổ hợp môn", href: "/admin/combinations" },
     { icon: Handshake, label: "Quản lý kĩ năng mềm", href: "/admin/soft-skills" },
+    { icon: School, label: "Quản lý đại học", href: "/admin/universities" },
     { icon: UserCog, label: "Quản lý người dùng", href: "/admin/users" },
     { icon: Flag, label: "Quản lý tố cáo", href: "/admin/report" },
   ]

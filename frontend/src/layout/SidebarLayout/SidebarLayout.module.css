@@ -145,10 +145,11 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  outline: none !important;
 }
 
 .logoutButton:hover {
-  background-color: var(--nav-hover-bg); /* Uses the dynamic variable */
+  background-color: var(--nav-hover-bg);
 }
 
 .sidebar.collapsed .logoutButton {

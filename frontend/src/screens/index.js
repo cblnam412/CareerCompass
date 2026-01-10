@@ -18,6 +18,7 @@ import ManageQuizScreen from './ManageQuizScreen/ManageQuizScreen'
 import ManageSoftSkillScreen from './ManageSoftSkillScreen/ManageSoftSkillScreen'
 import ManageUserScreen from './ManageUserScreen/ManageUserScreen'
 import ManageSubjectScreen from './ManageSubjectScreen/ManageSubjectScreen'
+import ManageUniversityScreen from './ManageUniversityScreen/ManageUniversityScreen'
 
 export {
     MessageScreen,
@@ -39,5 +40,6 @@ export {
     ManageQuizScreen,
     ManageSoftSkillScreen,
     ManageUserScreen,
-    ManageSubjectScreen
+    ManageSubjectScreen,
+    ManageUniversityScreen
 }

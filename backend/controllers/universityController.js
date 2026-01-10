@@ -13,11 +13,20 @@ export const createUniversity = async (req, res) => {
             });
         }
 
-        const existingUni = await University.findOne({ code });
+        const existingUni = await University.findOne({
+            $or: [
+                { name: { $regex: `^${name.trim()}$`, $options: 'i' } },
+                { code: { $regex: `^${code.trim()}$`, $options: 'i' } }
+            ]
+        });
+
         if (existingUni) {
-            return res.status(409).json({
+            const isNameDuplicate = existingUni.name.toLowerCase() === name.trim().toLowerCase();
+            return res.status(400).json({
                 success: false,
-                message: 'University with this code already exists'
+                message: isNameDuplicate 
+                    ? `Tên trường "${name}" đã tồn tại` 
+                    : `Mã trường "${code}" đã tồn tại`
             });
         }
 
@@ -157,38 +166,76 @@ export const getUniversityById = async (req, res) => {
 
 export const updateUniversity = async (req, res) => {
     try {
-        const { name, code, description, address, website, region, phone } = req.body;
+        const { id } = req.params;
+        const updateData = req.body;
 
-        const university = await University.findByIdAndUpdate(
-            req.params.id,
-            {
-                name,
-                code,
-                description,
-                address,
-                website,
-                region,
-                phone: Array.isArray(phone) ? phone : (phone ? [phone] : undefined)
-            },
-            { new: true, runValidators: true }
-        );
+        const university = await University.findById(id);
 
         if (!university) {
             return res.status(404).json({
                 success: false,
-                message: 'University not found'
+                message: 'Trường đại học không tồn tại'
             });
         }
 
+        // Check for duplicates only if name or code is being updated
+        if (updateData.name || updateData.code) {
+            const duplicateCheck = [];
+
+            if (updateData.name) {
+                duplicateCheck.push({
+                    name: { $regex: `^${updateData.name.trim()}$`, $options: 'i' }
+                });
+            }
+
+            if (updateData.code) {
+                duplicateCheck.push({
+                    code: { $regex: `^${updateData.code.trim()}$`, $options: 'i' }
+                });
+            }
+
+            // Check if ANY document matches these criteria, excluding the current document 
+            const existing = await University.findOne({
+                $and: [
+                    { _id: { $ne: id } }, 
+                    { $or: duplicateCheck }
+                ]
+            });
+
+            if (existing) {
+                const isNameDuplicate = updateData.name && existing.name.toLowerCase() === updateData.name.trim().toLowerCase();
+                return res.status(400).json({
+                    success: false,
+                    message: isNameDuplicate 
+                        ? `Tên trường "${updateData.name}" đã được sử dụng bởi trường khác` 
+                        : `Mã trường "${updateData.code}" đã được sử dụng bởi trường khác`
+                });
+            }
+        }
+
+        // Update fields if they exist in request
+        if (updateData.name) university.name = updateData.name.trim();
+        if (updateData.code) university.code = updateData.code.trim();
+        if (updateData.description !== undefined) university.description = updateData.description;
+        if (updateData.address !== undefined) university.address = updateData.address;
+        if (updateData.website !== undefined) university.website = updateData.website;
+        if (updateData.region !== undefined) university.region = updateData.region;
+        if (updateData.phone !== undefined) university.phone = updateData.phone;
+
+        const updatedUniversity = await university.save();
+
         res.status(200).json({
             success: true,
-            message: 'University updated successfully',
-            data: university
+            message: 'Cập nhật thông tin trường thành công',
+            data: updatedUniversity
         });
+
     } catch (error) {
+        console.error('Update university error:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Lỗi server khi cập nhật trường đại học',
+            error: error.message
         });
     }
 };
