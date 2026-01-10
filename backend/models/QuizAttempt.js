@@ -15,7 +15,7 @@ const quizAttemptSchema = new mongoose.Schema({
         default: Date.now,
     },
     rawAnswers: {
-        type: mongoose.Schema.Types.Mixed,
+        type: [Number],
         required: true,
     },
     resultScore: {
@@ -23,7 +23,7 @@ const quizAttemptSchema = new mongoose.Schema({
         required: true,
     },
     interpretation: {
-        type: String,
+        type: mongoose.Schema.Types.Mixed,
     },
 }, {
     timestamps: true

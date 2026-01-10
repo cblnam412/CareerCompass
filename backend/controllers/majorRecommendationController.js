@@ -413,22 +413,17 @@ export const getMajorRecommendation = async (req, res) => {
         
         const topKPredictions = model.predictTopK(featureArray, 3);
         
-        // Lấy reverseMajorIdMap từ ModelVersion document
-        // Mongoose Map có thể cần convert khác nhau
         let reverseMajorIdMap = {};
         console.log('[Prediction] modelVersion.reverseMajorIdMap type:', typeof modelVersion.reverseMajorIdMap);
         console.log('[Prediction] modelVersion.reverseMajorIdMap is Map:', modelVersion.reverseMajorIdMap instanceof Map);
         
         if (modelVersion.reverseMajorIdMap) {
-            // Thử cách 1: nếu là Map object
             if (modelVersion.reverseMajorIdMap instanceof Map) {
                 reverseMajorIdMap = Object.fromEntries(modelVersion.reverseMajorIdMap);
             }
-            // Thử cách 2: nếu có toObject method
             else if (typeof modelVersion.reverseMajorIdMap.toObject === 'function') {
                 reverseMajorIdMap = modelVersion.reverseMajorIdMap.toObject();
             }
-            // Thử cách 3: plain object
             else {
                 reverseMajorIdMap = modelVersion.reverseMajorIdMap;
             }
@@ -468,8 +463,8 @@ export const getMajorRecommendation = async (req, res) => {
             majorMap[m._id.toString()] = m;
         });
         
-        const mbtiType = studentProfile.mbtiResult?.type || 'INTJ';
-        const mbtiDesc = mbtiDescriptions[mbtiType] || mbtiDescriptions['INTJ'];
+        const mbtiType = studentProfile.mbtiResult?.type || null;
+        const mbtiDesc = mbtiType ? mbtiDescriptions[mbtiType] : null;
         
         const hollandScores = studentProfile.hollandResult?.scores || {};
         const topHollandCodes = Object.entries(hollandScores)
@@ -492,7 +487,7 @@ export const getMajorRecommendation = async (req, res) => {
             
             let reason = [];
             
-            if (mbtiDesc.careers.some(c => major.name.includes(c))) {
+            if (mbtiDesc && mbtiDesc.careers.some(c => major.name.includes(c))) {
                 reason.push(`Phù hợp với loại hình công việc cho ${mbtiDesc.vietnameseName}`);
             }
             
@@ -501,6 +496,10 @@ export const getMajorRecommendation = async (req, res) => {
                     reason.push(`Phù hợp với hướng ${description.name}`);
                 }
             });
+            
+            if (studentProfile.gpa) {
+                reason.push(`Dựa trên GPA ${studentProfile.gpa.toFixed(1)}`);
+            }
             
             return {
                 majorId: major._id,
@@ -531,13 +530,13 @@ export const getMajorRecommendation = async (req, res) => {
             success: true,
             data: {
                 studentId,
-                personalityProfile: {
+                personalityProfile: mbtiType ? {
                     mbtiType,
-                    mbtiName: mbtiDesc.vietnameseName,
-                    mbtiDescription: mbtiDesc.description,
-                    mbtiStrengths: mbtiDesc.strengths,
-                    mbtiCareers: mbtiDesc.careers
-                },
+                    mbtiName: mbtiDesc?.vietnameseName,
+                    mbtiDescription: mbtiDesc?.description,
+                    mbtiStrengths: mbtiDesc?.strengths,
+                    mbtiCareers: mbtiDesc?.careers
+                } : null,
                 hollandProfile: topHollandCodes,
                 recommendations,
                 modelVersion: modelVersion.version,
@@ -1349,7 +1348,6 @@ export const trainRecommendationModel = async (req, res) => {
         
         console.log(`[Training] Model trained. Accuracy: ${accuracy.toFixed(2)}%`);
         
-        // Tạo reverse majorIdMap (numeric index → ObjectId)
         const reverseMajorIdMap = {};
         Object.entries(majorIdMap).forEach(([majorId, numericIndex]) => {
             reverseMajorIdMap[numericIndex] = majorId;
@@ -1365,7 +1363,6 @@ export const trainRecommendationModel = async (req, res) => {
         const modelPath = path.join(modelsDir, `model_${timestamp}.json`);
         const modelJSON = model.toJSON();
         
-        // Thêm reverseMajorIdMap vào model JSON để dùng khi predict
         modelJSON.reverseMajorIdMap = reverseMajorIdMap;
         
         fs.writeFileSync(modelPath, JSON.stringify(modelJSON, null, 2));

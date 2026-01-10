@@ -9,9 +9,37 @@ const quizQuestionSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    options: [{
-        type: mongoose.Schema.Types.Mixed,
+    order: {
+        type: Number,
         required: true,
+    },
+    dimension: {
+        type: String,
+        enum: ['E/I', 'S/N', 'T/F', 'J/P', null],
+        default: null,
+    },
+    attribute: {
+        type: String,
+        enum: ['R', 'I', 'A', 'S', 'E', 'C', null],
+        default: null,
+    },
+    options: [{
+        text: {
+            type: String,
+            required: true,
+        },
+        // MBTI: preference (E, I, S, N, T, F, J, P)
+        preference: {
+            type: String,
+            enum: ['E', 'I', 'S', 'N', 'T', 'F', 'J', 'P', null],
+            default: null,
+        },
+        score: {
+            type: Number,
+            min: 1,
+            max: 5,
+            default: null,
+        },
     }],
 }, {
     timestamps: true

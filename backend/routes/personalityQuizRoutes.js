@@ -1,5 +1,6 @@
 import express from 'express';
 import { verifyToken, checkAdminRole } from '../middlewares/authMiddleware.js';
+import { uploadExcelFile } from '../middlewares/uploadMiddleware.js';
 import {
     getAllPersonalityQuizzes,
     getPersonalityQuizById,
@@ -13,7 +14,8 @@ import {
     getAttemptResult,
     getStudentQuizAttempts,
     getQuizStatistics,
-    getPersonalityQuizByType
+    getPersonalityQuizByType,
+    importQuestionsFromExcel
 } from '../controllers/personalityQuizController.js';
 
 const router = express.Router();
@@ -35,5 +37,6 @@ router.post('/admin/personality-quizzes/:quizId/questions', verifyToken, checkAd
 router.patch('/admin/personality-quizzes/:quizId/questions/:questionId', verifyToken, checkAdminRole, updateQuizQuestion);
 router.delete('/admin/personality-quizzes/:quizId/questions/:questionId', verifyToken, checkAdminRole, deleteQuizQuestion);
 router.get('/admin/personality-quizzes/:quizId/statistics', verifyToken, checkAdminRole, getQuizStatistics);
+router.post('/admin/personality-quizzes/:quizId/import/excel', verifyToken, checkAdminRole, uploadExcelFile, importQuestionsFromExcel);
 
 export default router;
