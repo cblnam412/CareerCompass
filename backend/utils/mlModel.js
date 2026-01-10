@@ -320,10 +320,10 @@ export class MajorRecommendationModel {
     train(X, y, featureNames = []) {
         try {
             this.model = new RandomForestClassifier(
-                nEstimators = 20,
-                maxDepth = 15,
-                minSamplesSplit = 2,
-                minSamplesLeaf = 1
+                20,  // nEstimators
+                15,  // maxDepth
+                2,   // minSamplesSplit
+                1    // minSamplesLeaf
             );
             
             this.model.fit(X, y);

@@ -4,6 +4,7 @@ import ModelVersion from '../models/ModelVersion.js';
 import StudentProfile from '../models/StudentProfile.js';
 import Major from '../models/Major.js';
 import User from '../models/User.js';
+import MajorMapping from '../models/MajorMapping.js';
 import { 
     extractFeatures, 
     featuresToArray, 
@@ -18,6 +19,183 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const groqApiKey = process.env.GROQ_API_KEY;
+
+const rateLimiter = {
+    requestTimestamps: [],
+    maxRequests: 20,
+    timeWindow: 60000, 
+    minInterval: 3000, 
+    
+    async waitForSlot() {
+        const now = Date.now();
+        
+        this.requestTimestamps = this.requestTimestamps.filter(
+            timestamp => now - timestamp < this.timeWindow
+        );
+        
+        if (this.requestTimestamps.length >= this.maxRequests) {
+            const oldestRequest = this.requestTimestamps[0];
+            const waitTime = this.timeWindow - (now - oldestRequest);
+            
+            if (waitTime > 0) {
+                console.log(`[RateLimit] Reached limit. Waiting ${Math.ceil(waitTime / 1000)}s...`);
+                await new Promise(resolve => setTimeout(resolve, waitTime));
+                return this.waitForSlot(); 
+            }
+        }
+        
+        this.requestTimestamps.push(now);
+    }
+};
+
+const groqClient = {
+    async callGroq(inputMajorName, majorNames) {
+        try {
+            await rateLimiter.waitForSlot();
+            
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${groqApiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'openai/gpt-oss-120b',
+                    messages: [
+                        {
+                            role: 'user',
+                            content: `Cho danh sách các ngành đại học: ${majorNames}
+                    
+Tên ngành được nhập: "${inputMajorName}"
+
+Tìm ngành phù hợp nhất từ danh sách. Trả về JSON:
+{
+  "matchedMajor": "tên ngành từ danh sách",
+  "confidence": 0.0 đến 1.0,
+  "reason": "lý do match"
+}
+
+Chỉ trả về JSON, không có text khác.`
+                        }
+                    ],
+                    temperature: 0.3,
+                    max_tokens: 200
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Groq API error:', error);
+                return null;
+            }
+
+            const data = await response.json();
+            const content = data.choices[0]?.message?.content;
+            
+            if (!content) {
+                console.warn('No content from Groq response');
+                return null;
+            }
+
+            let parsed = null;
+            try {
+                parsed = JSON.parse(content);
+                return parsed;
+            } catch (e) {
+                console.log('[Groq] Direct parse failed, extracting JSON object...');
+            }
+
+            const startIndex = content.indexOf('{');
+            const endIndex = content.lastIndexOf('}');
+            
+            if (startIndex === -1 || endIndex === -1 || startIndex > endIndex) {
+                console.warn('No valid JSON object found in response:', content.substring(0, 200));
+                return null;
+            }
+
+            const jsonString = content.substring(startIndex, endIndex + 1);
+            
+            try {
+                parsed = JSON.parse(jsonString);
+                return parsed;
+            } catch (parseError) {
+                console.warn('Failed to parse extracted JSON:', jsonString.substring(0, 200));
+                return null;
+            }
+        } catch (error) {
+            console.error('Error calling Groq API:', error);
+            return null;
+        }
+    }
+};
+
+const findOrCreateMajorMapping = async (inputMajorName, availableMajors) => {
+    try {
+        const cached = await MajorMapping.findOne({
+            inputName: inputMajorName.toLowerCase()
+        });
+        
+        if (cached && cached.mappedMajorId) {
+            console.log(`[MajorMapping] Cache hit for: "${inputMajorName}"`);
+            return {
+                majorId: cached.mappedMajorId,
+                confidence: cached.confidence,
+                cached: true
+            };
+        }
+        
+        const majorNames = availableMajors.map(m => m.name).join(', ');
+        
+        console.log(`[MajorMapping] Calling Groq for: "${inputMajorName}"`);
+        const aiResponse = await groqClient.callGroq(inputMajorName, majorNames);
+        
+        if (!aiResponse || !aiResponse.matchedMajor) {
+            console.warn(`[MajorMapping] AI match failed for: "${inputMajorName}"`);
+            return { majorId: null, confidence: 0, cached: false };
+        }
+        
+        const matchedMajor = availableMajors.find(m => 
+            m.name.toLowerCase() === aiResponse.matchedMajor.toLowerCase()
+        );
+        
+        if (!matchedMajor) {
+            console.warn(`[MajorMapping] Matched major not found in DB: "${aiResponse.matchedMajor}"`);
+            return { majorId: null, confidence: 0, cached: false };
+        }
+        
+        try {
+            await MajorMapping.findOneAndUpdate(
+                { inputName: inputMajorName.toLowerCase() },
+                {
+                    inputName: inputMajorName.toLowerCase(),
+                    displayName: inputMajorName,
+                    mappedMajorId: matchedMajor._id,
+                    mappedMajorName: matchedMajor.name,
+                    confidence: aiResponse.confidence || 0.8,
+                    reason: aiResponse.reason
+                },
+                { upsert: true, new: true }
+            );
+            
+            console.log(`[MajorMapping] Cached: "${inputMajorName}" -> "${matchedMajor.name}"`);
+        } catch (cacheError) {
+            console.error('Error caching major mapping:', cacheError);
+        }
+        
+        return {
+            majorId: matchedMajor._id,
+            confidence: aiResponse.confidence || 0.8,
+            cached: false
+        };
+        
+    } catch (error) {
+        console.error('Error in findOrCreateMajorMapping:', error);
+        return { majorId: null, confidence: 0, cached: false };
+    }
+};
+
 const MODELS_DIR = path.join(__dirname, '../models_ml');
 
 let loadedModel = null;
@@ -658,3 +836,528 @@ export const getTrainingDataStats = async (req, res) => {
         });
     }
 };
+
+export const exportTrainingDataTemplate = async (req, res) => {
+    try {
+        const ExcelJS = (await import('exceljs')).default;
+        const { default: Subject } = await import('../models/Subject.js');
+        const { default: SoftSkill } = await import('../models/SoftSkill.js');
+        const { default: Major } = await import('../models/Major.js');
+        
+        const subjects = await Subject.find().select('name');
+        const softSkills = await SoftSkill.find().select('softSkillName');
+        const majors = await Major.find().select('name').limit(5); // Get sample majors
+        
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Training Data Template');
+        
+        const headers = [
+            'MBTI Type',
+            'Holland - Thực hành (0-100)',
+            'Holland - Nghiên cứu (0-100)',
+            'Holland - Sáng tạo (0-100)',
+            'Holland - Xã hội (0-100)',
+            'Holland - Kinh doanh (0-100)',
+            'Holland - Hành chính (0-100)',
+            'GPA (0-10)'
+        ];
+        
+        const subjectHeaders = [];
+        subjects.forEach(subject => {
+            subjectHeaders.push(`Điểm ${subject.name}`);
+        });
+        headers.push(...subjectHeaders);
+        
+        const softSkillHeaders = [];
+        softSkills.forEach(skill => {
+            softSkillHeaders.push(`${skill.softSkillName} (0/1)`);
+        });
+        headers.push(...softSkillHeaders);
+        
+        headers.push('Ngành đang học (kết quả thực tế)', 'Ngành được khuyến nghị', 'Điểm khớp (%)', 'Lý do khuyến nghị');
+        
+        const headerRow = worksheet.addRow(headers);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        headerRow.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
+        
+        worksheet.columns.forEach(col => {
+            col.width = 18;
+        });
+        
+        worksheet.addRow([]);
+        const instructionRow = worksheet.addRow([
+            'HƯỚNG DẪN: Hàng này là ví dụ. Xóa nó trước khi upload. Các ô trống = không có dữ liệu. Hàng 1 không được thay đổi.'
+        ]);
+        worksheet.mergeCells('A3:L3');
+        const instructionCell = worksheet.getCell('A3');
+        instructionCell.font = { italic: true, color: { argb: 'FFFF0000' } };
+        instructionCell.alignment = { wrapText: true, vertical: 'top' };
+        
+        const exampleRecords = await TrainingData.find().limit(3).lean();
+        
+        if (exampleRecords.length > 0) {
+            worksheet.addRow([]); 
+            
+            exampleRecords.forEach((record) => {
+                const exampleRow = [
+                    record.mbtiType || '',
+                    record.hollandCode?.realistic || '',
+                    record.hollandCode?.investigative || '',
+                    record.hollandCode?.artistic || '',
+                    record.hollandCode?.social || '',
+                    record.hollandCode?.enterprising || '',
+                    record.hollandCode?.conventional || '',
+                    record.gpa || ''
+                ];
+                
+                subjectHeaders.forEach((header) => {
+                    const subjectKey = header.replace('Điểm ', '').replace(/\s+/g, '').toLowerCase();
+                    exampleRow.push(record.subjectScores?.[subjectKey] || '');
+                });
+                
+                softSkillHeaders.forEach((header) => {
+                    const skillKey = header.replace(' (0/1)', '').replace(/\s+/g, '').toLowerCase();
+                    const value = record.softSkills?.[skillKey];
+                    exampleRow.push(value === 1 ? 1 : value === 0 ? 0 : '');
+                });
+                
+                exampleRow.push('Kĩ thuật phần mềm');
+                
+                const recommendedMajor = record.recommendedMajors?.[0];
+                exampleRow.push(
+                    recommendedMajor?.majorId?.toString() || '',
+                    recommendedMajor?.matchScore || '',
+                    recommendedMajor?.reason || ''
+                );
+                
+                const dataRow = worksheet.addRow(exampleRow);
+                dataRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+            });
+        }
+        
+        const buffer = await workbook.xlsx.writeBuffer();
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename="TrainingDataTemplate.xlsx"');
+        res.send(buffer);
+        
+    } catch (error) {
+        console.error('Error exporting training data template:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi export template',
+            error: error.message
+        });
+    }
+};
+
+export const importTrainingDataFromExcel = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng upload file Excel'
+            });
+        }
+        
+        const ExcelJS = (await import('exceljs')).default;
+        const { default: Subject } = await import('../models/Subject.js');
+        const { default: SoftSkill } = await import('../models/SoftSkill.js');
+        const { default: Major } = await import('../models/Major.js');
+        
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(req.file.path);
+        
+        const worksheet = workbook.worksheets[0];
+        
+        if (!worksheet) {
+            return res.status(400).json({
+                success: false,
+                message: 'File Excel không có dữ liệu'
+            });
+        }
+        
+        const headers = [];
+        const headerRow = worksheet.getRow(1);
+        
+        if (!headerRow) {
+            return res.status(400).json({
+                success: false,
+                message: 'File Excel không có header row'
+            });
+        }
+        
+        headerRow.eachCell((cell) => {
+            if (cell.value) {
+                headers.push(cell.value.toString().trim());
+            }
+        });
+        
+        if (headers.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'File Excel không có headers'
+            });
+        }
+        
+        console.log(`[Import] Detected ${headers.length} headers: ${headers.slice(0, 5).join(', ')}...`);
+        
+        const subjects = await Subject.find();
+        const subjectMap = {};
+        subjects.forEach(s => {
+            subjectMap[s.name.toLowerCase()] = s._id;
+        });
+        
+        const softSkills = await SoftSkill.find();
+        const softSkillMap = {};
+        softSkills.forEach(s => {
+            softSkillMap[s.softSkillName.toLowerCase()] = s.softSkillName;
+        });
+        
+        const majors = await Major.find();
+        const majorMap = {};
+        majors.forEach(m => {
+            majorMap[m.name.toLowerCase()] = m._id;
+        });
+        
+        const results = {
+            success: 0,
+            failed: 0,
+            errors: [],
+            ids: []
+        };
+        
+        for (let rowNum = 2; rowNum <= worksheet.rowCount; rowNum++) {
+            try {
+                const row = worksheet.getRow(rowNum);
+                const rowData = {};
+                
+                row.eachCell((cell, colIndex) => {
+                    if (colIndex <= headers.length && cell.value !== null && cell.value !== '') {
+                        const header = headers[colIndex - 1];
+                        rowData[header] = cell.value;
+                    }
+                });
+                
+                if (Object.keys(rowData).length === 0) continue; // Skip empty rows
+                
+                const trainingData = {
+                    dataSourceType: 'imported_dataset',
+                    dataSourceName: 'Excel Import',
+                };
+                
+                if (rowData['MBTI Type']) {
+                    trainingData.mbtiType = rowData['MBTI Type'].toString().toUpperCase();
+                }
+                
+                trainingData.hollandCode = {};
+                const hollandMapping = {
+                    'Holland - Thực hành (0-100)': 'realistic',
+                    'Holland - Nghiên cứu (0-100)': 'investigative',
+                    'Holland - Sáng tạo (0-100)': 'artistic',
+                    'Holland - Xã hội (0-100)': 'social',
+                    'Holland - Kinh doanh (0-100)': 'enterprising',
+                    'Holland - Hành chính (0-100)': 'conventional'
+                };
+                
+                Object.entries(hollandMapping).forEach(([header, field]) => {
+                    if (rowData[header] !== undefined && rowData[header] !== null) {
+                        trainingData.hollandCode[field] = parseInt(rowData[header]) || 0;
+                    }
+                });
+                
+                if (rowData['GPA (0-10)'] !== undefined && rowData['GPA (0-10)'] !== null) {
+                    trainingData.gpa = parseFloat(rowData['GPA (0-10)']);
+                }
+                
+                trainingData.subjectScores = {};
+                headers.forEach(header => {
+                    if (header.startsWith('Điểm ')) {
+                        const subjectName = header.replace('Điểm ', '').toLowerCase();
+                        if (rowData[header] !== undefined && rowData[header] !== null) {
+                            const subjectKey = subjectName.replace(/\s+/g, '');
+                            trainingData.subjectScores[subjectKey] = parseFloat(rowData[header]) || 0;
+                        }
+                    }
+                });
+                
+                trainingData.softSkills = {};
+                headers.forEach(header => {
+                    if (header.includes('Kỹ năng')) {
+                        const skillName = header.replace(' (0/1)', '').toLowerCase();
+                        if (rowData[header] !== undefined && rowData[header] !== null) {
+                            const skillKey = skillName.replace(/\s+/g, '');
+                            const value = rowData[header].toString().trim().toLowerCase();
+
+                            //console.log(`[Row ${rowNum}] Soft Skill "${skillName}": "${value}"`);
+
+                            if (value === '1' || value === 'yes' || value === 'có' || value === 'true') {
+                                trainingData.softSkills[skillKey] = 1;
+                            }
+                        }
+                    }
+                });
+                
+                if (rowData['Ngành đang học (kết quả thực tế)']) {
+                    const inputMajorName = rowData['Ngành đang học (kết quả thực tế)'].toString().trim();
+                    
+                    let actualMajorId = majorMap[inputMajorName.toLowerCase()];
+                    let matchConfidence = 1.0;
+                    
+                    if (!actualMajorId) {
+                        console.log(`[Row ${rowNum}] Exact match failed, using Groq AI for: "${inputMajorName}"`);
+                        const aiMatch = await findOrCreateMajorMapping(inputMajorName, majors);
+                        
+                        if (aiMatch.majorId) {
+                            actualMajorId = aiMatch.majorId;
+                            matchConfidence = aiMatch.confidence;
+                            console.log(`[Row ${rowNum}] AI matched to: ${aiMatch.cached ? '(cached)' : '(new)'}`);
+                        }
+                    }
+                    
+                    if (actualMajorId) {
+                        trainingData.actualMajorId = actualMajorId;
+                        trainingData.majorMappingConfidence = matchConfidence;
+                    } else {
+                        console.warn(`[Row ${rowNum}] Could not match major: "${inputMajorName}"`);
+                    }
+                }
+                
+                trainingData.recommendedMajors = [];
+                if (rowData['Ngành được khuyến nghị'] && rowData['Điểm khớp (%)']) {
+                    const majorName = rowData['Ngành được khuyến nghị'].toString().toLowerCase();
+                    const majorId = majorMap[majorName];
+                    
+                    if (majorId) {
+                        trainingData.recommendedMajors.push({
+                            majorId,
+                            matchScore: parseFloat(rowData['Điểm khớp (%)']) || 50,
+                            reason: rowData['Lý do khuyến nghị'] || 'Imported from Excel',
+                            isPrimary: true
+                        });
+                    }
+                }
+                
+                const newTrainingData = new TrainingData(trainingData);
+                
+                const validation = validateTrainingData(newTrainingData);
+                if (!validation.isValid) {
+                    newTrainingData.isValid = false;
+                    newTrainingData.validationErrors = validation.errors;
+                }
+                
+                newTrainingData.completenessScore = calculateCompletenessScore(newTrainingData);
+                
+                await newTrainingData.save();
+                results.success++;
+                results.ids.push(newTrainingData._id);
+                
+            } catch (error) {
+                results.failed++;
+                results.errors.push({
+                    row: rowNum,
+                    error: error.message
+                });
+            }
+        }
+        
+        fs.unlink(req.file.path, (err) => {
+            if (err) console.error('Error deleting temp file:', err);
+        });
+        
+        res.status(201).json({
+            success: true,
+            message: `Imported ${results.success}/${results.success + results.failed} records`,
+            data: {
+                successCount: results.success,
+                failedCount: results.failed,
+                trainingDataIds: results.ids,
+                errors: results.errors.length > 0 ? results.errors : undefined
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error importing training data from Excel:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi import training data từ Excel',
+            error: error.message
+        });
+    }
+};
+
+export const trainRecommendationModel = async (req, res) => {
+    try {
+        console.log('[Training] Starting Random Forest model training...');
+        
+        // Lấy tất cả training data có actualMajorId (ground truth)
+        const trainingDataRecords = await TrainingData.find({
+            actualMajorId: { $exists: true, $ne: null }
+        }).populate('actualMajorId', 'name _id').lean();
+        
+        if (trainingDataRecords.length < 50) {
+            return res.status(400).json({
+                success: false,
+                message: `Cần tối thiểu 50 records để train. Hiện có ${trainingDataRecords.length}`,
+                data: { recordCount: trainingDataRecords.length }
+            });
+        }
+        
+        console.log(`[Training] Found ${trainingDataRecords.length} records with ground truth`);
+        
+        // Extract features từ training data
+        const { default: Subject } = await import('../models/Subject.js');
+        const { default: SoftSkill } = await import('../models/SoftSkill.js');
+        
+        const subjects = await Subject.find().select('name').lean();
+        const softSkills = await SoftSkill.find().select('softSkillName').lean();
+        
+        // Chuẩn bị feature array và labels
+        const features = [];
+        const labels = [];
+        const majorIdMap = {};
+        let majorIdCounter = 0;
+        
+        for (const record of trainingDataRecords) {
+            try {
+                // Map major ID to numeric label
+                const majorId = record.actualMajorId._id.toString();
+                if (!majorIdMap[majorId]) {
+                    majorIdMap[majorId] = majorIdCounter++;
+                }
+                
+                // Extract features (MBTI, Holland Code, GPA, subject scores, soft skills)
+                const featureVector = [];
+                
+                // 1. MBTI Type (convert to numeric)
+                const mbtiTypes = ['ISTJ', 'ISFJ', 'INFJ', 'INTJ', 'ISTP', 'ISFP', 'INFP', 'INTP',
+                                   'ESTP', 'ESFP', 'ENFP', 'ENTP', 'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'];
+                const mbtiIndex = mbtiTypes.indexOf(record.mbtiType) || 0;
+                featureVector.push(mbtiIndex);
+                
+                // 2. Holland Code (6 dimensions)
+                featureVector.push(record.hollandCode?.realistic || 0);
+                featureVector.push(record.hollandCode?.investigative || 0);
+                featureVector.push(record.hollandCode?.artistic || 0);
+                featureVector.push(record.hollandCode?.social || 0);
+                featureVector.push(record.hollandCode?.enterprising || 0);
+                featureVector.push(record.hollandCode?.conventional || 0);
+                
+                // 3. GPA
+                featureVector.push(record.gpa || 0);
+                
+                // 4. Subject scores
+                for (const subject of subjects) {
+                    const subjectKey = subject.name.replace(/\s+/g, '').toLowerCase();
+                    featureVector.push(record.subjectScores?.[subjectKey] || 0);
+                }
+                
+                // 5. Soft skills (binary 0/1)
+                for (const skill of softSkills) {
+                    const skillKey = skill.softSkillName.replace(/\s+/g, '').toLowerCase();
+                    featureVector.push(record.softSkills?.[skillKey] ? 1 : 0);
+                }
+                
+                features.push(featureVector);
+                labels.push(majorIdMap[majorId]);
+                
+            } catch (recordError) {
+                console.warn(`[Training] Skipping record due to error:`, recordError.message);
+                continue;
+            }
+        }
+        
+        console.log(`[Training] Extracted ${features.length} valid records with ${features[0]?.length || 0} features`);
+        
+        if (features.length < 50) {
+            return res.status(400).json({
+                success: false,
+                message: `Chỉ ${features.length} records hợp lệ. Cần tối thiểu 50.`,
+                data: { validRecords: features.length }
+            });
+        }
+        
+        // Train Random Forest model
+        const model = new MajorRecommendationModel();
+        model.train(features, labels);
+        
+        // Tính metrics
+        const predictions = features.map(f => model.predict(f));
+        let correctCount = 0;
+        for (let i = 0; i < predictions.length; i++) {
+            if (predictions[i] === labels[i]) {
+                correctCount++;
+            }
+        }
+        const accuracy = (correctCount / labels.length) * 100;
+        
+        console.log(`[Training] Model trained. Accuracy: ${accuracy.toFixed(2)}%`);
+        
+        // Lưu model vào file
+        const modelsDir = path.join(__dirname, '../models_ml');
+        if (!fs.existsSync(modelsDir)) {
+            fs.mkdirSync(modelsDir, { recursive: true });
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const modelPath = path.join(modelsDir, `model_${timestamp}.json`);
+        const modelJSON = model.toJSON();
+        
+        fs.writeFileSync(modelPath, JSON.stringify(modelJSON, null, 2));
+        console.log(`[Training] Model saved to: ${modelPath}`);
+        
+        // Lưu model metadata vào MongoDB
+        const modelVersion = new ModelVersion({
+            version: await ModelVersion.countDocuments() + 1,
+            modelPath: modelPath,
+            modelType: 'random_forest',
+            trainingDataCount: features.length,
+            accuracy: accuracy,
+            majorIdMap: majorIdMap,
+            featureNames: [
+                'MBTI Type',
+                'Holland - Realistic',
+                'Holland - Investigative',
+                'Holland - Artistic',
+                'Holland - Social',
+                'Holland - Enterprising',
+                'Holland - Conventional',
+                'GPA',
+                ...subjects.map(s => `Subject - ${s.name}`),
+                ...softSkills.map(s => `Skill - ${s.softSkillName}`)
+            ],
+            isActive: true,
+            createdAt: new Date(),
+            trainedAt: new Date()
+        });
+        
+        // Deactivate previous models
+        await ModelVersion.updateMany({ _id: { $ne: modelVersion._id } }, { isActive: false });
+        
+        const savedModel = await modelVersion.save();
+        
+        res.status(200).json({
+            success: true,
+            message: 'Model training completed successfully',
+            data: {
+                version: savedModel.version,
+                accuracy: accuracy.toFixed(2),
+                trainingRecords: features.length,
+                majorCount: Object.keys(majorIdMap).length,
+                featureCount: features[0]?.length || 0,
+                modelPath: modelPath,
+                isActive: true
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error training model:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi train model',
+            error: error.message
+        });
+    }
+};
+
