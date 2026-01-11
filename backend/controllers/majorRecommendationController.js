@@ -474,7 +474,8 @@ export const getMajorRecommendation = async (req, res) => {
                 code,
                 score,
                 description: hollandDescriptions[code]
-            }));
+            }))
+            .filter(item => item.description); // Lọc bỏ những item không tìm thấy description
         
         const recommendations = topKPredictions.map((pred, index) => {
             const majorId = reverseMajorIdMap[String(pred.majorId)];
@@ -492,7 +493,7 @@ export const getMajorRecommendation = async (req, res) => {
             }
             
             topHollandCodes.forEach(({code, description}) => {
-                if (description.majorTypes.some(t => major.category.includes(t))) {
+                if (description && description.majorTypes.some(t => major.category.includes(t))) {
                     reason.push(`Phù hợp với hướng ${description.name}`);
                 }
             });

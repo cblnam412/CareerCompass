@@ -108,13 +108,39 @@ export const updateStudentProfile = async (req, res) => {
         if (province !== undefined) updateData.province = province;
         if (gpa !== undefined) updateData.gpa = gpa;
         if (currentGradeLevel !== undefined) updateData.currentGradeLevel = currentGradeLevel;
-        if (academicTranscript !== undefined) updateData.academicTranscript = academicTranscript;
         if (mbtiResult !== undefined) updateData.mbtiResult = mbtiResult;
         if (hollandResult !== undefined) updateData.hollandResult = hollandResult;
         if (softSkills !== undefined) updateData.softSkills = softSkills;
         if (targetUniversityIds !== undefined) updateData.targetUniversityIds = targetUniversityIds;
 
-        const studentProfile = await StudentProfile.findOneAndUpdate(
+        let studentProfile;
+        
+        if (academicTranscript !== undefined) {
+            const existingProfile = await StudentProfile.findOne({ userId });
+            
+            if (existingProfile && existingProfile.academicTranscript && existingProfile.academicTranscript.length > 0) {
+                const existingMap = new Map(
+                    existingProfile.academicTranscript
+                        .filter(item => item && item.subjectId)
+                        .map(item => [
+                            item.subjectId.toString(),
+                            item
+                        ])
+                );
+                
+                academicTranscript.forEach(newItem => {
+                    if (newItem && newItem.subjectId) {
+                        existingMap.set(newItem.subjectId.toString(), newItem);
+                    }
+                });
+                
+                updateData.academicTranscript = Array.from(existingMap.values());
+            } else {
+                updateData.academicTranscript = academicTranscript;
+            }
+        }
+
+        studentProfile = await StudentProfile.findOneAndUpdate(
             { userId },
             updateData,
             { new: true }
