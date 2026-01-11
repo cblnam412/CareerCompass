@@ -26,7 +26,8 @@ import {
   ManageUserScreen,
   ManageSubjectScreen,
   ManageUniversityScreen,
-  CareerPredictionScreen
+  CareerPredictionScreen,
+  ManageReportScreen,
 } from "./screens";
 
 function App() {
@@ -74,7 +75,7 @@ function App() {
           <Route path="users" element={<ManageUserScreen />} />
           <Route path="subjects" element={<ManageSubjectScreen />} />
           <Route path="universities" element={<ManageUniversityScreen />} />
-          <Route path="report" />
+          <Route path="report" element={<ManageReportScreen />} />
         </Route>
       </Routes>
     </BrowserRouter>

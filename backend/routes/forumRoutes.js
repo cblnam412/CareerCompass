@@ -13,7 +13,8 @@ import {
     createForumComment,
     updateForumComment,
     deleteForumComment,
-    upvoteForumComment
+    upvoteForumComment,
+    getCommentById
 } from '../controllers/forumCommentController.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
 
@@ -30,6 +31,7 @@ router.delete('/posts/:postId', verifyToken, deleteForumPost);
 router.patch('/posts/:postId/upvote', verifyToken, upvoteForumPost);
 
 router.post('/posts/:postId/comments', verifyToken, createForumComment);
+router.get('/comments/:commentId', verifyToken, getCommentById);
 router.patch('/comments/:commentId', verifyToken, updateForumComment);
 router.delete('/comments/:commentId', verifyToken, deleteForumComment);
 router.patch('/comments/:commentId/upvote', verifyToken, upvoteForumComment);

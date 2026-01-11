@@ -1,0 +1,91 @@
+.infoCard {
+  /* Base Styles */
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: clamp(0.375rem, 1.5vw, 0.5rem);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+
+  /* Responsive Padding and Layout */
+  padding: clamp(1rem, 4cqi, 1.5rem);
+  display: flex;
+  flex-direction: column;
+  
+  /* Enable container queries */
+  container-type: inline-size;
+  container-name: info-card;
+}
+
+.labelReporter {
+  color: #6b7280;
+  font-size: clamp(0.8rem, 2cqi, 1.2rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: clamp(0.5rem, 3cqi, 1rem);
+  text-align: left;
+}
+
+.nameReporter {
+  color: #111827;
+  font-weight: 700;
+  font-size: clamp(0.875rem, 4cqi, 1.125rem);
+  margin: 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+  text-align: left;
+}
+
+/* Container query for larger card sizes */
+@container info-card (min-width: 400px) {
+  .infoCard {
+    padding: 2rem;
+  }
+  
+  .labelReporter {
+    font-size: 0.875rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .nameReporter {
+    font-size: 1.25rem;
+  }
+}
+
+/* Layout */
+.app-container {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: start;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  width: 100%;
+  max-width: 56rem;
+}
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.label-section {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}

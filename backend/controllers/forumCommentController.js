@@ -309,3 +309,47 @@ export const upvoteForumComment = async (req, res) => {
         });
     }
 };
+
+export const getCommentById = async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const userId = req.userId; // Derived from verifyToken
+
+        const comment = await ForumComment.findById(commentId)
+            .populate({
+                path: 'authorId',
+                select: 'fullName email role universityId avatar',
+                populate: {
+                    path: 'universityId',
+                    select: 'name code region address phone website description'
+                }
+            })
+            .populate('parentCommentId', 'content authorId');
+
+        if (!comment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Bình luận không tồn tại'
+            });
+        }
+
+        // Add isUpvoted flag to the response
+        const commentData = {
+            ...comment.toObject(),
+            isUpvoted: userId && comment.upvoters.includes(userId)
+        };
+
+        res.status(200).json({
+            success: true,
+            data: commentData
+        });
+
+    } catch (error) {
+        console.error('Get comment by id error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi lấy thông tin bình luận',
+            error: error.message
+        });
+    }
+};
