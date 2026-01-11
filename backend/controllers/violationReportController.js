@@ -93,6 +93,7 @@ export const getReports = async (req, res) => {
 
         const statusMap = {
             'pending': 'Pending',
+            'rejected': 'Rejected',   
             'dismissed': 'Rejected',
             'approved': 'Approved'
         };
