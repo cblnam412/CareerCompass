@@ -150,7 +150,7 @@ export const createForumPost = async (req, res) => {
 
         if (req.files && req.files.image) {
             const imageUpload = await uploadFileToSupabase(
-                req.files.image,
+                req.files.image[0],
                 'forum-posts',
                 'images'
             );
@@ -166,7 +166,7 @@ export const createForumPost = async (req, res) => {
 
         if (req.files && req.files.document) {
             const docUpload = await uploadFileToSupabase(
-                req.files.document,
+                req.files.document[0],
                 'forum-posts',
                 'documents'
             );
@@ -242,7 +242,7 @@ export const updateForumPost = async (req, res) => {
             }
             
             const imageUpload = await uploadFileToSupabase(
-                req.files.image,
+                req.files.image[0],
                 'forum-posts',
                 'images'
             );
@@ -265,7 +265,7 @@ export const updateForumPost = async (req, res) => {
             }
             
             const docUpload = await uploadFileToSupabase(
-                req.files.document,
+                req.files.document[0],
                 'forum-posts',
                 'documents'
             );
