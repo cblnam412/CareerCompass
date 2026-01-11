@@ -808,11 +808,11 @@ export function PostCard({ post, onUpdate }) {
                 <X size={18} />
               </button>
             </div>
-            {userID !== selectedUser.id && (
+            {/* {userID !== selectedUser.id && (
               <button className={styles.messageButton} onClick={() => console.log("Chat not implemented")}>
                 <span>Nhắn tin</span>
               </button>
-            )}
+            )} */}
           </div>
         </>
       )}

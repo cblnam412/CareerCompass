@@ -86,6 +86,9 @@ export function AuthProvider({ children }) {
     const body = await res.json().catch(() => ({}));
 
     if (!res.ok) {
+      if (res.status === 403) 
+        throw new Error(body.message || "Tài khoản của bạn đã bị khóa.");
+  
       throw new Error(body.message || "Đăng nhập thất bại");
     }
 
