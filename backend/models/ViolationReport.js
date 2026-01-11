@@ -15,6 +15,9 @@ const ViolationReportSchema = new mongoose.Schema({
         enum: ['Post', 'Comment', 'User'],
         required: true,
     },
+    targetItemId: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
     reason: {
         type: String,
         required: true,
@@ -23,6 +26,14 @@ const ViolationReportSchema = new mongoose.Schema({
         type: String,
         enum: ['Pending', 'Reviewed', 'Resolved'],
         default: 'Pending',
+    },
+    decision: {
+        type: String,
+        enum: ['Approved', 'Rejected'],
+    },
+    actionTaken: {
+        type: String,
+        description: 'Mô tả hành động đã thực hiện (xóa bài viết, ban tài khoản, etc)'
     },
     proof: {
         type: String

@@ -475,7 +475,7 @@ export const getMajorRecommendation = async (req, res) => {
                 score,
                 description: hollandDescriptions[code]
             }))
-            .filter(item => item.description); // Lọc bỏ những item không tìm thấy description
+            .filter(item => item.description);
         
         const recommendations = topKPredictions.map((pred, index) => {
             const majorId = reverseMajorIdMap[String(pred.majorId)];
