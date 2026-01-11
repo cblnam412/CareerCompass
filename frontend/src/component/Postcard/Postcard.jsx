@@ -77,6 +77,11 @@ export function PostCard({ post, onUpdate }) {
   const [userPopoverPos, setUserPopoverPos] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   
+  // --- REPORT MODAL STATE ---
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportConfig, setReportConfig] = useState({ type: null, id: null }); 
+  const [reportReason, setReportReason] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   const renderRoleIcon = (role) => {
     if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
@@ -104,6 +109,62 @@ export function PostCard({ post, onUpdate }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
+
+  const openReportModal = (type, id) => {
+    if (!userID) {
+      toast.error("Vui lòng đăng nhập để báo cáo");
+      return;
+    }
+    setReportConfig({ type, id });
+    setReportReason(""); // Reset reason
+    setShowReportModal(true);
+    setShowDropdown(false); // Close post dropdown if open
+  };
+
+  const closeReportModal = () => {
+    setShowReportModal(false);
+    setReportConfig({ type: null, id: null });
+    setReportReason("");
+  };
+
+  const submitReport = async () => {
+    if (!reportReason.trim()) {
+      toast.warning("Vui lòng nhập lý do báo cáo");
+      return;
+    }
+
+    setIsSubmittingReport(true);
+    const { type, id } = reportConfig;
+    
+    // Determine Endpoint based on type
+    const endpoint = type === 'post' 
+      ? `${API}/api/forum/posts/${id}/report`
+      : `${API}/api/forum/comments/${id}/report`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        },
+        body: JSON.stringify({ reason: reportReason }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Đã gửi báo cáo ${type === 'post' ? 'bài viết' : 'bình luận'}`);
+        closeReportModal();
+      } else {
+        toast.error(data.message || "Lỗi khi gửi báo cáo");
+      }
+    } catch (error) {
+      console.error("Error reporting:", error);
+      toast.error("Lỗi kết nối server");
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
 
   const handleLike = async () => {
     if (!userID) {
@@ -500,7 +561,7 @@ export function PostCard({ post, onUpdate }) {
           </button>
           {showDropdown && (
             <div className={styles.dropdownMenu}>
-              <button className={styles.dropdownItem} onClick={() => console.log("Report")}>
+              <button className={styles.dropdownItem} onClick={() => openReportModal('post', postId)}>
                 Báo cáo vi phạm
               </button>
               {userID === authorId && (
@@ -714,7 +775,7 @@ export function PostCard({ post, onUpdate }) {
                   </div>
 
                   <div className={styles.commentRightActions}>
-                    <button className={styles.commentReportButton} title="Báo cáo">
+                    <button className={styles.commentReportButton} title="Báo cáo" onClick={() => openReportModal('comment', cmt.id)}>
                       <Flag size={14} />
                     </button>
 
@@ -815,6 +876,45 @@ export function PostCard({ post, onUpdate }) {
             )} */}
           </div>
         </>
+      )}
+
+      {/* --- REPORT MODAL --- */}
+      {showReportModal && (
+        <div className={styles.modalOverlay} onClick={closeReportModal}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>Báo cáo vi phạm</h3>
+              <button className={styles.closeModalButton} onClick={closeReportModal}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <p style={{marginBottom: '8px', fontSize: '14px', color: '#555'}}>
+              Tại sao bạn muốn báo cáo {reportConfig.type === 'post' ? 'bài viết' : 'bình luận'} này?
+            </p>
+            
+            <textarea
+              className={styles.reportTextarea}
+              placeholder="Nhập lý do (ví dụ: Spam, ngôn từ thù địch, tin giả...)"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              autoFocus
+            />
+
+            <div className={styles.modalActions}>
+              <button className={styles.cancelButton} onClick={closeReportModal}>
+                Hủy
+              </button>
+              <button 
+                className={styles.confirmReportButton} 
+                onClick={submitReport}
+                disabled={isSubmittingReport || !reportReason.trim()}
+              >
+                {isSubmittingReport ? "Đang gửi..." : "Gửi báo cáo"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </article>
   );
