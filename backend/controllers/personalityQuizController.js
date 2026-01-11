@@ -12,7 +12,6 @@ import {
     getQuizStats
 } from '../utils/quizUtils.js';
 
-
 export const getAllPersonalityQuizzes = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -416,7 +415,7 @@ export const submitPersonalityQuiz = async (req, res) => {
     try {
         const { quizId } = req.params;
         const { answers } = req.body;
-        const studentId = req.user?._id || req.headers['x-user-id'];
+        const studentId = req.userId || req.headers['x-user-id'];
 
         if (!isValidObjectId(quizId)) {
             return res.status(400).json({
@@ -560,7 +559,7 @@ export const getAttemptResult = async (req, res) => {
 
 export const getStudentQuizAttempts = async (req, res) => {
     try {
-        const studentId = req.user?._id || req.headers['x-user-id'];
+        const studentId = req.userId || req.headers['x-user-id'];
 
         if (!studentId) {
             return res.status(401).json({

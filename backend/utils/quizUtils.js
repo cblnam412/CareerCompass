@@ -194,11 +194,11 @@ export const generateOptions = (quizType, dimension = null, attribute = null, ag
         ];
     } else if (quizType === 'Holland') {
         return [
-            { text: 'Rất không thích', score: 1 },
-            { text: 'Không thích', score: 2 },
-            { text: 'Bình thường', score: 3 },
+            { text: 'Rất thích', score: 5 },
             { text: 'Thích', score: 4 },
-            { text: 'Rất thích', score: 5 }
+            { text: 'Bình thường', score: 3 },
+            { text: 'Không thích', score: 2 },
+            { text: 'Rất không thích', score: 1 },
         ];
     }
     return [];

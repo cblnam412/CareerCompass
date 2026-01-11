@@ -54,7 +54,6 @@
   transform: translateY(-8px);
   box-shadow: 0 8px 12px rgba(37, 99, 235, 0.1),
     0 20px 40px rgba(37, 99, 235, 0.15);
-  border-color: #c7d2fe;
 }
 
 .badge {
@@ -163,6 +162,7 @@
 @media (max-width: 768px) {
   .container {
     padding: 24px 12px;
+    height: 85vh;
   }
 
   .header {

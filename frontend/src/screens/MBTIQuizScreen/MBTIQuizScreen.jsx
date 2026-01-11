@@ -4,17 +4,10 @@ import { Button } from "../../component/Button/Button"
 import { Card, CardContent } from "../../component/Card/Card"
 import { Progress } from "../../component/Progress/Progress"
 import { RadioGroup, RadioGroupItem } from "../../component/RadioGroup/RadioGroup"
-// import { useAuth } from "../../contexts/auth-context"
+import { useAuth } from "../../context/AuthContext" 
+import API from "../../API/API"
+import { toast } from "react-toastify"
 import styles from "./MBTIQuizScreen.module.css"
-
-const mbtiQuestions = [
-  { id: "m1", text: "Tôi thích gặp gỡ nhiều người mới", dimension: "EI", direction: "E" },
-  { id: "m2", text: "Tôi tập trung vào chi tiết cụ thể hơn là bức tranh tổng thể", dimension: "SN", direction: "S" },
-  { id: "m3", text: "Tôi đưa ra quyết định dựa trên logic hơn là cảm xúc", dimension: "TF", direction: "T" },
-  { id: "m4", text: "Tôi thích lập kế hoạch trước hơn là hành động tự phát", dimension: "JP", direction: "J" },
-  { id: "m5", text: "Tôi cảm thấy thoải mái khi là trung tâm chú ý", dimension: "EI", direction: "E" },
-  { id: "m6", text: "Tôi tin vào trực giác và linh cảm của mình", dimension: "SN", direction: "N" },
-]
 
 const mbtiPersonalities = {
   INTJ: { name: "Kiến trúc sư", careers: ["Kỹ sư phần mềm", "Nhà khoa học", "Chiến lược gia", "Kiến trúc sư"] },
@@ -36,29 +29,68 @@ const mbtiPersonalities = {
 }
 
 export default function MBTIQuizScreen() {
-  // const { user, loading: authLoading } = useAuth()
-  // Mock user data
-  const user = { id: 1, name: "Test User" }
-  const authLoading = false
-
+  const { accessToken, isFetchingAuth, userID } = useAuth()
   const navigate = useNavigate()
+
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  
+  // Data from Backend
+  const [quizData, setQuizData] = useState(null)
+  const [questions, setQuestions] = useState([])
+  
+  // Quiz State
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState({})
   const [showResults, setShowResults] = useState(false)
-  const [personality, setPersonality] = useState("")
+  const [resultType, setResultType] = useState("")
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/auth/login")
-    }
-  }, [authLoading, user, navigate])
+    if (isFetchingAuth) return;
 
-  const handleAnswer = (questionId, value) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: value }))
+    if (!accessToken || !userID) {
+      toast.warning("Vui lòng đăng nhập để làm bài trắc nghiệm");
+      navigate("/auth/login");
+      return;
+    }
+
+    const fetchQuiz = async () => {
+      try {
+        const res = await fetch(`${API}/api/personality-quizzes/type/MBTI`);
+        const data = await res.json();
+
+        if (data.success) {
+          setQuizData(data.data);
+          setQuestions(data.data.questions || []);
+        } else {
+          toast.error(data.message || "Không thể tải bài trắc nghiệm");
+        }
+      } catch (error) {
+        console.error("Error fetching quiz:", error);
+        toast.error("Lỗi kết nối server");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuiz();
+  }, [accessToken, userID, isFetchingAuth, navigate]);
+
+  const handleAnswer = (questionId, optionIndex) => {
+    // When deselecting, RadioGroup sends undefined. Number(undefined) is NaN.
+    if (optionIndex === undefined || isNaN(optionIndex)) {
+      setAnswers((prev) => {
+        const newAnswers = { ...prev }
+        delete newAnswers[questionId]
+        return newAnswers
+      })
+      return
+    }
+    setAnswers((prev) => ({ ...prev, [questionId]: optionIndex }))
   }
 
   const handleNext = () => {
-    if (currentIndex < mbtiQuestions.length - 1) {
+    if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1)
     }
   }
@@ -69,39 +101,50 @@ export default function MBTIQuizScreen() {
     }
   }
 
-  const handleSubmit = () => {
-    const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 }
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      const answersArray = questions.map(q => answers[q._id]);
+      
+      const res = await fetch(`${API}/api/personality-quizzes/${quizData._id}/submit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ answers: answersArray })
+      });
 
-    mbtiQuestions.forEach((q) => {
-      const answer = answers[q.id] || 3
-      if (answer >= 4) {
-        scores[q.direction] += answer
+      const data = await res.json();
+
+      if (data.success) {
+        setResultType(data.data.interpretation);
+        setShowResults(true);
+        toast.success("Đã có kết quả!");
       } else {
-        const opposite = q.direction === "E" ? "I" : q.direction === "S" ? "N" : q.direction === "T" ? "F" : "P"
-        scores[opposite] += 6 - answer
+        toast.error(data.message || "Lỗi khi nộp bài");
       }
-    })
-
-    const type =
-      (scores.E > scores.I ? "E" : "I") +
-      (scores.S > scores.N ? "S" : "N") +
-      (scores.T > scores.F ? "T" : "F") +
-      (scores.J > scores.P ? "J" : "P")
-
-    setPersonality(type)
-    setShowResults(true)
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error("Lỗi kết nối khi nộp bài");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  if (authLoading || !user) {
+  if (isFetchingAuth || loading) {
     return (
       <div className={styles.loading}>
-        <div className={styles.spinner}>Loading...</div>
+        <div className={styles.spinner}>Đang tải dữ liệu...</div>
       </div>
     )
   }
 
   if (showResults) {
-    const result = mbtiPersonalities[personality]
+    const result = mbtiPersonalities[resultType] || { 
+      name: "Kết quả mới", 
+      careers: [] 
+    };
 
     return (
       <div className={styles.resultsContainer}>
@@ -110,20 +153,22 @@ export default function MBTIQuizScreen() {
             <div className={styles.resultsContent}>
               <div>
                 <h2 className={styles.resultsTitle}>Tính cách MBTI của bạn</h2>
-                <p className={styles.personalityType}>{personality}</p>
+                <p className={styles.personalityType}>{resultType}</p>
                 <p className={styles.personalityName}>{result.name}</p>
               </div>
 
-              <div className={styles.careersSection}>
-                <h3 className={styles.careersTitle}>Ngành nghề phù hợp:</h3>
-                <div className={styles.careersGrid}>
-                  {result.careers.map((career) => (
-                    <div key={career} className={styles.careerItem}>
-                      {career}
-                    </div>
-                  ))}
+              {result.careers.length > 0 && (
+                <div className={styles.careersSection}>
+                  <h3 className={styles.careersTitle}>Ngành nghề gợi ý:</h3>
+                  <div className={styles.careersGrid}>
+                    {result.careers.map((career) => (
+                      <div key={career} className={styles.careerItem}>
+                        {career}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className={styles.resultsActions}>
                 <Button variant="outline" onClick={() => navigate("/user/quiz")}>
@@ -138,18 +183,24 @@ export default function MBTIQuizScreen() {
     )
   }
 
-  const currentQuestion = mbtiQuestions[currentIndex]
-  const progress = ((currentIndex + 1) / mbtiQuestions.length) * 100
+  // Handle case where quiz exists but has no questions
+  if (questions.length === 0) {
+    return <div className={styles.loading}>Hiện chưa có câu hỏi nào cho bài trắc nghiệm này.</div>;
+  }
 
+  const currentQuestion = questions[currentIndex]
+  const progress = (Object.keys(answers).length / questions.length) * 100
+
+  // --- RENDER QUESTIONS ---
   return (
     <div className={styles.container}>
       <div className={styles.content}>
         <div className={styles.header}>
           <div className={styles.headerContent}>
             <div className={styles.headerInfo}>
-              <h1>Trắc nghiệm tính cách MBTI</h1>
+              <h1>{quizData?.title || "Trắc nghiệm MBTI"}</h1>
               <p>
-                Câu {currentIndex + 1}/{mbtiQuestions.length}
+                Câu {currentIndex + 1}/{questions.length}
               </p>
             </div>
           </div>
@@ -160,28 +211,24 @@ export default function MBTIQuizScreen() {
           <Card>
             <CardContent>
               <div className={styles.questionCard}>
-                <h3 className={styles.questionTitle}>{currentQuestion.text}</h3>
+                <h3 className={styles.questionTitle}>{currentQuestion.content}</h3>
 
                 <RadioGroup
-                  value={String(answers[currentQuestion.id] ?? "")}
-                  onValueChange={(value) => handleAnswer(currentQuestion.id, Number(value))}
+                  value={String(answers[currentQuestion._id] ?? "")}
+                  onValueChange={(val) => handleAnswer(currentQuestion._id, Number(val))}
                 >
                   <div className={styles.optionsContainer}>
-                    {[
-                      { value: 5, label: "Hoàn toàn đồng ý" },
-                      { value: 4, label: "Đồng ý" },
-                      { value: 3, label: "Trung lập" },
-                      { value: 2, label: "Không đồng ý" },
-                      { value: 1, label: "Hoàn toàn không đồng ý" },
-                    ].map((option) => {
-                      const isSelected = String(answers[currentQuestion.id]) === String(option.value)
-                      return (
+                    {/* Render options dynamically from Backend */}
+                    {currentQuestion.options && currentQuestion.options.map((option, idx) => {
+                       const isSelected = String(answers[currentQuestion._id]) === String(idx);
+                       return (
                         <label
-                          key={option.value}
+                          key={idx}
                           className={`${styles.optionLabel} ${isSelected ? styles.optionLabelSelected : ''}`}
                         >
-                          <RadioGroupItem value={String(option.value)} id={`${currentQuestion.id}-${option.value}`} />
-                          <span className={styles.optionText}>{option.label}</span>
+                          {/* We use the INDEX (idx) as the value because backend expects array of indices */}
+                          <RadioGroupItem value={String(idx)} id={`${currentQuestion._id}-${idx}`} />
+                          <span className={styles.optionText}>{option.text}</span>
                         </label>
                       )
                     })}
@@ -196,12 +243,15 @@ export default function MBTIQuizScreen() {
               ← Câu trước
             </Button>
 
-            {currentIndex === mbtiQuestions.length - 1 ? (
-              <Button onClick={handleSubmit} disabled={Object.keys(answers).length < mbtiQuestions.length}>
-                Xem kết quả
+            {currentIndex === questions.length - 1 ? (
+              <Button 
+                onClick={handleSubmit} 
+                disabled={submitting || Object.keys(answers).length < questions.length}
+              >
+                {submitting ? "Đang xử lý..." : "Xem kết quả"}
               </Button>
             ) : (
-              <Button onClick={handleNext} disabled={answers[currentQuestion.id] === undefined}>
+              <Button onClick={handleNext} disabled={answers[currentQuestion._id] === undefined}>
                 Câu tiếp theo →
               </Button>
             )}

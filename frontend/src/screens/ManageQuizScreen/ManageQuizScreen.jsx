@@ -1,40 +1,34 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "../../component/Card/Card"
 import { Button } from "../../component/Button/Button"
-import { Edit2, Trash2, Save, X, Plus } from "lucide-react"
+import { Edit2, Trash2, Save, X, Plus, Upload, Loader2 } from "lucide-react"
 import API from "../../API/API"
-import { useAuth } from "../../context/AuthContext"
+import { useAuth } from "../../context/AuthContext" 
 import { toast } from "react-toastify"
 import { LoadingSpinner } from "../../component/LoadingSpinner/LoadingSpinner"
 import styles from "./ManageQuizScreen.module.css"
 
-// Constants for valid categories and dimensions
-const HOLLAND_CATEGORIES = ["R", "I", "A", "S", "E", "C"]
-const MBTI_DIMENSIONS = ["EI", "SN", "TF", "JP"]
-const MBTI_DIRECTIONS = {
-  EI: ["E", "I"],
-  SN: ["S", "N"],
-  TF: ["T", "F"],
-  JP: ["J", "P"],
-}
+const HOLLAND_ATTRIBUTES = ["R", "I", "A", "S", "E", "C"]
+const MBTI_DIMENSIONS = ["E/I", "S/N", "T/F", "J/P"]
 
-// Helper to find the opposite MBTI direction (for creating options)
-const getOppositeDirection = (dir, dim) => {
-  const pair = MBTI_DIRECTIONS[dim];
-  return pair.find(d => d !== dir) || dir;
+const getOppositePreference = (agreePref, dimension) => {
+  if (!dimension || !agreePref) return null;
+  const parts = dimension.split('/'); 
+  return parts.find(p => p !== agreePref) || parts[0];
 }
 
 export default function ManageQuizScreen() {
   const { accessToken } = useAuth()
-  const [activeTab, setActiveTab] = useState("Holland") // Holland or MBTI
+  const [activeTab, setActiveTab] = useState("Holland") 
+  const fileInputRef = useRef(null)
   
   const [quizId, setQuizId] = useState(null)
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false) 
   
-  // State for Add/Edit
-  const [editingQuestion, setEditingQuestion] = useState(null) 
   const [isAdding, setIsAdding] = useState(false) 
+  const [editingQuestion, setEditingQuestion] = useState(null) 
 
   useEffect(() => {
     fetchQuizData()
@@ -46,47 +40,29 @@ export default function ManageQuizScreen() {
       setQuestions([])
       setEditingQuestion(null)
       setIsAdding(false)
+      setQuizId(null)
 
-      // Step 1: Find the Quiz ID by Type (Scanning the list)
       const listRes = await fetch(`${API}/api/personality-quizzes?limit=100`)
       const listData = await listRes.json()
       
       const targetQuiz = listData.data?.find(q => q.type === activeTab && q.isActive)
       
-      if (!targetQuiz) {
-        setQuizId(null)
-        // Optionally handle "Quiz not found" (e.g. show create button)
-        return
-      }
+      if (!targetQuiz) return
 
       setQuizId(targetQuiz._id)
 
-      // Step 2: Fetch Questions for this Quiz
       const detailRes = await fetch(`${API}/api/personality-quizzes/${targetQuiz._id}`)
       const detailData = await detailRes.json()
 
       if (detailData.success) {
-        const mappedQuestions = detailData.data.questions.map(q => {
-            // Logic to extract UI metadata from Backend Options
-            // We assume the first option's result holds the Category/Direction info
-            const firstResult = q.options?.[0]?.result || "";
-            
-            let extraProps = {};
-            if (activeTab === 'Holland') {
-                extraProps = { category: firstResult };
-            } else {
-                // Infer Dimension from Direction (e.g., 'E' -> 'EI')
-                const dim = Object.keys(MBTI_DIRECTIONS).find(key => MBTI_DIRECTIONS[key].includes(firstResult));
-                extraProps = { dimension: dim || "", direction: firstResult };
-            }
-
-            return {
-                id: q._id,
-                text: q.content,
-                order: q.order,
-                ...extraProps
-            };
-        });
+        const mappedQuestions = detailData.data.questions.map(q => ({
+            id: q._id,
+            content: q.content,
+            order: q.order,
+            attribute: q.attribute, 
+            dimension: q.dimension,
+            agreePreference: q.agreePreference
+        }));
         setQuestions(mappedQuestions)
       }
 
@@ -98,7 +74,8 @@ export default function ManageQuizScreen() {
     }
   }
 
-  // 2. Handlers
+  // Handlers 
+
   const handleEdit = (question) => {
     setIsAdding(false)
     setEditingQuestion({ ...question })
@@ -107,10 +84,11 @@ export default function ManageQuizScreen() {
   const handleAddNew = () => {
     setIsAdding(true)
     setEditingQuestion({
-        text: "",
-        category: activeTab === 'Holland' ? HOLLAND_CATEGORIES[0] : undefined,
-        dimension: activeTab === 'MBTI' ? MBTI_DIMENSIONS[0] : undefined,
-        direction: activeTab === 'MBTI' ? 'E' : undefined
+        content: "",
+        order: questions.length + 1,
+        attribute: activeTab === 'Holland' ? 'R' : null,
+        dimension: activeTab === 'MBTI' ? 'E/I' : null,
+        agreePreference: activeTab === 'MBTI' ? 'E' : null
     })
   }
 
@@ -119,43 +97,79 @@ export default function ManageQuizScreen() {
     setIsAdding(false)
   }
 
-  // 3. Save (Create or Update)
+  // Excel Upload Handlers 
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+        fileInputRef.current.click();
+    }
+  }
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!quizId) {
+        toast.error("Chưa tìm thấy bài trắc nghiệm để import");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", file); // Backend middleware expects 'file' 
+
+    try {
+        setUploading(true);
+        const res = await fetch(`${API}/api/admin/personality-quizzes/${quizId}/import/excel`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${accessToken}`
+            },
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            toast.success(data.message);
+            if (data.data.errors && data.data.errors.length > 0) {
+                toast.warning(`Có ${data.data.errors.length} dòng bị lỗi, vui lòng kiểm tra console`);
+                console.warn("Import errors:", data.data.errors);
+            }
+            fetchQuizData(); // Refresh list
+        } else {
+            throw new Error(data.message || "Lỗi import excel");
+        }
+    } catch (error) {
+        console.error(error);
+        toast.error(error.message);
+    } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input
+    }
+  }
+
+  // Save Logic
   const handleSave = async () => {
-    if (!editingQuestion.text.trim()) {
+    if (!editingQuestion.content.trim()) {
         toast.warning("Vui lòng nhập nội dung câu hỏi")
         return
     }
-    if (!quizId) {
-        toast.error("Không tìm thấy ID bài trắc nghiệm")
-        return
-    }
-
+    
     try {
-        // Construct Payload for Backend
-        let payloadOptions = [];
-        
-        if (activeTab === 'Holland') {
-            const cat = editingQuestion.category;
-            payloadOptions = [
-                { text: "Đúng/Thích", result: cat, score: 1 },
-                { text: "Sai/Không thích", result: cat, score: 0 } // Or result: null
-            ];
-        } else {
-            // MBTI
-            const dir = editingQuestion.direction;
-            const dim = editingQuestion.dimension;
-            const opp = getOppositeDirection(dir, dim);
-            payloadOptions = [
-                { text: "Đồng ý", result: dir, score: 1 },
-                { text: "Không đồng ý", result: opp, score: 1 }
-            ];
-        }
-
         const payload = {
-            content: editingQuestion.text,
-            options: payloadOptions,
-            order: editingQuestion.order // Preserve order if editing
+            content: editingQuestion.content,
+            order: editingQuestion.order
         };
+
+        if (activeTab === 'Holland') {
+            payload.attribute = editingQuestion.attribute;
+        } else {
+            payload.dimension = editingQuestion.dimension;
+            payload.agreePreference = editingQuestion.agreePreference;
+            payload.disagreePreference = getOppositePreference(
+                editingQuestion.agreePreference, 
+                editingQuestion.dimension
+            );
+        }
 
         const url = isAdding 
             ? `${API}/api/admin/personality-quizzes/${quizId}/questions`
@@ -167,47 +181,128 @@ export default function ManageQuizScreen() {
             method: method,
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${accessToken}` // Attach Token
+                "Authorization": `Bearer ${accessToken}`
             },
             body: JSON.stringify(payload)
         });
 
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.message || "Lỗi lưu câu hỏi");
+        if (!data.success) throw new Error(data.message || "Lỗi lưu câu hỏi");
 
         toast.success(isAdding ? "Thêm câu hỏi thành công" : "Cập nhật thành công");
-        fetchQuizData(); // Refresh list
+        fetchQuizData(); 
 
     } catch (error) {
         toast.error(error.message);
     }
   }
 
-  // 4. Delete
   const handleDelete = async (id) => {
     if(!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
-
     try {
         const res = await fetch(`${API}/api/admin/personality-quizzes/${quizId}/questions/${id}`, {
             method: "DELETE",
-            headers: {
-                "Authorization": `Bearer ${accessToken}`
-            }
+            headers: { "Authorization": `Bearer ${accessToken}` }
         });
-
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.message || "Lỗi khi xóa");
-        }
-
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || "Lỗi khi xóa");
         toast.success("Đã xóa câu hỏi");
-        // Optimistic update
-        setQuestions(questions.filter(q => q.id !== id));
+        setQuestions(questions.filter(q => q.id !== id)); 
     } catch (error) {
         toast.error(error.message);
     }
   }
+
+  // --- Reusable Render Form Helper ---
+  // This renders the edit form. We use it in two places:
+  // 1. At the top if isAdding is true
+  // 2. Inside the list loop if we are editing a specific ID
+  const renderEditForm = (title) => (
+    <Card className={styles.editCard}>
+        <CardContent className={styles.editContent}>
+        <div className={styles.formHeader}>
+            <h3>{title}</h3>
+        </div>
+        <div className={styles.editForm}>
+            <div className={styles.formGroup}>
+            <label className={styles.label}>Nội dung câu hỏi</label>
+            <textarea
+                value={editingQuestion.content}
+                onChange={(e) => setEditingQuestion({ ...editingQuestion, content: e.target.value })}
+                className={styles.textarea}
+                rows={3}
+                placeholder="Ví dụ: Tôi thích làm việc với các con số..."
+            />
+            </div>
+            
+            {activeTab === "Holland" && (
+            <div className={styles.formGroup}>
+                <label className={styles.label}>Thuộc tính (Attribute)</label>
+                <select
+                value={editingQuestion.attribute || ""}
+                onChange={(e) => setEditingQuestion({ ...editingQuestion, attribute: e.target.value })}
+                className={styles.select}
+                >
+                {HOLLAND_ATTRIBUTES.map((attr) => (
+                    <option key={attr} value={attr}>{attr}</option>
+                ))}
+                </select>
+            </div>
+            )}
+
+            {activeTab === "MBTI" && (
+            <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                <label className={styles.label}>Chiều (Dimension)</label>
+                <select
+                    value={editingQuestion.dimension || ""}
+                    onChange={(e) => {
+                        const newDim = e.target.value;
+                        const parts = newDim.split('/');
+                        setEditingQuestion({ 
+                            ...editingQuestion, 
+                            dimension: newDim,
+                            agreePreference: parts[0]
+                        })
+                    }}
+                    className={styles.select}
+                >
+                    {MBTI_DIMENSIONS.map((dim) => (
+                    <option key={dim} value={dim}>{dim}</option>
+                    ))}
+                </select>
+                </div>
+                <div className={styles.formGroup}>
+                <label className={styles.label}>Nếu chọn "Đồng ý" (Agree)</label>
+                <select
+                    value={editingQuestion.agreePreference || ""}
+                    onChange={(e) => setEditingQuestion({ ...editingQuestion, agreePreference: e.target.value })}
+                    className={styles.select}
+                    disabled={!editingQuestion.dimension}
+                >
+                    {editingQuestion.dimension && editingQuestion.dimension.split('/').map((pref) => (
+                        <option key={pref} value={pref}>{pref}</option>
+                    ))}
+                </select>
+                </div>
+            </div>
+            )}
+
+            <div className={styles.formActions}>
+            <Button onClick={handleSave} className={styles.saveBtn}>
+                <Save size={16} />
+                Lưu
+            </Button>
+            <Button variant="outline" onClick={handleCancel} className={styles.cancelBtn}>
+                <X size={16} />
+                Hủy
+            </Button>
+            </div>
+        </div>
+        </CardContent>
+    </Card>
+  );
 
   return (
       <div className={styles.container}>
@@ -215,17 +310,39 @@ export default function ManageQuizScreen() {
         <div className={styles.header}>
           <div className={styles.headerTop}>
             <div>
-              <h1 className={styles.title}>Quản lý trắc nghiệm nghề nghiệp</h1>
-              <p className={styles.description}>Chỉnh sửa các câu hỏi cho trắc nghiệm Holland và MBTI</p>
+              <h1 className={styles.title}>Quản lý trắc nghiệm</h1>
+              <p className={styles.description}>
+                 {quizId ? "Chỉnh sửa câu hỏi cho bài kiểm tra đang hoạt động" : "Chọn loại trắc nghiệm để bắt đầu"}
+              </p>
             </div>
-            <Button 
-                onClick={handleAddNew} 
-                className={styles.addBtn} 
-                disabled={loading || editingQuestion !== null}
-            >
-                <Plus size={18} />
-                Thêm câu hỏi
-            </Button>
+            
+            <div className={styles.headerActions}>
+                {/* Excel Upload Button */}
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    style={{ display: 'none' }} 
+                    accept=".xlsx, .xls"
+                    onChange={handleFileChange}
+                />
+                <Button 
+                    onClick={handleUploadClick} 
+                    className={styles.uploadBtn}
+                    disabled={loading || uploading || !quizId}
+                >
+                    {uploading ? <Loader2 size={18} /> : <Upload size={18} />}
+                    Tải lên từ file Excel
+                </Button>
+
+                <Button 
+                    onClick={handleAddNew} 
+                    className={styles.addBtn} 
+                    disabled={loading || uploading || editingQuestion !== null || !quizId}
+                >
+                    <Plus size={18} />
+                    Thêm câu hỏi
+                </Button>
+            </div>
           </div>
         </div>
 
@@ -234,124 +351,52 @@ export default function ManageQuizScreen() {
           <button
             className={`${styles.tabButton} ${activeTab === "Holland" ? styles.active : ""}`}
             onClick={() => setActiveTab("Holland")}
-            disabled={editingQuestion !== null}
+            disabled={editingQuestion !== null || loading || uploading}
           >
-            Trắc nghiệm Holland
+            Holland (RIASEC)
           </button>
           <button
             className={`${styles.tabButton} ${activeTab === "MBTI" ? styles.active : ""}`}
             onClick={() => setActiveTab("MBTI")}
-            disabled={editingQuestion !== null}
+            disabled={editingQuestion !== null || loading || uploading}
           >
-            Trắc nghiệm MBTI
+            MBTI
           </button>
         </div>
 
-        {/* Loading State */}
-        {loading && <LoadingSpinner label="Đang tải dữ liệu..." />}
+        {/* Global Loading State */}
+        {loading && <div className={styles.loadingContainer}><LoadingSpinner /><span>Đang tải...</span></div>}
+
+        {/* Missing Quiz State */}
+        {!loading && !quizId && (
+            <div className={styles.emptyState}>
+                Chưa có bài trắc nghiệm {activeTab} nào được tạo trong hệ thống.
+            </div>
+        )}
 
         {/* Questions List */}
-        {!loading && (
+        {!loading && quizId && (
             <div className={styles.questionsList}>
-            {/* Show Edit/Add Form at the top if Adding */}
-            {editingQuestion && (
-                <Card className={styles.editCard}>
-                  <CardContent className={styles.editContent}>
-                    <div className={styles.formHeader}>
-                        <h3>{isAdding ? "Thêm câu hỏi mới" : "Chỉnh sửa câu hỏi"}</h3>
-                    </div>
-                    <div className={styles.editForm}>
-                      <div className={styles.formGroup}>
-                        <label className={styles.label}>Nội dung câu hỏi</label>
-                        <textarea
-                          value={editingQuestion.text}
-                          onChange={(e) => setEditingQuestion({ ...editingQuestion, text: e.target.value })}
-                          className={styles.textarea}
-                          rows={3}
-                          placeholder="Nhập nội dung câu hỏi..."
-                        />
-                      </div>
-                      
-                      {/* Holland Specific Fields */}
-                      {activeTab === "Holland" && (
-                        <div className={styles.formGroup}>
-                          <label className={styles.label}>Nhóm tính cách (Kết quả)</label>
-                          <select
-                            value={editingQuestion.category || ""}
-                            onChange={(e) => setEditingQuestion({ ...editingQuestion, category: e.target.value })}
-                            className={styles.select}
-                          >
-                            {HOLLAND_CATEGORIES.map((cat) => (
-                              <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+            
+            {/* 1. ADD NEW FORM (Fixed at Top) */}
+            {isAdding && editingQuestion && renderEditForm("Thêm câu hỏi mới")}
 
-                      {/* MBTI Specific Fields */}
-                      {activeTab === "MBTI" && (
-                        <div className={styles.formRow}>
-                          <div className={styles.formGroup}>
-                            <label className={styles.label}>Chiều (Dimension)</label>
-                            <select
-                              value={editingQuestion.dimension || ""}
-                              onChange={(e) => {
-                                  const newDim = e.target.value;
-                                  setEditingQuestion({ 
-                                      ...editingQuestion, 
-                                      dimension: newDim,
-                                      direction: MBTI_DIRECTIONS[newDim][0] // Reset direction to first valid option
-                                  })
-                              }}
-                              className={styles.select}
-                            >
-                              {MBTI_DIMENSIONS.map((dim) => (
-                                <option key={dim} value={dim}>{dim}</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className={styles.formGroup}>
-                            <label className={styles.label}>Hướng (Kết quả)</label>
-                            <select
-                              value={editingQuestion.direction || ""}
-                              onChange={(e) => setEditingQuestion({ ...editingQuestion, direction: e.target.value })}
-                              className={styles.select}
-                              disabled={!editingQuestion.dimension}
-                            >
-                              {editingQuestion.dimension &&
-                                MBTI_DIRECTIONS[editingQuestion.dimension]?.map((dir) => (
-                                  <option key={dir} value={dir}>{dir}</option>
-                                ))}
-                            </select>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className={styles.formActions}>
-                        <Button onClick={handleSave} className={styles.saveBtn}>
-                          <Save size={16} />
-                          {isAdding ? "Tạo câu hỏi" : "Lưu thay đổi"}
-                        </Button>
-                        <Button variant="outline" onClick={handleCancel} className={styles.cancelBtn}>
-                          <X size={16} />
-                          Hủy
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-            )}
-
-            {/* List of Questions */}
-            {questions.length === 0 && !editingQuestion ? (
-                <div className={styles.emptyState}>Chưa có câu hỏi nào. Hãy thêm câu hỏi mới!</div>
+            {/* 2. LIST ITEMS */}
+            {questions.length === 0 && !isAdding ? (
+                <div className={styles.emptyState}>Chưa có câu hỏi nào. Hãy thêm câu hỏi mới hoặc tải lên bằng file Excel!</div>
             ) : (
                 questions.map((question, index) => {
-                    // Skip rendering the item currently being edited (to avoid duplication visually if we want inplace edit, 
-                    // but here we show the form at top or replace the item. 
-                    // Let's hide the card if it's being edited ID match)
-                    if (editingQuestion?.id === question.id) return null;
+                    // 3. INLINE EDIT FORM
+                    // If this ID matches the one being edited, render form INSTEAD of card
+                    if (editingQuestion?.id === question.id && !isAdding) {
+                        return (
+                            <div key={question.id} className={styles.questionWrapper}>
+                                {renderEditForm(`Chỉnh sửa câu hỏi #${index + 1}`)}
+                            </div>
+                        )
+                    }
 
+                    // Otherwise Render Display Card
                     return (
                         <div key={question.id} className={styles.questionWrapper}>
                             <Card className={styles.questionCard}>
@@ -359,39 +404,39 @@ export default function ManageQuizScreen() {
                                 <div className={styles.cardHeaderContent}>
                                 <div className={styles.cardTitleWrapper}>
                                     <span className={styles.number}>Câu {index + 1}</span>
-                                    <h3 className={styles.cardTitleCustom}>{question.text}</h3>
+                                    <h3 className={styles.cardTitleCustom}>{question.content}</h3>
                                 </div>
                                 <div className={styles.actions}>
                                     <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleEdit(question)}
-                                    className={styles.editBtn}
-                                    disabled={editingQuestion !== null}
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleEdit(question)}
+                                        className={styles.editBtn}
+                                        disabled={editingQuestion !== null}
                                     >
-                                    <Edit2 size={16} />
+                                        <Edit2 size={16} />
                                     </Button>
                                     <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDelete(question.id)}
-                                    className={styles.deleteBtn}
-                                    disabled={editingQuestion !== null}
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDelete(question.id)}
+                                        className={styles.deleteBtn}
+                                        disabled={editingQuestion !== null}
                                     >
-                                    <Trash2 size={16} />
+                                        <Trash2 size={16} />
                                     </Button>
                                 </div>
                                 </div>
                             </div>
                             <CardContent className={styles.cardContentCustom}>
                                 <div className={styles.metadata}>
-                                {activeTab === "Holland" && (
-                                    <span className={styles.badge}>Nhóm: {question.category}</span>
+                                {activeTab === "Holland" && question.attribute && (
+                                    <span className={styles.badge}>Nhóm: {question.attribute}</span>
                                 )}
-                                {activeTab === "MBTI" && (
+                                {activeTab === "MBTI" && question.dimension && (
                                     <>
                                     <span className={styles.badge}>Chiều: {question.dimension}</span>
-                                    <span className={styles.badge}>Hướng: {question.direction}</span>
+                                    <span className={`${styles.badge} ${styles.badgeGreen}`}>Đồng ý = {question.agreePreference}</span>
                                     </>
                                 )}
                                 </div>
