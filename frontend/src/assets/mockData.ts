@@ -636,6 +636,32 @@ export const mockRepresentativeApplications: RepresentativeApplication[] = [
   },
 ]
 
+// Mock user test results by subject and quiz results
+export const mockUserTestResults = {
+  A00: {
+    // Toán – Vật lí – Hóa học
+    Toán: { averageScore: 78, attempts: 3, lastAttempt: new Date(Date.now() - 86400000).toISOString() },
+    "Vật lí": { averageScore: 72, attempts: 2, lastAttempt: new Date(Date.now() - 172800000).toISOString() },
+    "Hóa học": { averageScore: 75, attempts: 2, lastAttempt: new Date(Date.now() - 259200000).toISOString() },
+  },
+  A01: {
+    // Toán – Vật lí – Tiếng Anh
+    Toán: { averageScore: 78, attempts: 3, lastAttempt: new Date(Date.now() - 86400000).toISOString() },
+    "Vật lí": { averageScore: 72, attempts: 2, lastAttempt: new Date(Date.now() - 172800000).toISOString() },
+    "Tiếng Anh": { averageScore: 80, attempts: 2, lastAttempt: new Date(Date.now() - 259200000).toISOString() },
+  },
+}
+
+export const mockUserMBTIResults: { type: string; completedAt: string }[] = [
+  { type: "INTJ", completedAt: new Date(Date.now() - 604800000).toISOString() },
+  { type: "INTP", completedAt: new Date(Date.now() - 1209600000).toISOString() },
+]
+
+export const mockUserHollandResults: { code: string; completedAt: string }[] = [
+  { code: "RIA", completedAt: new Date(Date.now() - 604800000).toISOString() },
+  { code: "IRA", completedAt: new Date(Date.now() - 1209600000).toISOString() },
+]
+
 // In-memory storage for new data
 export const inMemoryStorage = {
   posts: [...mockPosts],
@@ -650,6 +676,9 @@ export const inMemoryStorage = {
   questions: [...mockQuestions], // Add questions to storage
   softSkills: [...mockSoftSkills],
   representativeApplications: [...mockRepresentativeApplications],
+  userTestResults: mockUserTestResults,
+  userMBTIResults: mockUserMBTIResults,
+  userHollandResults: mockUserHollandResults,
 }
 
 export const mockData = {
@@ -668,4 +697,7 @@ export const mockData = {
   testCombinations: mockTestCombinations,
   softSkills: mockSoftSkills,
   representativeApplications: mockRepresentativeApplications,
+  userTestResults: mockUserTestResults,
+  userMBTIResults: mockUserMBTIResults,
+  userHollandResults: mockUserHollandResults,
 }

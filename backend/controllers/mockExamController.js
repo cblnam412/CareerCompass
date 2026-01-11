@@ -716,6 +716,7 @@ export const getStudentExamResults = async (req, res) => {
 
         const results = await ExamResult.find({ studentId: userId })
             .populate('mockExamId', 'title duration subject')
+            .populate('subject', 'name')
             .skip(skip)
             .limit(parseInt(limit))
             .sort(sort);

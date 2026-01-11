@@ -36,7 +36,7 @@ export const registerUser = async (req, res) => {
             password: hashedPassword,
             DOB,
             address,
-            studentId: studentId ? studentId.trim() : null,
+            studentId: studentId ? studentId.trim() : undefined,
             role: 'user',
             status: 'active'
         });

@@ -19,6 +19,7 @@ import ManageSoftSkillScreen from './ManageSoftSkillScreen/ManageSoftSkillScreen
 import ManageUserScreen from './ManageUserScreen/ManageUserScreen'
 import ManageSubjectScreen from './ManageSubjectScreen/ManageSubjectScreen'
 import ManageUniversityScreen from './ManageUniversityScreen/ManageUniversityScreen'
+import CareerPredictionScreen from './CareerPredictionScreen/CareerPredictionScreen'
 
 export {
     MessageScreen,
@@ -41,5 +42,6 @@ export {
     ManageSoftSkillScreen,
     ManageUserScreen,
     ManageSubjectScreen,
-    ManageUniversityScreen
+    ManageUniversityScreen,
+    CareerPredictionScreen,
 }

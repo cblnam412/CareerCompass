@@ -23,6 +23,9 @@ export function PostCard({ post, onUpdate }) {
   const [activeCommentDropdown, setActiveCommentDropdown] = useState(null); 
   const [editingCommentId, setEditingCommentId] = useState(null); 
   const [editContent, setEditContent] = useState(""); 
+  const [replyingToCommentId, setReplyingToCommentId] = useState(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   const [isEditingPost, setIsEditingPost] = useState(false);
   const [postContent, setPostContent] = useState(post.content); 
@@ -64,7 +67,7 @@ export function PostCard({ post, onUpdate }) {
   
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const COMMENTS_LIMIT = 5;
+  const COMMENTS_LIMIT = 20;
 
   const [comment, setComment] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -153,19 +156,30 @@ export function PostCard({ post, onUpdate }) {
                 content: c.content,
                 created_at: c.createdAt,
                 liked: false,
+                parentCommentId: c.parentCommentId?._id || null,
                 author: {
                     author_id: c.authorId?._id,
                     // Apply helper to Comment Author
                     display_name: getDisplayName(c.authorId), 
                     role: c.authorId?.role || "student",
                     avatar_url: c.authorId?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg",
-                }
+                },
+                replies: []
             }));
 
+            // Group replies under parent comments
+            const topLevelComments = formattedComments.filter(c => !c.parentCommentId);
+            const replyComments = formattedComments.filter(c => c.parentCommentId);
+            
+            // Attach replies to their parent comments
+            topLevelComments.forEach(parent => {
+                parent.replies = replyComments.filter(reply => reply.parentCommentId === parent.id);
+            });
+
             if (pageNum === 1) {
-                setComments(formattedComments);
+                setComments(topLevelComments);
             } else {
-                setComments(prev => [...prev, ...formattedComments]);
+                setComments(prev => [...prev, ...topLevelComments]);
             }
 
             setHasMore(data.pagination.page < data.pagination.pages);
@@ -225,19 +239,27 @@ export function PostCard({ post, onUpdate }) {
     }
   };
 
-  const handleComment = async (e) => {
+  const handleComment = async (e, parentCommentId = null) => {
     e.preventDefault();
     if (!userID) {
         toast.error("Vui lòng đăng nhập");
         return;
     }
-    if (!comment.trim()) return;
+    
+    const contentToSubmit = parentCommentId ? replyContent : comment;
+    if (!contentToSubmit.trim()) return;
 
-    setIsSubmitting(true);
+    if (parentCommentId) {
+      setIsSubmittingReply(true);
+    } else {
+      setIsSubmitting(true);
+    }
+    
     try {
       const payload = {
-          content: comment,
-          itemUrl: ""
+          content: contentToSubmit,
+          itemUrl: "",
+          ...(parentCommentId && { parentCommentId })
       };
 
       const res = await fetch(`${API}/api/forum/posts/${postId}/comments`, {
@@ -258,31 +280,54 @@ export function PostCard({ post, onUpdate }) {
               content: data.data.content,
               created_at: new Date().toISOString(),
               liked: false,
+              parentCommentId: parentCommentId,
               author: {
                   display_name: getDisplayName(userInfo),
                   role: userInfo.role,
-                  avatar_url: userInfo.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}`
-              }
+                  avatar_url: userInfo.avatar || `https://www.svgrepo.com/show/452030/avatar-default.svg`,
+                  author_id: userID
+              },
+              replies: []
           };
           
-          setComments([newCommentObj, ...comments]);
-          setCommentsCount(prev => prev + 1); 
-          setComment("");
-          setShowEmojiPicker(false);
-
-          if (!commentsLoaded) {
-             await fetchComments(1);
+          if (parentCommentId) {
+            // Add reply to parent comment
+            setComments(prev => prev.map(c => {
+              if (c.id === parentCommentId) {
+                return {
+                  ...c,
+                  replies: [...(c.replies || []), newCommentObj]
+                };
+              }
+              return c;
+            }));
+            setReplyContent("");
+            setReplyingToCommentId(null);
+            toast.success("Đã trả lời");
           } else {
-             setComments([newCommentObj, ...comments]);
+            // Add top-level comment
+            setComments([newCommentObj, ...comments]);
+            setComment("");
+            setShowEmojiPicker(false);
+          }
+          
+          setCommentsCount(prev => prev + 1); 
+
+          if (!commentsLoaded && !parentCommentId) {
+             await fetchComments(1);
           }
 
           setShowComments(true);      
       }
     } catch (error) {
       console.error("Error posting comment:", error);
-      toast.error("Không thể gửi bình luận");
+      toast.error(parentCommentId ? "Không thể gửi trả lời" : "Không thể gửi bình luận");
     } finally {
-      setIsSubmitting(false);
+      if (parentCommentId) {
+        setIsSubmittingReply(false);
+      } else {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -379,6 +424,16 @@ export function PostCard({ post, onUpdate }) {
 
   const handleCommentLike = (commentId) => {
     setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, liked: !c.liked } : c)));
+  };
+
+  const handleReply = (commentId) => {
+    setReplyingToCommentId(commentId);
+    setReplyContent("");
+  };
+
+  const cancelReply = () => {
+    setReplyingToCommentId(null);
+    setReplyContent("");
   };
 
   const handleEmojiClick = (emojiData) => {
@@ -584,8 +639,77 @@ export function PostCard({ post, onUpdate }) {
                         <span className={styles.commentTime}>
                           {getTimeAgo(cmt.created_at)}
                         </span>
-                        {/* <button className={styles.replyButton}>Trả lời</button> */}
+                        <button 
+                          className={styles.replyButton}
+                          onClick={() => handleReply(cmt.id)}
+                        >
+                          Trả lời
+                        </button>
                       </div>
+                      
+                      {/* Nested Replies */}
+                      {cmt.replies && cmt.replies.length > 0 && (
+                        <div className={styles.repliesContainer}>
+                          {cmt.replies.map((reply) => (
+                            <div key={reply.id} className={styles.reply}>
+                              <img
+                                src={reply.author.avatar_url}
+                                alt={reply.author.display_name}
+                                className={styles.commentAvatar}
+                              />
+                              <div className={styles.commentContent}>
+                                <div className={styles.commentText}>
+                                  <span className={styles.commentAuthor}>
+                                    {reply.author.display_name}
+                                    {renderRoleIcon(reply.author.role)}
+                                  </span>{" "}
+                                  <span className={styles.commentBody}>{reply.content}</span>
+                                </div>
+                                <div className={styles.commentMeta}>
+                                  <span className={styles.commentTime}>
+                                    {getTimeAgo(reply.created_at)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Reply Input Form */}
+                      {replyingToCommentId === cmt.id && (
+                        <div className={styles.replyForm}>
+                          <input
+                            type="text"
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            placeholder={`Trả lời ${cmt.author.display_name}...`}
+                            className={styles.replyInput}
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                handleComment(e, cmt.id);
+                              }
+                              if (e.key === 'Escape') {
+                                cancelReply();
+                              }
+                            }}
+                          />
+                          <button
+                            onClick={(e) => handleComment(e, cmt.id)}
+                            disabled={!replyContent.trim() || isSubmittingReply}
+                            className={styles.submitButton}
+                          >
+                            {isSubmittingReply ? "..." : "Gửi"}
+                          </button>
+                          <button
+                            onClick={cancelReply}
+                            className={styles.cancelReplyButton}
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
