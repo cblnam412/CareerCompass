@@ -1,4 +1,28 @@
 import TrainingData from '../models/TrainingData.js';
+import Subject from '../models/Subject.js';
+
+export const convertAcademicTranscriptToScores = async (academicTranscript) => {
+    if (!academicTranscript || !Array.isArray(academicTranscript)) {
+        return {};
+    }
+
+    const subjectScores = {};
+    
+    for (const item of academicTranscript) {
+        if (item.subjectId) {
+            const subjectId = typeof item.subjectId === 'string' ? item.subjectId : item.subjectId._id;
+            const subject = await Subject.findById(subjectId).select('name');
+            
+            if (subject) {
+                const normalizedName = subject.name.toLowerCase().replace(/\s+/g, '');
+                subjectScores[normalizedName] = item.score || 5;
+            }
+        }
+    }
+    
+    return subjectScores;
+};
+
 export const calculateCompletenessScore = (data) => {
     const importantFields = [
         { field: 'mbtiType', weight: 1.5 },
@@ -90,31 +114,107 @@ export const validateTrainingData = (data) => {
 
 export const extractFeatures = (data) => {
     const features = {};
-    features.math = (data.subjectScores?.math ?? 5) / 10;
-    features.physics = (data.subjectScores?.physics ?? 5) / 10;
-    features.chemistry = (data.subjectScores?.chemistry ?? 5) / 10;
-    features.biology = (data.subjectScores?.biology ?? 5) / 10;
-    features.literature = (data.subjectScores?.literature ?? 5) / 10;
-    features.history = (data.subjectScores?.history ?? 5) / 10;
-    features.geography = (data.subjectScores?.geography ?? 5) / 10;
-    features.civic = (data.subjectScores?.civic ?? 5) / 10;
-    features.english = (data.subjectScores?.english ?? 5) / 10;
     
-    features.gpa = (data.gpa ?? 5) / 10;
+    // Subject scores - use average if available, default to 5
+    const subjectScores = data.subjectScores || {};
     
-    features.realistic = (data.hollandCode?.realistic ?? 50) / 100;
-    features.investigative = (data.hollandCode?.investigative ?? 50) / 100;
-    features.artistic = (data.hollandCode?.artistic ?? 50) / 100;
-    features.social = (data.hollandCode?.social ?? 50) / 100;
-    features.enterprising = (data.hollandCode?.enterprising ?? 50) / 100;
-    features.conventional = (data.hollandCode?.conventional ?? 50) / 100;
+    // Normalize subject names and extract scores
+    const normalizeSubjectName = (name) => name.toLowerCase().replace(/\s+/g, '');
     
-    features.communication = (data.softSkills?.communication ?? 5) / 10;
-    features.problemSolving = (data.softSkills?.problemSolving ?? 5) / 10;
-    features.teamwork = (data.softSkills?.teamwork ?? 5) / 10;
-    features.leadership = (data.softSkills?.leadership ?? 5) / 10;
-    features.creativity = (data.softSkills?.creativity ?? 5) / 10;
-    features.timeManagement = (data.softSkills?.timeManagement ?? 5) / 10;
+    // Định nghĩa các môn học phổ biến
+    const subjectMapping = {
+        'toán': ['math', 'toan', 'toán'],
+        'vật lý': ['physics', 'vatlý', 'vật lý', 'vl'],
+        'hóa học': ['chemistry', 'hoahoc', 'hóa học', 'hh'],
+        'sinh học': ['biology', 'sinhhoc', 'sinh học', 'sh'],
+        'ngữ văn': ['literature', 'nguvvan', 'ngữ văn', 'nv'],
+        'lịch sử': ['history', 'lichsu', 'lịch sử', 'ls'],
+        'địa lý': ['geography', 'dialy', 'địa lý', 'dl'],
+        'công dân': ['civic', 'congdan', 'công dân', 'cd'],
+        'tiếng anh': ['english', 'english', 'tiếng anh', 'ta']
+    };
+    
+    // Tìm điểm cho từng môn
+    const getScoreForSubject = (targetName) => {
+        for (const [key, value] of Object.entries(subjectScores)) {
+            const normalizedKey = normalizeSubjectName(key);
+            if (normalizeSubjectName(targetName).includes(normalizedKey) || 
+                normalizedKey.includes(normalizeSubjectName(targetName))) {
+                return (value ?? 5) / 10;
+            }
+        }
+        return 5 / 10; // Default
+    };
+    
+    // Extract subject scores with better weighting
+    features.math = getScoreForSubject('toán');
+    features.physics = getScoreForSubject('vật lý');
+    features.chemistry = getScoreForSubject('hóa học');
+    features.biology = getScoreForSubject('sinh học');
+    features.literature = getScoreForSubject('ngữ văn');
+    features.history = getScoreForSubject('lịch sử');
+    features.geography = getScoreForSubject('địa lý');
+    features.civic = getScoreForSubject('công dân');
+    features.english = getScoreForSubject('tiếng anh');
+    
+    if (data.gpa) {
+        features.gpa = (data.gpa) / 10;
+    } else {
+        const subjectValues = Object.values(subjectScores).filter(v => v !== undefined && v !== null);
+        if (subjectValues.length > 0) {
+            const avgScore = subjectValues.reduce((a, b) => a + b, 0) / subjectValues.length;
+            features.gpa = (avgScore) / 10;
+        } else {
+            features.gpa = 0.5;
+        }
+    }
+    
+    features.realistic = (data.hollandCode?.R ?? data.hollandCode?.realistic ?? 50) / 100;
+    features.investigative = (data.hollandCode?.I ?? data.hollandCode?.investigative ?? 50) / 100;
+    features.artistic = (data.hollandCode?.A ?? data.hollandCode?.artistic ?? 50) / 100;
+    features.social = (data.hollandCode?.S ?? data.hollandCode?.social ?? 50) / 100;
+    features.enterprising = (data.hollandCode?.E ?? data.hollandCode?.enterprising ?? 50) / 100;
+    features.conventional = (data.hollandCode?.C ?? data.hollandCode?.conventional ?? 50) / 100;
+    
+    // Soft skills with default values
+    const softSkills = data.softSkills || {};
+    features.communication = (softSkills.communication ?? 5) / 10;
+    features.problemSolving = (softSkills.problemSolving ?? 5) / 10;
+    features.teamwork = (softSkills.teamwork ?? 5) / 10;
+    features.leadership = (softSkills.leadership ?? 5) / 10;
+    features.creativity = (softSkills.creativity ?? 5) / 10;
+    features.timeManagement = (softSkills.timeManagement ?? 5) / 10;
+
+    features.scienceStrength = (
+        features.physics * 0.4 + 
+        features.chemistry * 0.3 + 
+        features.biology * 0.2 + 
+        features.math * 0.5
+    ) / 1.4;
+    
+    features.humanitiesStrength = (
+        features.literature * 0.4 + 
+        features.history * 0.3 + 
+        features.geography * 0.2 + 
+        features.civic * 0.1
+    ) / 1.0;
+    
+    features.academicAverage = (
+        features.math + features.physics + features.chemistry + 
+        features.biology + features.literature + features.english
+    ) / 6;
+    
+    features.softSkillsAverage = (
+        features.communication + features.problemSolving + 
+        features.teamwork + features.leadership + 
+        features.creativity + features.timeManagement
+    ) / 6;
+    
+    features.technicalAptitude = (features.math * 0.6 + features.physics * 0.4);
+    features.businessPotential = (features.communication * 0.4 + features.leadership * 0.3 + features.enterprising * 0.3);
+    features.creativePotential = (features.creativity * 0.5 + features.artistic * 0.5);
+    features.researchAptitude = (features.problemSolving * 0.4 + features.investigative * 0.6);
+    features.overallCompetence = (features.academicAverage * 0.6 + features.softSkillsAverage * 0.4);
     
     const mbtiTypes = ['ISTJ', 'ISFJ', 'INFJ', 'INTJ', 'ISTP', 'ISFP', 'INFP', 'INTP',
                       'ESTP', 'ESFP', 'ENFP', 'ENTP', 'ESTJ', 'ESFJ', 'ENFJ', 'ENTJ'];
@@ -130,7 +230,10 @@ export const getFeatureNames = () => {
         'math', 'physics', 'chemistry', 'biology', 'literature', 'history', 
         'geography', 'civic', 'english', 'gpa',
         'realistic', 'investigative', 'artistic', 'social', 'enterprising', 'conventional',
-        'communication', 'problemSolving', 'teamwork', 'leadership', 'creativity', 'timeManagement'
+        'communication', 'problemSolving', 'teamwork', 'leadership', 'creativity', 'timeManagement',
+        // Composite features for enhanced weighting
+        'scienceStrength', 'humanitiesStrength', 'academicAverage', 'softSkillsAverage',
+        'technicalAptitude', 'businessPotential', 'creativePotential', 'researchAptitude', 'overallCompetence'
     ];
     
     const mbtiTypes = ['ISTJ', 'ISFJ', 'INFJ', 'INTJ', 'ISTP', 'ISFP', 'INFP', 'INTP',

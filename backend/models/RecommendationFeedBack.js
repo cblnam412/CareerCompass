@@ -1,9 +1,14 @@
 import mongoose from "mongoose";
 const recommendationFeedBackSchema = new mongoose.Schema({
+    studentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'StudentProfile',
+        required: true,
+    },
     recommendationId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'MajorRecommendation',
-        required: true,
+        required: false,
     },
     majorId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -16,7 +21,7 @@ const recommendationFeedBackSchema = new mongoose.Schema({
     },
     userSelectionStatus: {
         type: String,
-        enum: ['applied', 'accepted', 'enrolled', 'none'],
+        enum: ['applied', 'accepted', 'enrolled', 'interested', 'not_interested', 'none'],
         default: 'none',
     },
     comments: {

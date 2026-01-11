@@ -8,7 +8,8 @@ import {
     getTrainingDataStats,
     exportTrainingDataTemplate,
     importTrainingDataFromExcel,
-    trainRecommendationModel
+    trainRecommendationModel,
+    saveFeedback
 } from '../controllers/majorRecommendationController.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
 import { uploadExcelFile } from '../middlewares/uploadMiddleware.js';
@@ -24,5 +25,6 @@ router.post('/train/model', verifyToken, trainRecommendationModel);
 router.get('/stats/model', verifyToken, getModelStats);
 router.get('/stats/training-data', verifyToken, getTrainingDataStats);
 router.get('/training-data', verifyToken, getTrainingDataList);
+router.post('/feedback/save', verifyToken, saveFeedback);
 
 export default router;

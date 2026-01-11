@@ -3,7 +3,7 @@ import { Card } from "../../component/Card/Card"
 import { Button } from "../../component/Button/Button"
 import { toast } from "react-toastify"
 import styles from "./CareerPredictionScreen.module.css"
-import { BookOpen, Loader2 } from "lucide-react"
+import { BookOpen, Loader2, ThumbsUp, ThumbsDown, MessageSquare, X } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
 import API from "../../API/API"
 
@@ -28,6 +28,17 @@ export default function CareerPredictionScreen() {
   const [editableScores, setEditableScores] = useState({})
   const [submitted, setSubmitted] = useState(false)
   const [selectedSoftSkills, setSelectedSoftSkills] = useState([])
+  
+  // Feedback states
+  const [feedbackOpen, setFeedbackOpen] = useState({}) // { majorId: true/false }
+  const [feedbackData, setFeedbackData] = useState({}) // { majorId: { helpful: bool, comment: string } }
+  const [submittingFeedback, setSubmittingFeedback] = useState({})
+  
+  // Detail view states
+  const [selectedMajorGroup, setSelectedMajorGroup] = useState(null) // { id, name }
+  const [universityMajors, setUniversityMajors] = useState([]) // List of UniversityMajor
+  const [loadingMajors, setLoadingMajors] = useState(false)
+  const [selectedUniversityMajor, setSelectedUniversityMajor] = useState(null) // Detailed view
 
   // Log state changes for debugging
   useEffect(() => {
@@ -291,6 +302,100 @@ export default function CareerPredictionScreen() {
       total += getDisplayScore(subject.name)
     })
     return Math.round(total * 100) / 100
+  }
+
+  const handleFeedbackSubmit = async (majorId, majorName) => {
+    const feedback = feedbackData[majorId]
+    if (!feedback || feedback.helpful === null) {
+      toast.warning("Vui lòng chọn phản hồi: Có hữu ích hoặc Không hữu ích")
+      return
+    }
+
+    setSubmittingFeedback(prev => ({...prev, [majorId]: true}))
+    try {
+      const response = await fetch(`${API}/api/major-recommendations/feedback/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          recommendationId: majorId,
+          majorId: majorId,
+          isHelpful: feedback.helpful,
+          userSelectionStatus: feedback.helpful ? "interested" : "not_interested",
+          comments: feedback.comment || ""
+        })
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        toast.success(`Cảm ơn bạn đã phản hồi về "${majorName}"`)
+        // Reset feedback for this major
+        setFeedbackOpen(prev => ({...prev, [majorId]: false}))
+        setFeedbackData(prev => ({...prev, [majorId]: { helpful: null, comment: "" }}))
+      } else {
+        toast.error(result.message || "Không thể lưu phản hồi")
+      }
+    } catch (error) {
+      console.error("Error submitting feedback:", error)
+      toast.error("Lỗi khi gửi phản hồi")
+    } finally {
+      setSubmittingFeedback(prev => ({...prev, [majorId]: false}))
+    }
+  }
+
+  const handleMajorGroupClick = async (majorId, majorName) => {
+    setSelectedMajorGroup({ id: majorId, name: majorName })
+    setLoadingMajors(true)
+    
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+      }
+      
+      // Fetch UniversityMajor for this major
+      const response = await fetch(`${API}/api/university-majors?majorId=${majorId}&limit=100`, { 
+        headers 
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          setUniversityMajors(data.data)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching university majors:", error)
+      toast.error("Lỗi khi tải danh sách ngành-trường")
+    } finally {
+      setLoadingMajors(false)
+    }
+  }
+
+  const handleUniversityMajorClick = async (universityMajorId) => {
+    try {
+      const headers = {
+        "Content-Type": "application/json",
+        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+      }
+      
+      // Fetch detailed info
+      const response = await fetch(`${API}/api/university-majors/${universityMajorId}`, { 
+        headers 
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          setSelectedUniversityMajor(data.data)
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching university major details:", error)
+      toast.error("Lỗi khi tải thông tin chi tiết")
+    }
   }
 
   const handleSubmit = async () => {
@@ -602,6 +707,74 @@ export default function CareerPredictionScreen() {
                 getFilteredRecommendations().map((major) => (
                   <Card key={major.id} className={styles.majorCard}>
                     <div className={styles.majorCardInner}>
+                      {/* Feedback button - top right corner */}
+                      <div className={styles.feedbackButtonGroup}>
+                        <button
+                          onClick={() => setFeedbackOpen(prev => ({...prev, [major.id]: !prev[major.id]}))}
+                          className={styles.feedbackToggleButton}
+                          title="Phản hồi về gợi ý này"
+                        >
+                          <MessageSquare size={18} />
+                        </button>
+                      </div>
+
+                      {/* Feedback Modal */}
+                      {feedbackOpen[major.id] && (
+                        <div className={styles.feedbackModal}>
+                          <div className={styles.feedbackContent}>
+                            <div className={styles.feedbackHeader}>
+                              <h4>Phản hồi về {major.name}</h4>
+                              <button
+                                onClick={() => setFeedbackOpen(prev => ({...prev, [major.id]: false}))}
+                                className={styles.feedbackClose}
+                              >
+                                <X size={18} />
+                              </button>
+                            </div>
+
+                            <div className={styles.feedbackQuestion}>
+                              <p>Gợi ý này có hữu ích không?</p>
+                              <div className={styles.feedbackButtons}>
+                                <button
+                                  onClick={() => setFeedbackData(prev => ({...prev, [major.id]: {...(prev[major.id] || {}), helpful: true}}))}
+                                  className={`${styles.feedbackOption} ${feedbackData[major.id]?.helpful === true ? styles.selected : ''}`}
+                                >
+                                  <ThumbsUp size={18} />
+                                  Có
+                                </button>
+                                <button
+                                  onClick={() => setFeedbackData(prev => ({...prev, [major.id]: {...(prev[major.id] || {}), helpful: false}}))}
+                                  className={`${styles.feedbackOption} ${feedbackData[major.id]?.helpful === false ? styles.selected : ''}`}
+                                >
+                                  <ThumbsDown size={18} />
+                                  Không
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className={styles.feedbackComment}>
+                              <label>Bình luận (tùy chọn)</label>
+                              <textarea
+                                value={feedbackData[major.id]?.comment || ''}
+                                onChange={(e) => setFeedbackData(prev => ({...prev, [major.id]: {...(prev[major.id] || {}), comment: e.target.value}}))}
+                                placeholder="Chia sẻ lý do của bạn..."
+                                className={styles.feedbackTextarea}
+                              />
+                            </div>
+
+                            <div className={styles.feedbackActions}>
+                              <button
+                                onClick={() => handleFeedbackSubmit(major.id, major.name)}
+                                disabled={submittingFeedback[major.id] || feedbackData[major.id]?.helpful === null}
+                                className={styles.feedbackSubmitButton}
+                              >
+                                {submittingFeedback[major.id] ? 'Đang gửi...' : 'Gửi phản hồi'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Header with major name and badge */}
                       <div className={styles.majorCardHeader}>
                         <div className={styles.majorCardTitle}>
@@ -610,51 +783,13 @@ export default function CareerPredictionScreen() {
                           <div className={styles.matchBadge}>{selectedCombination}</div>
                       </div>
 
-                      {/* University info */}
-                      <div className={styles.majorUniversityCard}>
-                        <BookOpen size={18} strokeWidth={2} />
-                        <span>{major.university}</span>
-                      </div>
-
-                      {/* Key stats in a highlighted section */}
-                      <div className={styles.statsHighlight}>
-                        <div className={styles.statBox}>
-                          <div className={styles.statBoxLabel}>Điểm chuẩn</div>
-                          <div className={styles.statBoxValue}>{major.minScore}</div>
-                        </div>
-                        <div className={styles.statBox}>
-                          <div className={styles.statBoxLabel}>Vùng</div>
-                          <div className={styles.statBoxValue}>{major.region}</div>
-                        </div>
-                      </div>
-
-                      {/* Matching section */}
-                      <div className={styles.matchingSection}>
-                        <div className={styles.matchingRow}>
-                          <span className={styles.matchingLabel}>Điểm của bạn:</span>
-                          <span className={styles.matchingScore}>{major.userScore}</span>
-                        </div>
-                        <div className={styles.matchingRow}>
-                          <span className={styles.matchingLabel}>Điểm chuẩn:</span>
-                          <span className={styles.matchingScore}>{major.minScore}</span>
-                        </div>
-                        <div className={styles.matchingIndicator}>
-                          {major.userScore >= major.minScore ? (
-                            <span className={styles.qualifiedBadge}>Đủ điều kiện</span>
-                          ) : (
-                            <span className={styles.notQualifiedBadge}>Chưa đủ điều kiện</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Compatibility score section */}
-                      <div className={styles.compatibilitySection}>
-                        <div className={styles.compatibilityLabel}>Tỉ lệ phù hợp</div>
-                        <div className={styles.compatibilityBar}>
-                          <div className={styles.compatibilityFill} style={{ width: `${major.compatibilityScore}%` }} />
-                        </div>
-                        <div className={styles.compatibilityPercentage}>{major.compatibilityScore}%</div>
-                      </div>
+                      {/* Click to view universities - new feature */}
+                      <button
+                        onClick={() => handleMajorGroupClick(major.id, major.name)}
+                        className={styles.viewUniversitiesButton}
+                      >
+                        Xem các trường học ngành này
+                      </button>
 
                       {/* Recommendation reason section */}
                       <div className={styles.reasonSection}>
@@ -669,6 +804,132 @@ export default function CareerPredictionScreen() {
                   <p>Không có dữ liệu để hiển thị</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* === MODAL: University Majors List === */}
+        {selectedMajorGroup && (
+          <div className={styles.modalOverlay} onClick={() => setSelectedMajorGroup(null)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3>Ngành {selectedMajorGroup.name} tại các trường</h3>
+                <button
+                  onClick={() => setSelectedMajorGroup(null)}
+                  className={styles.modalClose}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {loadingMajors ? (
+                <div className={styles.loadingContainer}>
+                  <Loader2 size={32} className={styles.spinner} />
+                  <p>Đang tải dữ liệu...</p>
+                </div>
+              ) : universityMajors.length > 0 ? (
+                <div className={styles.universityMajorsList}>
+                  {universityMajors.map((uniMajor) => (
+                    <div
+                      key={uniMajor._id}
+                      className={styles.universityMajorCard}
+                      onClick={() => handleUniversityMajorClick(uniMajor._id)}
+                    >
+                      <div className={styles.uniMajorHeader}>
+                        <h4>{uniMajor.universityId?.name || 'Trường chưa biết'}</h4>
+                        <span className={styles.uniMajorCode}>{uniMajor.universityId?.code}</span>
+                      </div>
+                      <p className={styles.uniMajorMajor}>{uniMajor.majorName || uniMajor.majorId?.name}</p>
+                      {uniMajor.quota && (
+                        <div className={styles.uniMajorScore}>
+                          Chỉ tiêu: <strong>{uniMajor.quota}</strong>
+                        </div>
+                      )}
+                      <p className={styles.uniMajorHint}>Nhấp để xem chi tiết →</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{padding: '20px', textAlign: 'center', color: '#65676b'}}>
+                  <p>Không tìm thấy ngành-trường nào</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* === MODAL: University Major Details === */}
+        {selectedUniversityMajor && (
+          <div className={styles.modalOverlay} onClick={() => setSelectedUniversityMajor(null)}>
+            <div className={styles.modalContent + ' ' + styles.detailModal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3>Thông tin chi tiết ngành</h3>
+                <button
+                  onClick={() => setSelectedUniversityMajor(null)}
+                  className={styles.modalClose}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className={styles.detailContent}>
+                <div className={styles.detailSection}>
+                  <label>Trường đại học</label>
+                  <p className={styles.detailValue}>{selectedUniversityMajor.universityId?.name} ({selectedUniversityMajor.universityId?.region})</p>
+                </div>
+
+                <div className={styles.detailSection}>
+                  <label>Ngành học</label>
+                  <p className={styles.detailValue}>{selectedUniversityMajor.majorName || selectedUniversityMajor.majorId?.name}</p>
+                </div>
+
+                <div className={styles.detailSection}>
+                  <label>Tên ngành tại trường</label>
+                  <p className={styles.detailValue}>{selectedUniversityMajor.majorName}</p>
+                </div>
+
+                <div className={styles.detailSection}>
+                  <label>Mã ngành tại trường</label>
+                  <p className={styles.detailValue}>{selectedUniversityMajor.majorId?.code || 'N/A'}</p>
+                </div>
+
+                {selectedUniversityMajor.quota > 0 && (
+                  <div className={styles.detailSection}>
+                    <label>Số chỉ tiêu</label>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.quota}</p>
+                  </div>
+                )}
+
+                {selectedUniversityMajor.tutionFee > 0 && (
+                  <div className={styles.detailSection}>
+                    <label>Học phí</label>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.tutionFee.toLocaleString('vi-VN')} VNĐ</p>
+                  </div>
+                )}
+
+                {selectedUniversityMajor.duration > 0 && (
+                  <div className={styles.detailSection}>
+                    <label>Thời gian đào tạo</label>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.duration} năm</p>
+                  </div>
+                )}
+
+                {selectedUniversityMajor.addmissionMethods && selectedUniversityMajor.addmissionMethods.length > 0 && (
+                  <div className={styles.detailSection}>
+                    <label>Phương thức xét tuyển</label>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.addmissionMethods.join(', ')}</p>
+                  </div>
+                )}
+
+                <div className={styles.detailActions}>
+                  <Button
+                    onClick={() => setSelectedUniversityMajor(null)}
+                    className={styles.detailButton}
+                  >
+                    Đóng
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

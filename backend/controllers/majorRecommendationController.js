@@ -5,12 +5,16 @@ import StudentProfile from '../models/StudentProfile.js';
 import Major from '../models/Major.js';
 import User from '../models/User.js';
 import MajorMapping from '../models/MajorMapping.js';
+import Subject from '../models/Subject.js';
+import SoftSkill from '../models/SoftSkill.js';
+import RecommendationFeedBack from '../models/RecommendationFeedBack.js';
 import { 
     extractFeatures, 
     featuresToArray, 
     getFeatureNames,
     calculateCompletenessScore,
-    validateTrainingData
+    validateTrainingData,
+    convertAcademicTranscriptToScores
 } from '../utils/trainingDataUtils.js';
 import { MajorRecommendationModel } from '../utils/mlModel.js';
 import fs from 'fs';
@@ -400,16 +404,34 @@ export const getMajorRecommendation = async (req, res) => {
             });
         }
         
+        const subjectScores = await convertAcademicTranscriptToScores(studentProfile.academicTranscript);
+        
+        let softSkillsScores = {};
+        if (studentProfile.softSkills && Array.isArray(studentProfile.softSkills)) {
+            const skills = await SoftSkill.find({ 
+                _id: { $in: studentProfile.softSkills } 
+            }).select('softSkillName');
+            
+            if (skills && skills.length > 0) {
+                skills.forEach(skill => {
+                    const normalizedName = skill.softSkillName?.toLowerCase().replace(/\s+/g, '') || 'unknown';
+                    softSkillsScores[normalizedName] = 6;
+                });
+            }
+        }
+        
         const features = extractFeatures({
             mbtiType: studentProfile.mbtiResult?.type,
             hollandCode: studentProfile.hollandResult?.scores,
-            subjectScores: studentProfile.academicTranscript,
+            subjectScores: subjectScores,
             gpa: studentProfile.gpa,
-            softSkills: {} 
+            softSkills: softSkillsScores
         });
         
         const featureNames = getFeatureNames();
         const featureArray = featuresToArray(features, featureNames);
+        
+        console.log('[Prediction] Features extracted:', featureArray.slice(0, 15));
         
         const topKPredictions = model.predictTopK(featureArray, 3);
         
@@ -510,6 +532,53 @@ export const getMajorRecommendation = async (req, res) => {
                 reason: reason.length > 0 ? reason[0] : 'Dựa trên phân tích dữ liệu học sinh'
             };
         }).filter(r => r !== null);
+        
+        if (recommendations.length === 0) {
+            console.log('[Recommendation] No model predictions, using fallback logic');
+            
+            const hollandCodes = Object.keys(hollandScores || {})
+                .sort((a, b) => (hollandScores[b] || 0) - (hollandScores[a] || 0))
+                .slice(0, 2);
+            
+            const categoryKeywords = {
+                'R': ['kỹ thuật', 'xây dựng', 'công nghiệp'],
+                'I': ['công nghệ', 'khoa học', 'research'],
+                'A': ['design', 'nghệ thuật', 'truyền thông'],
+                'S': ['giáo dục', 'xã hội', 'tâm lý'],
+                'E': ['kinh tế', 'quản lý', 'bán hàng'],
+                'C': ['kế toán', 'quản lý', 'hành chính']
+            };
+            
+            const fallbackMajors = await Major.find({
+                $or: hollandCodes.map(code => ({
+                    name: { $regex: categoryKeywords[code]?.join('|') || code, $options: 'i' }
+                }))
+            }).limit(3);
+            
+            if (fallbackMajors.length > 0) {
+                fallbackMajors.forEach((major, index) => {
+                    recommendations.push({
+                        majorId: major._id,
+                        name: major.name,
+                        category: major.category,
+                        matchScore: 0.7 - (index * 0.15),
+                        reason: `Phù hợp với profil Holland của bạn`
+                    });
+                });
+            }
+        }
+        
+        if (recommendations.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không tìm thấy khuyến nghị. Vui lòng đảm bảo bạn đã làm đầy đủ các bài trắc nghiệm MBTI và Holland.',
+                data: {
+                    studentId,
+                    reason: 'No recommendations available for your profile',
+                    hint: 'Hãy hoàn thành các bài trắc nghiệm MBTI, Holland và cập nhật điểm số của bạn'
+                }
+            });
+        }
         
         const majorRecommendation = await MajorRecommendation.findOneAndUpdate(
             { studentId },
@@ -1244,22 +1313,32 @@ export const importTrainingDataFromExcel = async (req, res) => {
 
 export const trainRecommendationModel = async (req, res) => {
     try {
-        console.log('[Training] Starting Random Forest model training...');
+        console.log('[Training] Starting Random Forest model training with feedback integration...');
         
         // Lấy tất cả training data có actualMajorId (ground truth)
         const trainingDataRecords = await TrainingData.find({
             actualMajorId: { $exists: true, $ne: null }
         }).populate('actualMajorId', 'name _id').lean();
         
-        if (trainingDataRecords.length < 50) {
+        // === FEEDBACK INTEGRATION ===
+        // Lấy feedback data để tăng cường training
+        const feedbackRecords = await RecommendationFeedBack.find({
+            isHelpful: true  // Chỉ lấy positive feedback để tăng cường training
+        }).populate('majorId', 'name _id')
+          .populate('recommendationId')
+          .lean();
+        
+        console.log(`[Training] Found ${trainingDataRecords.length} base records, ${feedbackRecords.length} positive feedback records`);
+        
+        if (trainingDataRecords.length < 30) {
             return res.status(400).json({
                 success: false,
-                message: `Cần tối thiểu 50 records để train. Hiện có ${trainingDataRecords.length}`,
+                message: `Cần tối thiểu 30 records để train. Hiện có ${trainingDataRecords.length}`,
                 data: { recordCount: trainingDataRecords.length }
             });
         }
         
-        console.log(`[Training] Found ${trainingDataRecords.length} records with ground truth`);
+        console.log(`[Training] Total records for training: ${trainingDataRecords.length + feedbackRecords.length}`);
         
         // Extract features từ training data
         const { default: Subject } = await import('../models/Subject.js');
@@ -1274,10 +1353,34 @@ export const trainRecommendationModel = async (req, res) => {
         const majorIdMap = {};
         let majorIdCounter = 0;
         
-        for (const record of trainingDataRecords) {
+        // === COMBINE BASE TRAINING DATA + FEEDBACK DATA ===
+        const allTrainingData = [...trainingDataRecords];
+        
+        // Thêm feedback data vào training set
+        for (const feedback of feedbackRecords) {
+            if (feedback.majorId && feedback.majorId._id) {
+                // Tạo training record từ feedback
+                const feedbackTrainingRecord = {
+                    actualMajorId: feedback.majorId,
+                    mbtiType: feedback.recommendationId?.mbtiType,
+                    hollandCode: feedback.recommendationId?.hollandCode || {},
+                    gpa: feedback.recommendationId?.gpa,
+                    subjectScores: feedback.recommendationId?.subjectScores || {},
+                    softSkills: feedback.recommendationId?.softSkills || {},
+                    isFeedbackDerived: true  // Mark as feedback-derived
+                };
+                allTrainingData.push(feedbackTrainingRecord);
+            }
+        }
+        
+        console.log(`[Training] Total samples after feedback integration: ${allTrainingData.length}`);
+        
+        for (const record of allTrainingData) {
             try {
                 // Map major ID to numeric label
-                const majorId = record.actualMajorId._id.toString();
+                const majorId = record.actualMajorId?._id?.toString() || record.actualMajorId?.toString();
+                if (!majorId) continue;
+                
                 if (!majorIdMap[majorId]) {
                     majorIdMap[majorId] = majorIdCounter++;
                 }
@@ -1325,10 +1428,10 @@ export const trainRecommendationModel = async (req, res) => {
         
         console.log(`[Training] Extracted ${features.length} valid records with ${features[0]?.length || 0} features`);
         
-        if (features.length < 50) {
+        if (features.length < 30) {
             return res.status(400).json({
                 success: false,
-                message: `Chỉ ${features.length} records hợp lệ. Cần tối thiểu 50.`,
+                message: `Chỉ ${features.length} records hợp lệ. Cần tối thiểu 30.`,
                 data: { validRecords: features.length }
             });
         }
@@ -1348,6 +1451,7 @@ export const trainRecommendationModel = async (req, res) => {
         const accuracy = (correctCount / labels.length) * 100;
         
         console.log(`[Training] Model trained. Accuracy: ${accuracy.toFixed(2)}%`);
+        console.log(`[Training] Base records: ${trainingDataRecords.length}, Feedback-derived: ${feedbackRecords.length}`);
         
         const reverseMajorIdMap = {};
         Object.entries(majorIdMap).forEach(([majorId, numericIndex]) => {
@@ -1402,15 +1506,21 @@ export const trainRecommendationModel = async (req, res) => {
         
         res.status(200).json({
             success: true,
-            message: 'Model training completed successfully',
+            message: 'Model training completed successfully with feedback integration',
             data: {
                 version: savedModel.version,
                 accuracy: accuracy.toFixed(2),
                 trainingRecords: features.length,
+                baseRecords: trainingDataRecords.length,
+                feedbackDerivedRecords: feedbackRecords.length,
                 majorCount: Object.keys(majorIdMap).length,
                 featureCount: features[0]?.length || 0,
                 modelPath: modelPath,
-                isActive: true
+                isActive: true,
+                feedbackImpact: {
+                    positiveHelpful: feedbackRecords.length,
+                    percentageFromFeedback: ((feedbackRecords.length / features.length) * 100).toFixed(2) + '%'
+                }
             }
         });
         
@@ -1419,6 +1529,95 @@ export const trainRecommendationModel = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi khi train model',
+            error: error.message
+        });
+    }
+};
+
+export const saveFeedback = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const { recommendationId, majorId, isHelpful, userSelectionStatus, comments } = req.body;
+
+        if (!majorId) {
+            return res.status(400).json({
+                success: false,
+                message: 'majorId là bắt buộc'
+            });
+        }
+
+        if (isHelpful === null || isHelpful === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: 'isHelpful là bắt buộc'
+            });
+        }
+
+        const major = await Major.findById(majorId);
+        if (!major) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy ngành'
+            });
+        }
+
+        const studentProfile = await StudentProfile.findOne({ userId });
+        if (!studentProfile) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy hồ sơ học sinh'
+            });
+        }
+
+        let feedback = await RecommendationFeedBack.findOne({
+            majorId,
+            studentId: studentProfile._id
+        });
+
+        if (feedback) {
+            feedback.isHelpful = isHelpful;
+            if (userSelectionStatus) feedback.userSelectionStatus = userSelectionStatus;
+            if (comments !== undefined) feedback.comments = comments;
+        } else {
+            feedback = new RecommendationFeedBack({
+                studentId: studentProfile._id,
+                majorId,
+                isHelpful,
+                userSelectionStatus: userSelectionStatus || 'none',
+                comments: comments || ''
+            });
+        }
+
+        await feedback.save();
+
+        const totalFeedbacks = await RecommendationFeedBack.countDocuments({ majorId });
+        const helpfulFeedbacks = await RecommendationFeedBack.countDocuments({ 
+            majorId, 
+            isHelpful: true 
+        });
+        const enrolledCount = await RecommendationFeedBack.countDocuments({ 
+            majorId, 
+            userSelectionStatus: 'enrolled' 
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Phản hồi đã được lưu. Cảm ơn bạn đã giúp cải thiện hệ thống!',
+            data: {
+                feedback,
+                stats: {
+                    totalFeedbacks,
+                    helpfulRate: ((helpfulFeedbacks / totalFeedbacks) * 100).toFixed(1),
+                    enrolledCount
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Error saving feedback:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lưu phản hồi',
             error: error.message
         });
     }

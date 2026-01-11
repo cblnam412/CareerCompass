@@ -23,6 +23,14 @@ const universityMajorSchema = new mongoose.Schema({
     quota: {
         type: Number,
     },
+    admissionScore: {
+        type: Number,
+        description: 'Điểm chuẩn năm gần nhất từ vnexpress'
+    },
+    admissionScoreYear: {
+        type: Number,
+        description: 'Năm xét tuyển của điểm chuẩn'
+    },
     addmissionMethods: [{
         type: String,
     }],
