@@ -1,4 +1,4 @@
-import { Heart, MessageCircle, MoreHorizontal, Send, X, Flag, Smile, GraduationCap, School, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, MoreHorizontal, Send, X, Flag, Smile, GraduationCap, School, Loader2, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import EmojiPicker from "emoji-picker-react";
@@ -19,6 +19,16 @@ export function PostCard({ post, onUpdate }) {
   const { userInfo, userID, accessToken } = useAuth();
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+
+  const [activeCommentDropdown, setActiveCommentDropdown] = useState(null); 
+  const [editingCommentId, setEditingCommentId] = useState(null); 
+  const [editContent, setEditContent] = useState(""); 
+
+  const [isEditingPost, setIsEditingPost] = useState(false);
+  const [postContent, setPostContent] = useState(post.content); 
+  const [editPostContent, setEditPostContent] = useState(post.content); 
+  const [postTitle, setPostTitle] = useState(post.title);
+  const [editPostTitle, setEditPostTitle] = useState(post.title);
 
   // Logic to determine display name
   const getDisplayName = (user) => {
@@ -63,6 +73,7 @@ export function PostCard({ post, onUpdate }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userPopoverPos, setUserPopoverPos] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  
 
   const renderRoleIcon = (role) => {
     if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
@@ -70,10 +81,21 @@ export function PostCard({ post, onUpdate }) {
     return null;
   };
 
+  // Sync local state if prop changes
+  useEffect(() => {
+    setPostContent(post.content);
+    setPostTitle(post.title);
+  }, [post.content, post.title]);
+
   useEffect(() => {
     function handleClickOutside(event) {
+      // Close Post Dropdown
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
+      }
+      // Close Comment Dropdown if clicking outside
+      if (!event.target.closest(`.${styles.commentDropdownContainer}`)) {
+        setActiveCommentDropdown(null);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -168,6 +190,41 @@ export function PostCard({ post, onUpdate }) {
       fetchComments(page + 1);
   };
 
+  const handleUpdatePost = async () => {
+    if (!editPostContent.trim() || !editPostTitle.trim()) {
+        toast.error("Tiêu đề và nội dung không được để trống");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API}/api/forum/posts/${postId}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+            },
+            // Include title in body
+            body: JSON.stringify({ 
+                title: editPostTitle,
+                content: editPostContent 
+            }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            setPostContent(editPostContent);
+            setPostTitle(editPostTitle); // Update UI Title
+            setIsEditingPost(false);
+            toast.success("Cập nhật bài viết thành công");
+        } else {
+            toast.error(data.message || "Lỗi cập nhật bài viết");
+        }
+    } catch (error) {
+        console.error("Error updating post:", error);
+        toast.error("Lỗi kết nối");
+    }
+  };
+
   const handleComment = async (e) => {
     e.preventDefault();
     if (!userID) {
@@ -202,7 +259,7 @@ export function PostCard({ post, onUpdate }) {
               created_at: new Date().toISOString(),
               liked: false,
               author: {
-                  display_name: userInfo.fullName, // Note: We use fullName here because userInfo might not have the populated university object yet
+                  display_name: getDisplayName(userInfo),
                   role: userInfo.role,
                   avatar_url: userInfo.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${userID}`
               }
@@ -251,6 +308,72 @@ export function PostCard({ post, onUpdate }) {
         }
     } catch (error) {
       console.error("Error deleting post:", error);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa bình luận này?")) return;
+
+    try {
+      const res = await fetch(`${API}/api/forum/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        },
+      });
+
+      if (res.ok) {
+        // Remove from UI
+        setComments((prev) => prev.filter((c) => c.id !== commentId));
+        setCommentsCount((prev) => Math.max(0, prev - 1));
+        setActiveCommentDropdown(null);
+        toast.success("Đã xóa bình luận");
+      } else {
+        toast.error("Lỗi xóa bình luận");
+      }
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+    }
+  };
+
+  const startEditing = (comment) => {
+    setEditingCommentId(comment.id);
+    setEditContent(comment.content);
+    setActiveCommentDropdown(null); // Close menu
+  };
+
+  const cancelEditing = () => {
+    setEditingCommentId(null);
+    setEditContent("");
+  };
+
+  const handleEditComment = async (commentId) => {
+    if (!editContent.trim()) return;
+
+    try {
+      const res = await fetch(`${API}/api/forum/comments/${commentId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        },
+        body: JSON.stringify({ content: editContent }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        // Update UI
+        setComments((prev) =>
+          prev.map((c) => (c.id === commentId ? { ...c, content: editContent } : c))
+        );
+        setEditingCommentId(null);
+        toast.success("Đã cập nhật bình luận");
+      } else {
+        toast.error(data.message || "Lỗi cập nhật");
+      }
+    } catch (error) {
+      console.error("Error updating comment:", error);
     }
   };
 
@@ -326,9 +449,21 @@ export function PostCard({ post, onUpdate }) {
                 Báo cáo vi phạm
               </button>
               {userID === authorId && (
-                <button className={styles.dropdownItem} onClick={handleDelete}>
-                  Xóa bài viết
-                </button>
+                <>
+                    <button 
+                        className={styles.dropdownItem} 
+                        onClick={() => {
+                            setIsEditingPost(true);
+                            setEditPostContent(postContent);
+                            setShowDropdown(false);
+                        }}
+                    >
+                        Chỉnh sửa bài viết
+                    </button>
+                    <button className={styles.dropdownItem} onClick={handleDelete}>
+                        Xóa bài viết
+                    </button>
+                </>
               )}
             </div>
           )}
@@ -336,9 +471,34 @@ export function PostCard({ post, onUpdate }) {
       </div>
 
       <div className={styles.postContent}>
-        <h3 className={styles.postTitle}>{post.title}</h3>
+        {isEditingPost ? (
+            <input
+                type="text"
+                className={styles.editPostTitleInput}
+                value={editPostTitle}
+                onChange={(e) => setEditPostTitle(e.target.value)}
+                placeholder="Tiêu đề bài viết"
+            />
+        ) : (
+            <h3 className={styles.postTitle}>{postTitle}</h3>
+        )}
         <div className={styles.caption}>
-          <p><span>{post.content}</span></p>
+          {isEditingPost ? (
+              <div className={styles.editPostContainer}>
+                  <textarea 
+                      className={styles.editPostTextarea}
+                      value={editPostContent}
+                      onChange={(e) => setEditPostContent(e.target.value)}
+                      rows={3}
+                  />
+                  <div className={styles.editPostActions}>
+                      <button className={styles.savePostButton} onClick={handleUpdatePost}>Lưu</button>
+                      <button className={styles.cancelPostButton} onClick={() => setIsEditingPost(false)}>Hủy</button>
+                  </div>
+              </div>
+          ) : (
+              <p><span>{postContent}</span></p>
+          )}
         </div>
 
         {postImage && (
@@ -368,75 +528,105 @@ export function PostCard({ post, onUpdate }) {
         </div>
 
         {/* --- COMMENTS SECTION --- */}
-        {showComments && (
-          <div className={styles.comments}>
-            {isLoadingComments && page === 1 ? (
-              <LoadingSpinner label="Đang tải bình luận..." />
-            ) : comments.length === 0 ? (
-                <p style={{fontSize: "13px", color: "#8e8e8e", padding: "8px 4px", textAlign: "center"}}>
-                    Chưa có bình luận nào.
-                </p>
-            ) : (
-                <>
-                  {comments.map((cmt) => (
-                    <div key={cmt.id} className={styles.comment}>
-                        <div className={styles.commentLeft}>
-                            <img
-                                src={cmt.author.avatar_url}
-                                alt={cmt.author.display_name}
-                                className={styles.commentAvatar}
-                                onClick={(e) => handleUserClick(null, cmt.author.display_name, cmt.author.avatar_url, e)}
+      {showComments && (
+        <div className={styles.comments}>
+          {isLoadingComments && page === 1 ? (
+            <LoadingSpinner label="Đang tải bình luận..." />
+          ) : comments.length === 0 ? (
+             // ... empty state
+             <p style={{fontSize: "13px", color: "#8e8e8e", padding: "8px 4px", textAlign: "center"}}>Chưa có bình luận nào.</p>
+          ) : (
+            <>
+              {comments.map((cmt) => (
+                <div key={cmt.id} className={styles.comment}>
+                  <div className={styles.commentLeft}>
+                    {/* Avatar */}
+                    <img
+                      src={cmt.author.avatar_url}
+                      alt={cmt.author.display_name}
+                      className={styles.commentAvatar}
+                      onClick={(e) => handleUserClick(null, cmt.author.display_name, cmt.author.avatar_url, e)}
+                    />
+                    
+                    <div className={styles.commentContent}>
+                      <div className={styles.commentText}>
+                        <span className={styles.commentAuthor}>
+                          {cmt.author.display_name}
+                          {renderRoleIcon(cmt.author.role)}
+                        </span>{" "}
+                        
+                        {/* EDIT MODE TOGGLE */}
+                        {editingCommentId === cmt.id ? (
+                          <div className={styles.editCommentForm}>
+                            <input 
+                              type="text" 
+                              value={editContent} 
+                              onChange={(e) => setEditContent(e.target.value)}
+                              autoFocus
+                              className={styles.editCommentInput}
+                              onKeyDown={(e) => {
+                                if(e.key === 'Enter') handleEditComment(cmt.id);
+                                if(e.key === 'Escape') cancelEditing();
+                              }}
                             />
-                            <div className={styles.commentContent}>
-                                <div className={styles.commentText}>
-                                    <span className={styles.commentAuthor}>
-                                        {cmt.author.display_name}
-                                        {renderRoleIcon(cmt.author.role)}
-                                    </span>{" "}
-                                    <span className={styles.commentBody}>{cmt.content}</span>
-                                </div>
-                                <div className={styles.commentMeta}>
-                                    <span className={styles.commentTime}>
-                                        {getTimeAgo(cmt.created_at)}
-                                    </span>
-                                    <button className={styles.replyButton}>Trả lời</button>
-                                </div>
-                            </div>
-                        </div>
 
-                        <div className={styles.commentRightActions}>
-                            <button className={styles.commentReportButton} title="Báo cáo">
-                                <Flag size={14} />
-                            </button>
-                            <button
-                                className={`${styles.commentLikeButton} ${cmt.liked ? styles.commentLiked : ""}`}
-                                onClick={() => handleCommentLike(cmt.id)}
-                            >
-                                <Heart size={12} />
-                            </button>
-                        </div>
+                            <div className={styles.editCommentBtnGroup}>
+                              <button onClick={() => handleEditComment(cmt.id)} className={styles.saveEditBtn} title="Lưu"><Check size={14}/></button>
+                              <button onClick={cancelEditing} className={styles.cancelEditBtn} title="Hủy"><X size={14}/></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className={styles.commentBody}>{cmt.content}</span>
+                        )}
+                      </div>
+                      
+                      <div className={styles.commentMeta}>
+                        <span className={styles.commentTime}>
+                          {getTimeAgo(cmt.created_at)}
+                        </span>
+                        {/* <button className={styles.replyButton}>Trả lời</button> */}
+                      </div>
                     </div>
-                  ))}
-                  
-                  {hasMore && (
-                    <button 
-                      className={styles.loadMoreButton} 
-                      onClick={loadMoreComments}
-                      disabled={isLoadingComments}
-                    >
-                      {isLoadingComments ? (
-                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center'}}>
-                            <Loader2 className={styles.spin} size={16} /> Đang tải thêm...
-                        </div>
-                      ) : (
-                        "Xem thêm bình luận"
-                      )}
+                  </div>
+
+                  <div className={styles.commentRightActions}>
+                    <button className={styles.commentReportButton} title="Báo cáo">
+                      <Flag size={14} />
                     </button>
-                  )}
-                </>
-            )}
-          </div>
-        )}
+
+                    {/* --- NEW: MORE ACTIONS BUTTON (Only for owner) --- */}
+                    {userID === cmt.author.author_id && (
+                       <div className={styles.commentDropdownContainer}>
+                          <button 
+                            className={`${styles.moreCommentButton} ${activeCommentDropdown === cmt.id ? styles.active : ''}`}
+                            onClick={() => setActiveCommentDropdown(activeCommentDropdown === cmt.id ? null : cmt.id)}
+                          >
+                             <MoreHorizontal size={14} />
+                          </button>
+                          
+                          {activeCommentDropdown === cmt.id && (
+                            <div className={styles.commentDropdownMenu}>
+                                <button onClick={() => startEditing(cmt)}>Chỉnh sửa</button>
+                                <button onClick={() => handleDeleteComment(cmt.id)} className={styles.deleteOption}>Xóa</button>
+                            </div>
+                          )}
+                       </div>
+                    )}
+
+                    <button
+                      className={`${styles.commentLikeButton} ${cmt.liked ? styles.commentLiked : ""}`}
+                      onClick={() => handleCommentLike(cmt.id)}
+                    >
+                      <Heart size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {/* ... Load more button ... */}
+            </>
+          )}
+        </div>
+      )}
       </div>
 
       {userID && (

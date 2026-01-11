@@ -145,6 +145,81 @@
   text-align: left;
 }
 
+.editPostContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.editPostTextarea {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 60px;
+  outline: none;
+  font-family: inherit;
+}
+
+.editPostTextarea:focus {
+  border-color: #a8a8a8;
+}
+
+.editPostActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.savePostButton, .cancelPostButton {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.savePostButton {
+  background-color: #0095f6;
+  color: white;
+}
+
+.savePostButton:hover {
+  background-color: #1877f2;
+}
+
+.cancelPostButton {
+  background-color: #efefef;
+  color: #262626;
+}
+
+.cancelPostButton:hover {
+  background-color: #dbdbdb;
+}
+
+.editPostTitleInput {
+  width: 100%;
+  padding: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  outline: none;
+  font-family: inherit;
+}
+
+.editPostTitleInput:focus {
+  border-color: #a8a8a8;
+}
+
 .authorNameInCaption {
   font-weight: 600;
   margin-right: 8px;
@@ -189,7 +264,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   flex-shrink: 0;
   border: 1px solid grey;
 }
@@ -680,7 +755,7 @@
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   border: 2px solid grey;
   cursor: pointer;
 }
@@ -729,4 +804,139 @@
 
 .messageButton:active {
   background: #003fa3;
+}
+
+.commentRightActions {
+  display: flex;
+  align-items: center; 
+  gap: 4px; /* Reduced gap slightly to fit the new button */
+  flex-shrink: 0;
+  margin-top: 2px; 
+  position: relative; /* Context for z-index if needed */
+}
+
+/* --- COMMENT DROPDOWN STYLES --- */
+
+.commentDropdownContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.moreCommentButton {
+  background: none;
+  border: none;
+  outline: none !important;
+  padding: 4px;
+  cursor: pointer;
+  color: #262626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s, color 0.2s;
+  opacity: 0; /* Hidden by default */
+}
+
+/* Show button on hover OR if the menu is currently open */
+.comment:hover .moreCommentButton,
+.moreCommentButton.active {
+  opacity: 1;
+}
+
+.moreCommentButton:hover {
+  color: #737373;
+}
+
+.commentDropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 100px;
+  z-index: 20;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.commentDropdownMenu button {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: white;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+  color: #262626;
+  transition: background 0.2s;
+}
+
+.commentDropdownMenu button:hover {
+  background: #fafafa;
+}
+
+.commentDropdownMenu button.deleteOption {
+  color: #ed4956;
+}
+
+/* --- INLINE EDIT FORM STYLES --- */
+
+.editCommentForm {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100% !important;
+  margin-top: 2px;
+}
+
+.editCommentInput {
+  flex: 1;
+  border: 1px solid #dbdbdb;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.editCommentInput:focus {
+  border-color: #a8a8a8;
+}
+
+.editCommentBtnGroup
+{
+  position: absolute;
+  top: 0px;
+  right: -85px;
+  display: flex;
+  flex-direction: row;
+}
+
+.saveEditBtn, .cancelEditBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.saveEditBtn {
+  color: #0095f6;
+}
+.saveEditBtn:hover {
+  background: #eef7ff;
+}
+
+.cancelEditBtn {
+  color: #ed4956;
+}
+.cancelEditBtn:hover {
+  background: #fff0f1;
 }

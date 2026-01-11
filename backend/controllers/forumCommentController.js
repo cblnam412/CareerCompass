@@ -21,7 +21,7 @@ export const getForumComments = async (req, res) => {
             // Updated populate logic for authorId
             .populate({
                 path: 'authorId',
-                select: 'fullName email role universityId', // Ensure universityId is selected
+                select: 'fullName email role universityId avatar', // Ensure universityId is selected
                 populate: {
                     path: 'universityId',
                     select: 'name code region address phone website description'

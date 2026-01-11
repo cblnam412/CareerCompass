@@ -28,7 +28,7 @@ export default function CareerQuizScreen() {
           <ul className={styles.featuresList}>
             <li className={styles.featureItem}>
               <CircleCheck size={20} color="#3b82f6" />
-              <span>60 câu hỏi chi tiết về sở thích và năng lực</span>
+              <span>48 câu hỏi chi tiết về sở thích và năng lực</span>
             </li>
             <li className={styles.featureItem}>
               <CircleCheck size={20} color="#3b82f6" />
@@ -61,7 +61,7 @@ export default function CareerQuizScreen() {
           <ul className={styles.featuresList}>
             <li className={styles.featureItem}>
               <CircleCheck size={20} color="#3b82f6" />
-              <span>60 câu hỏi đánh giá tính cách toàn diện</span>
+              <span>50 câu hỏi đánh giá tính cách toàn diện</span>
             </li>
             <li className={styles.featureItem}>
               <CircleCheck size={20} color="#3b82f6" />
