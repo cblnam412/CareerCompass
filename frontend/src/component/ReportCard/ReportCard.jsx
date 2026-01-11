@@ -8,7 +8,7 @@ const REPORTED_ITEM_TYPE_TRANSLATIONS = {
 
 const STATUS_TRANSLATIONS = {
   pending: "Đã tiếp nhận",
-  dismissed: "Đã bác bỏ",
+  rejected: "Đã bác bỏ",
   approved: "Đã xử lý",
 };
 

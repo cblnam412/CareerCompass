@@ -79,7 +79,7 @@ export function PostCard({ post, onUpdate }) {
   
   // --- REPORT MODAL STATE ---
   const [showReportModal, setShowReportModal] = useState(false);
-  const [reportConfig, setReportConfig] = useState({ type: null, id: null }); 
+  const [reportConfig, setReportConfig] = useState({ type: null, id: null, targetUserId: null });
   const [reportReason, setReportReason] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
@@ -110,36 +110,40 @@ export function PostCard({ post, onUpdate }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dropdownRef]);
 
-  const openReportModal = (type, id) => {
+  const openReportModal = (type, id, targetUserId) => {
     if (!userID) {
       toast.error("Vui lòng đăng nhập để báo cáo");
       return;
     }
-    setReportConfig({ type, id });
-    setReportReason(""); // Reset reason
+    // Store type, id (itemId), and the user ID being reported
+    setReportConfig({ type, id, targetUserId });
+    setReportReason(""); 
     setShowReportModal(true);
-    setShowDropdown(false); // Close post dropdown if open
+    setShowDropdown(false);
   };
 
   const closeReportModal = () => {
     setShowReportModal(false);
-    setReportConfig({ type: null, id: null });
+    setReportConfig({ type: null, id: null, targetUserId: null });
     setReportReason("");
   };
 
-  const submitReport = async () => {
+const submitReport = async () => {
     if (!reportReason.trim()) {
       toast.warning("Vui lòng nhập lý do báo cáo");
       return;
     }
 
     setIsSubmittingReport(true);
-    const { type, id } = reportConfig;
     
-    // Determine Endpoint based on type
-    const endpoint = type === 'post' 
-      ? `${API}/api/forum/posts/${id}/report`
-      : `${API}/api/forum/comments/${id}/report`;
+    // Destructure the config
+    const { type, id, targetUserId } = reportConfig;
+    
+    // 1. New Endpoint based on server.js + violationReportRoutes.js
+    const endpoint = `${API}/api/reports/report`;
+
+    // 2. Formatting Target Type (Backend expects 'Post' or 'Comment')
+    const formattedTargetType = type === 'post' ? 'Post' : 'Comment';
 
     try {
       const res = await fetch(endpoint, {
@@ -148,7 +152,14 @@ export function PostCard({ post, onUpdate }) {
           "Content-Type": "application/json",
           ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         },
-        body: JSON.stringify({ reason: reportReason }),
+        // 3. New Body payload based on violationReportController.js
+        // Note: keeping 'targerId' to match the typo in your backend controller
+        body: JSON.stringify({ 
+            targerId: targetUserId,      // The ID of the user being reported
+            targetType: formattedTargetType, // 'Post' or 'Comment'
+            targetItemId: id,            // The Post ID or Comment ID
+            reason: reportReason 
+        }),
       });
 
       const data = await res.json();
@@ -165,7 +176,6 @@ export function PostCard({ post, onUpdate }) {
       setIsSubmittingReport(false);
     }
   };
-
   const handleLike = async () => {
     if (!userID) {
         toast.error("Vui lòng đăng nhập để thích bài viết");
@@ -561,9 +571,11 @@ export function PostCard({ post, onUpdate }) {
           </button>
           {showDropdown && (
             <div className={styles.dropdownMenu}>
-              <button className={styles.dropdownItem} onClick={() => openReportModal('post', postId)}>
-                Báo cáo vi phạm
-              </button>
+              {userID !== authorId && (
+                <button className={styles.dropdownItem} onClick={() => openReportModal('post', postId, authorId)}>
+                  Báo cáo vi phạm
+                </button>
+              )}
               {userID === authorId && (
                 <>
                     <button 
@@ -775,9 +787,15 @@ export function PostCard({ post, onUpdate }) {
                   </div>
 
                   <div className={styles.commentRightActions}>
-                    <button className={styles.commentReportButton} title="Báo cáo" onClick={() => openReportModal('comment', cmt.id)}>
-                      <Flag size={14} />
-                    </button>
+                    {userID !== cmt.author.author_id && (
+                      <button 
+                        className={styles.commentReportButton} 
+                        title="Báo cáo" 
+                        onClick={() => openReportModal('comment', cmt.id, cmt.author.author_id)}
+                      >
+                        <Flag size={14} />
+                      </button>
+                    )}
 
                     {/* --- NEW: MORE ACTIONS BUTTON (Only for owner) --- */}
                     {userID === cmt.author.author_id && (
@@ -889,7 +907,7 @@ export function PostCard({ post, onUpdate }) {
               </button>
             </div>
             
-            <p style={{marginBottom: '8px', fontSize: '14px', color: '#555'}}>
+            <p style={{marginBottom: '8px', fontSize: '14px', color: '#555', textAlign: "left"}}>
               Tại sao bạn muốn báo cáo {reportConfig.type === 'post' ? 'bài viết' : 'bình luận'} này?
             </p>
             

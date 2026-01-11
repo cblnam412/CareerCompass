@@ -172,7 +172,7 @@
   display: block;
   width: 100%;
   word-wrap: break-word;
-  text-align: lefts;
+  text-align: left;
 }
 .footer {
   display: flex;
