@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import { checkBanStatus, unbanAccount } from '../utils/banUtils.js';
 
-export const verifyToken = (req, res, next) => {
+export const verifyToken = async (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
         
@@ -18,6 +19,30 @@ export const verifyToken = (req, res, next) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.userId = decoded.userId;
         req.userRole = decoded.role;
+
+        const User = (await import('../models/User.js')).default;
+        const user = await User.findById(req.userId);
+
+        if (user) {
+            const banStatus = checkBanStatus(user);
+            
+            if (banStatus.isBanned) {
+                return res.status(403).json({
+                    success: false,
+                    message: banStatus.message,
+                    banInfo: {
+                        isPermanent: banStatus.isPermanent,
+                        banReleaseDate: banStatus.banReleaseDate,
+                        daysRemaining: banStatus.daysRemaining
+                    }
+                });
+            }
+            
+            if (banStatus.shouldUnban) {
+                await unbanAccount(req.userId);
+            }
+        }
+
         next();
 
     } catch (error) {
@@ -28,6 +53,7 @@ export const verifyToken = (req, res, next) => {
             error: error.message
         });
     }
+
 };
 
 export const checkAuth = (req, res, next) => {
