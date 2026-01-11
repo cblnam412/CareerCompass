@@ -1,5 +1,5 @@
 import { ImageIcon, X, Smile, Paperclip } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react"; // Added useRef, useEffect
 import EmojiPicker from "emoji-picker-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
@@ -21,18 +21,46 @@ export function CreatePostDialog({ onPostCreated }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  
+  // Changed: Manage file object instead of URL string
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showUrlInput, setShowUrlInput] = useState(false);
 
+  // Added: Ref for hidden file input
+  const fileInputRef = useRef(null);
+
+  // Added: Cleanup object URL to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
+  // Changed: Handle File Selection
   const handleImageChange = (e) => {
-    const url = e.target.value;
-    setImageUrl(url);
-    if (url) {
-      setImagePreview(url);
-    } else {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        setImageFile(file);
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+      } else {
+        toast.error("Vui lòng chỉ chọn file ảnh");
+      }
+    }
+    // Reset input value so the same file can be selected again if needed
+    e.target.value = null; 
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
       setImagePreview(null);
     }
   };
@@ -60,21 +88,29 @@ export function CreatePostDialog({ onPostCreated }) {
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        title: title.trim(),
-        content: content.trim(),
-        itemUrl: imageUrl || "",
-        relatedMajorIds: [],
-        relatedUniversityIds: []
-      };
+      // Changed: Use FormData for file upload
+      const formData = new FormData();
+      formData.append('title', title.trim());
+      formData.append('content', content.trim());
+      
+      // 'image' must match req.files.image in your controller
+      if (imageFile) {
+        formData.append('image', imageFile);
+      }
+      
+      // Note: Arrays need to be appended specifically if you use them later, 
+      // but for now they are empty in your original code.
+      // formData.append('relatedMajorIds', JSON.stringify([])); 
+      // formData.append('relatedUniversityIds', JSON.stringify([]));
 
       const res = await fetch(`${API}/api/forum/posts`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          // Changed: Do NOT set Content-Type to application/json
+          // Browser sets Content-Type: multipart/form-data with boundary automatically
           ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
         },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       const data = await res.json();
@@ -87,10 +123,8 @@ export function CreatePostDialog({ onPostCreated }) {
 
       setTitle("");
       setContent("");
-      setImageUrl("");
-      setImagePreview(null);
+      removeImage(); // Cleanup state
       setShowEmojiPicker(false);
-      setShowUrlInput(false);
       setOpen(false);
       
       onPostCreated?.();
@@ -164,16 +198,14 @@ export function CreatePostDialog({ onPostCreated }) {
                 rows={4}
               />
 
-              {showUrlInput && (
-                <input
-                  id="imageInput"
-                  type="text"
-                  placeholder="Dán liên kết hình ảnh vào đây..."
-                  value={imageUrl}
-                  onChange={handleImageChange}
-                  className={styles.hiddenImageInput}
-                />
-              )}
+              {/* Changed: Hidden file input */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleImageChange}
+                style={{ display: "none" }}
+              />
 
               {imagePreview && (
                 <div className={styles.imagePreviewContainer}>
@@ -181,11 +213,7 @@ export function CreatePostDialog({ onPostCreated }) {
                   <button
                     type="button"
                     className={styles.removeImageButton}
-                    onClick={() => {
-                      setImageUrl("");
-                      setImagePreview(null);
-                      setShowUrlInput(false);
-                    }}
+                    onClick={removeImage}
                   >
                     <X size={16} />
                   </button>
@@ -198,7 +226,8 @@ export function CreatePostDialog({ onPostCreated }) {
                     type="button"
                     className={styles.imageIconButton} 
                     title="Thêm ảnh"
-                    onClick={() => setShowUrlInput(!showUrlInput)}
+                    // Changed: Trigger file input click
+                    onClick={() => fileInputRef.current?.click()}
                   >
                     <ImageIcon size={24} />
                   </button>
