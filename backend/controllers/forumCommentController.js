@@ -1,6 +1,7 @@
 import ForumComment from '../models/ForumComment.js';
 import ForumPost from '../models/ForumPost.js';
 import User from '../models/User.js';
+import { uploadFileToSupabase, deleteFileFromSupabase } from '../utils/supabaseUtils.js';
 
 export const getForumComments = async (req, res) => {
     try {
@@ -18,10 +19,9 @@ export const getForumComments = async (req, res) => {
         }
 
         const comments = await ForumComment.find({ postId })
-            // Updated populate logic for authorId
             .populate({
                 path: 'authorId',
-                select: 'fullName email role universityId', // Ensure universityId is selected
+                select: 'fullName email role universityId',
                 populate: {
                     path: 'universityId',
                     select: 'name code region address phone website description'
@@ -65,6 +65,7 @@ export const createForumComment = async (req, res) => {
         const { postId } = req.params;
         const { content, itemUrl, parentCommentId } = req.body;
         const authorId = req.userId;
+        let imageUrl = itemUrl;
 
         if (!content || content.trim().length === 0) {
             return res.status(400).json({
@@ -99,11 +100,27 @@ export const createForumComment = async (req, res) => {
             }
         }
 
+        if (req.files && req.files.image) {
+            const imageUpload = await uploadFileToSupabase(
+                req.files.image,
+                'forum-comments',
+                'images'
+            );
+            if (imageUpload.success) {
+                imageUrl = imageUpload.url;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi upload hình ảnh: ' + imageUpload.error
+                });
+            }
+        }
+
         const newComment = new ForumComment({
             postId,
             authorId,
             content: content.trim(),
-            itemUrl,
+            itemUrl: imageUrl,
             parentCommentId: parentCommentId || null
         });
 
@@ -152,8 +169,29 @@ export const updateForumComment = async (req, res) => {
             });
         }
 
+        if (req.files && req.files.image) {
+            if (comment.itemUrl) {
+                const oldPath = comment.itemUrl.split('/').pop();
+                await deleteFileFromSupabase('forum-comments', `images/${oldPath}`);
+            }
+            
+            const imageUpload = await uploadFileToSupabase(
+                req.files.image,
+                'forum-comments',
+                'images'
+            );
+            if (imageUpload.success) {
+                comment.itemUrl = imageUpload.url;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi upload hình ảnh: ' + imageUpload.error
+                });
+            }
+        }
+
         if (content) comment.content = content.trim();
-        if (itemUrl) comment.itemUrl = itemUrl;
+        if (itemUrl && !req.files?.image) comment.itemUrl = itemUrl; 
 
         const updated = await comment.save();
         await updated.populate('authorId', 'fullName email');
@@ -196,6 +234,11 @@ export const deleteForumComment = async (req, res) => {
         }
 
         const postId = comment.postId;
+
+        if (comment.itemUrl) {
+            const oldPath = comment.itemUrl.split('/').pop();
+            await deleteFileFromSupabase('forum-comments', `images/${oldPath}`);
+        }
 
         await ForumComment.findByIdAndDelete(commentId);
 
