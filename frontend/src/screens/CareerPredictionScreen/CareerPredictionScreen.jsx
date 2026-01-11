@@ -29,6 +29,12 @@ export default function CareerPredictionScreen() {
   const [submitted, setSubmitted] = useState(false)
   const [selectedSoftSkills, setSelectedSoftSkills] = useState([])
 
+  // Log state changes for debugging
+  useEffect(() => {
+    console.log("=== SUBMITTED STATE CHANGED ===", submitted)
+    console.log("=== MAJOR RECOMMENDATIONS ===", majorRecommendations)
+  }, [submitted, majorRecommendations])
+
   // Fetch initial data
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -249,10 +255,31 @@ export default function CareerPredictionScreen() {
   }
 
   const getFilteredRecommendations = () => {
-    if (selectedSoftSkills.length === 0) return majorRecommendations
-    return majorRecommendations.filter((major) =>
-      selectedSoftSkills.some((skill) => major.requiredSoftSkills?.includes(skill)),
-    )
+    console.log("=== FILTER DEBUG ===")
+    console.log("selectedSoftSkills:", selectedSoftSkills)
+    
+    // If no soft skills selected, show all
+    if (selectedSoftSkills.length === 0) {
+      console.log("No soft skills selected, returning all")
+      return majorRecommendations
+    }
+    
+    // If soft skills selected but major has no requirements, show it anyway
+    const filtered = majorRecommendations.filter((major) => {
+      // If major has no required soft skills, show it
+      if (!major.requiredSoftSkills || major.requiredSoftSkills.length === 0) {
+        console.log(`Major ${major.name} has no requirements, showing`)
+        return true
+      }
+      
+      // If major has requirements, check if selected skills match
+      const match = selectedSoftSkills.some((skill) => major.requiredSoftSkills?.includes(skill))
+      console.log(`Major: ${major.name}, requiredSoftSkills: ${major.requiredSoftSkills}, match: ${match}`)
+      return match
+    })
+    
+    console.log("Filtered count:", filtered.length)
+    return filtered
   }
 
   const calculateTotalScore = () => {
@@ -363,29 +390,45 @@ export default function CareerPredictionScreen() {
 
       if (response.ok) {
         const data = await response.json()
-        if (data.success && data.data?.recommendations && data.data.recommendations.length > 0) {
+        const recommendations = data.data?.recommendations || [];
+        console.log("=== FULL RESPONSE ===", data)
+        console.log("=== RECOMMENDATIONS ===", recommendations)
+        
+        if (data.success && Array.isArray(recommendations) && recommendations.length > 0) {
           const userScore = calculateTotalScore()
-          const formattedRecommendations = data.data.recommendations.map((rec, index) => ({
+          const formattedRecommendations = recommendations.map((rec, index) => ({
             id: rec.majorId || `major-${index}`,
-            name: rec.majorName || rec.name || "N/A",
+            name: rec.name || rec.majorName || "N/A",
             university: rec.universityName || "N/A",
             minScore: rec.minScore || 0,
             userScore: userScore,
             combinations: [selectedCombination],
             region: rec.region || "N/A",
             salary: rec.salary || "N/A",
-            compatibilityScore: Math.round((rec.probability || rec.confidence || 0) * 100),
+            compatibilityScore: Math.round((rec.matchScore || rec.probability || rec.confidence || 0)),
             recommendationReason: rec.reason || rec.recommendationReason || "Phù hợp với hồ sơ của bạn",
             requiredSoftSkills: rec.softSkills || [],
           }))
+          console.log("=== FORMATTED RECOMMENDATIONS ===", formattedRecommendations)
           setMajorRecommendations(formattedRecommendations)
           setSubmitted(true)
+          
+          // Force scroll to results
+          setTimeout(() => {
+            const resultSection = document.querySelector('[class*="resultSection"]')
+            if (resultSection) {
+              resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            }
+          }, 100)
+          
           toast.success("Đã tạo gợi ý ngành phù hợp!")
         } else {
+          console.log("=== CONDITIONS FAILED ===", { success: data.success, isArray: Array.isArray(recommendations), length: recommendations.length })
           toast.error("Lỗi gợi ý ngành, vui lòng thử lại")
         }
       } else {
         const errorData = await response.json().catch(() => ({}))
+        console.log("=== ERROR ===", errorData)
         toast.error(errorData.message || "Không thể lấy gợi ý ngành. Vui lòng thử lại sau.")
       }
     } catch (error) {
@@ -553,72 +596,79 @@ export default function CareerPredictionScreen() {
             <h2>
               Gợi Ý Ngành Phù Hợp
             </h2>
+            
             <div className={styles.recommendationsGrid}>
-              {getFilteredRecommendations().map((major) => (
-                <Card key={major.id} className={styles.majorCard}>
-                  <div className={styles.majorCardInner}>
-                    {/* Header with major name and badge */}
-                    <div className={styles.majorCardHeader}>
-                      <div className={styles.majorCardTitle}>
-                        <h3 className={styles.majorName}>{major.name}</h3>
+              {getFilteredRecommendations().length > 0 ? (
+                getFilteredRecommendations().map((major) => (
+                  <Card key={major.id} className={styles.majorCard}>
+                    <div className={styles.majorCardInner}>
+                      {/* Header with major name and badge */}
+                      <div className={styles.majorCardHeader}>
+                        <div className={styles.majorCardTitle}>
+                          <h3 className={styles.majorName}>{major.name}</h3>
+                        </div>
+                          <div className={styles.matchBadge}>{selectedCombination}</div>
                       </div>
-                        <div className={styles.matchBadge}>{selectedCombination}</div>
-                    </div>
 
-                    {/* University info */}
-                    <div className={styles.majorUniversityCard}>
-                      <BookOpen size={18} strokeWidth={2} />
-                      <span>{major.university}</span>
-                    </div>
+                      {/* University info */}
+                      <div className={styles.majorUniversityCard}>
+                        <BookOpen size={18} strokeWidth={2} />
+                        <span>{major.university}</span>
+                      </div>
 
-                    {/* Key stats in a highlighted section */}
-                    <div className={styles.statsHighlight}>
-                      <div className={styles.statBox}>
-                        <div className={styles.statBoxLabel}>Điểm chuẩn</div>
-                        <div className={styles.statBoxValue}>{major.minScore}</div>
+                      {/* Key stats in a highlighted section */}
+                      <div className={styles.statsHighlight}>
+                        <div className={styles.statBox}>
+                          <div className={styles.statBoxLabel}>Điểm chuẩn</div>
+                          <div className={styles.statBoxValue}>{major.minScore}</div>
+                        </div>
+                        <div className={styles.statBox}>
+                          <div className={styles.statBoxLabel}>Vùng</div>
+                          <div className={styles.statBoxValue}>{major.region}</div>
+                        </div>
                       </div>
-                      <div className={styles.statBox}>
-                        <div className={styles.statBoxLabel}>Vùng</div>
-                        <div className={styles.statBoxValue}>{major.region}</div>
-                      </div>
-                    </div>
 
-                    {/* Matching section */}
-                    <div className={styles.matchingSection}>
-                      <div className={styles.matchingRow}>
-                        <span className={styles.matchingLabel}>Điểm của bạn:</span>
-                        <span className={styles.matchingScore}>{major.userScore}</span>
+                      {/* Matching section */}
+                      <div className={styles.matchingSection}>
+                        <div className={styles.matchingRow}>
+                          <span className={styles.matchingLabel}>Điểm của bạn:</span>
+                          <span className={styles.matchingScore}>{major.userScore}</span>
+                        </div>
+                        <div className={styles.matchingRow}>
+                          <span className={styles.matchingLabel}>Điểm chuẩn:</span>
+                          <span className={styles.matchingScore}>{major.minScore}</span>
+                        </div>
+                        <div className={styles.matchingIndicator}>
+                          {major.userScore >= major.minScore ? (
+                            <span className={styles.qualifiedBadge}>Đủ điều kiện</span>
+                          ) : (
+                            <span className={styles.notQualifiedBadge}>Chưa đủ điều kiện</span>
+                          )}
+                        </div>
                       </div>
-                      <div className={styles.matchingRow}>
-                        <span className={styles.matchingLabel}>Điểm chuẩn:</span>
-                        <span className={styles.matchingScore}>{major.minScore}</span>
-                      </div>
-                      <div className={styles.matchingIndicator}>
-                        {major.userScore >= major.minScore ? (
-                          <span className={styles.qualifiedBadge}>Đủ điều kiện</span>
-                        ) : (
-                          <span className={styles.notQualifiedBadge}>Chưa đủ điều kiện</span>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Compatibility score section */}
-                    <div className={styles.compatibilitySection}>
-                      <div className={styles.compatibilityLabel}>Tỉ lệ phù hợp</div>
-                      <div className={styles.compatibilityBar}>
-                        <div className={styles.compatibilityFill} style={{ width: `${major.compatibilityScore}%` }} />
+                      {/* Compatibility score section */}
+                      <div className={styles.compatibilitySection}>
+                        <div className={styles.compatibilityLabel}>Tỉ lệ phù hợp</div>
+                        <div className={styles.compatibilityBar}>
+                          <div className={styles.compatibilityFill} style={{ width: `${major.compatibilityScore}%` }} />
+                        </div>
+                        <div className={styles.compatibilityPercentage}>{major.compatibilityScore}%</div>
                       </div>
-                      <div className={styles.compatibilityPercentage}>{major.compatibilityScore}%</div>
-                    </div>
 
-                    {/* Recommendation reason section */}
-                    <div className={styles.reasonSection}>
-                      <div className={styles.reasonLabel}>Lý do khuyến nghị</div>
-                      <p className={styles.reasonText}>{major.recommendationReason}</p>
+                      {/* Recommendation reason section */}
+                      <div className={styles.reasonSection}>
+                        <div className={styles.reasonLabel}>Lý do khuyến nghị</div>
+                        <p className={styles.reasonText}>{major.recommendationReason}</p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                ))
+              ) : (
+                <div style={{gridColumn: '1 / -1', padding: '20px', textAlign: 'center', background: '#f8f9fa', borderRadius: '4px'}}>
+                  <p>Không có dữ liệu để hiển thị</p>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -170,7 +170,7 @@ export default function ManageReportScreen() {
 
       if (statusFilter) params.append('status', statusFilter);
 
-      const res = await fetch(`${API}/report?${params.toString()}`, {
+      const res = await fetch(`${API}/api/reports/reports?${params.toString()}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -272,7 +272,7 @@ export default function ManageReportScreen() {
 
     try {
       setIsLoading(true);
-      const res = await fetch(`${API}/report/${selectedReportId}/reject`, {
+      const res = await fetch(`${API}/api/reports/reports/${selectedReportId}/reject`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -309,7 +309,7 @@ export default function ManageReportScreen() {
   const handleApprove = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API}/report/${selectedReportId}/approve`, {
+      const res = await fetch(`${API}/api/reports/reports/${selectedReportId}/approve`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -88,21 +88,59 @@ export const getReports = async (req, res) => {
             });
         }
 
-        const { status = 'Pending', targetType } = req.query;
+        const { status = 'Pending', targetType, page = 1, limit = 10 } = req.query;
         const filter = {};
 
-        if (status) filter.status = status;
-        if (targetType) filter.targetType = targetType;
+        const statusMap = {
+            'pending': 'Pending',
+            'dismissed': 'Rejected',
+            'approved': 'Approved'
+        };
+        
+        if (status) {
+            filter.status = statusMap[status] || status; // Handle both formats
+        }
+        if (targetType) {
+            filter.targetType = targetType;
+        }
 
+        const skip = (parseInt(page) - 1) * parseInt(limit);
         const reports = await ViolationReport.find(filter)
             .populate('reporterId', 'fullName email avatar')
             .populate('targerId', 'fullName email avatar')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(parseInt(limit));
+
+        const total = await ViolationReport.countDocuments(filter);
+        const pages = Math.ceil(total / parseInt(limit));
+
+        // Normalize report fields for frontend
+        const normalizedReports = reports.map(report => ({
+            _id: report._id,
+            reported_item_type: report.targetType.toLowerCase(), // 'Post' -> 'post'
+            reported_item_id: report.targetItemId,
+            reporter_id: {
+                _id: report.reporterId?._id,
+                full_name: report.reporterId?.fullName || 'Unknown',
+                email: report.reporterId?.email,
+                avatar: report.reporterId?.avatar
+            },
+            content: report.reason,
+            status: report.status.toLowerCase(), // 'Pending' -> 'pending'
+            created_at: report.createdAt,
+            processing_action: report.resolutionNote || ''
+        }));
 
         res.status(200).json({
             success: true,
-            data: reports,
-            count: reports.length
+            data: {
+                reports: normalizedReports,
+                total: total,
+                pages: pages,
+                page: parseInt(page),
+                limit: parseInt(limit)
+            }
         });
     } catch (error) {
         console.error('Get reports error:', error);
@@ -154,6 +192,118 @@ export const getReportDetail = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi khi lấy chi tiết báo cáo',
+            error: error.message
+        });
+    }
+};
+
+export const approveReport = async (req, res) => {
+    try {
+        if (req.userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Chỉ admin có thể xử lý báo cáo'
+            });
+        }
+
+        const { reportId } = req.params;
+
+        const report = await ViolationReport.findById(reportId);
+        if (!report) {
+            return res.status(404).json({
+                success: false,
+                message: 'Báo cáo không tồn tại'
+            });
+        }
+
+        const targetUser = await User.findById(report.targerId);
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User bị tố cáo không tồn tại'
+            });
+        }
+
+        let actionTaken = '';
+
+        if (report.targetType === 'Post') {
+            await ForumPost.findByIdAndDelete(report.targetItemId);
+            actionTaken = 'Đã xóa bài viết';
+        } else if (report.targetType === 'Comment') {
+            await ForumComment.findByIdAndDelete(report.targetItemId);
+            actionTaken = 'Đã xóa bình luận';
+        }
+
+        const previousViolations = await ViolationReport.countDocuments({
+            targerId: report.targerId,
+            status: 'Approved'
+        });
+
+        const violationCount = previousViolations + 1;
+        const banResult = await banAccount(report.targerId, violationCount);
+        
+        actionTaken += `\nTài khoản bị ban: ${banResult.message}`;
+
+        report.status = 'Approved';
+        report.resolutionNote = actionTaken;
+        await report.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Báo cáo đã được chấp nhận. Bài viết/bình luận đã bị xóa và tài khoản đã bị ban',
+            data: report
+        });
+    } catch (error) {
+        console.error('Approve report error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi chấp nhận báo cáo',
+            error: error.message
+        });
+    }
+};
+
+export const rejectReport = async (req, res) => {
+    try {
+        if (req.userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Chỉ admin có thể xử lý báo cáo'
+            });
+        }
+
+        const { reportId } = req.params;
+        const { reason } = req.body;
+
+        if (!reason || reason.trim().length < 5) {
+            return res.status(400).json({
+                success: false,
+                message: 'Lý do từ chối phải có ít nhất 5 ký tự'
+            });
+        }
+
+        const report = await ViolationReport.findById(reportId);
+        if (!report) {
+            return res.status(404).json({
+                success: false,
+                message: 'Báo cáo không tồn tại'
+            });
+        }
+
+        report.status = 'Rejected';
+        report.resolutionNote = `Từ chối với lý do: ${reason}`;
+        await report.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Báo cáo đã bị từ chối',
+            data: report
+        });
+    } catch (error) {
+        console.error('Reject report error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi từ chối báo cáo',
             error: error.message
         });
     }
@@ -279,5 +429,7 @@ export default {
     getReports,
     getReportDetail,
     resolveReport,
+    approveReport,
+    rejectReport,
     getMyReports
 };
