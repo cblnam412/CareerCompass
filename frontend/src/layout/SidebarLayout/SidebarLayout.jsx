@@ -29,7 +29,7 @@ export function Sidebar({ isCollapsedForChat }) {
   const studentNavItems = [
     { icon: Home, label: "Trang chủ", href: "/user" },
     { icon: Search, label: "Tìm kiếm", href: "#", onClick: () => setIsSearchOpen(!isSearchOpen) },
-    { icon: MessageCircle, label: "Tin nhắn", href: "/user/messages" },
+    // { icon: MessageCircle, label: "Tin nhắn", href: "/user/messages" },
     { icon: BookOpen, label: "Thi thử THPTQG", href: "/user/tests" },
     { icon: Compass, label: "Trắc nghiệm nghề nghiệp", href: "/user/quiz" },
     { icon: Sparkle, label: "Tư vấn nghề nghiệp", href: "/user/predict" },
