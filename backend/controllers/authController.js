@@ -97,7 +97,7 @@ export const registerUniversityRep = async (req, res) => {
             });
         }
 
-        if (!studentID)
+        if (!studentId)
         {
             return res.status(400).json({ 
                 success: false, 
@@ -178,7 +178,7 @@ export const registerUniversityRep = async (req, res) => {
 
         const affiliation = new UniversityAffiliation({
             studentId: savedUser._id,
-            studentIdNumber: studentID.trim(),
+            studentIdNumber: studentId.trim(),
             universityId,
             studentCardFront: frontCardUpload.url,
             studentCardBack: backCardUpload.url,
