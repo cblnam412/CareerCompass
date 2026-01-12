@@ -40,6 +40,11 @@ export function PostCard({ post, onUpdate }) {
     if (user.role === "uniManager" && user.universityId?.name) {
       return user.universityId.name;
     }
+
+    if (user.role === "uniRep" && user.universityId?.name) {
+      return `${user.fullName} - ${user.universityId.name}`;
+    }
+    
     return user.fullName || "Người dùng ẩn";
   };
 
