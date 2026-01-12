@@ -192,7 +192,7 @@ const RegisterScreen = () => {
         
         dataToSend.append("universityId", formData.university);
         
-        dataToSend.append("studentID", formData.studentID);
+        dataToSend.append("studentId", formData.studentID);
         if (formData.studentCardFront) {
           dataToSend.append("studentCardFront", formData.studentCardFront);
         }

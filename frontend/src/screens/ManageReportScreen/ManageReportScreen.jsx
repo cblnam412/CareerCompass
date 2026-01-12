@@ -12,8 +12,8 @@ const ITEMS_PER_PAGE = 10;
 
 const STATUS_TRANSLATIONS = {
   pending: "Đã tiếp nhận",
-  dismissed: "Đã bác bỏ",
-  approved: "Đã xử lý", // Unified status for valid reports
+  rejected: "Đã bác bỏ",
+  approved: "Đã xử lý", 
 };
 
 const REPORTED_ITEM_TYPE_TRANSLATIONS = {
@@ -226,11 +226,11 @@ export default function ManageReportScreen() {
       if (res.ok) {
         return result.data.content || "Bình luận rỗng";
       } else {
-        toast.warning("Lỗi lấy dữ liệu bình luận bị báo cáo!");
+        //toast.warning("Lỗi lấy dữ liệu bình luận bị báo cáo!");
         return "Không thể tải bình luận";
       }
     } catch (error) {
-      toast.warning("Lỗi lấy dữ liệu bình luận bị báo cáo!");
+      //toast.warning("Lỗi lấy dữ liệu bình luận bị báo cáo!");
       return "Không thể tải bình luận";
     }
   }
@@ -250,9 +250,9 @@ export default function ManageReportScreen() {
       const result = await res.json();
       if (res.ok) {
         const { title, content } = result.data.post;
-        return `${title} - ${content}`;
+        return `Tiêu đề: ${title}\nNội dung: ${content}`;
       } else {
-        toast.warning("Lỗi lấy bài viết bị báo cáo!");
+        //toast.warning("Lỗi lấy bài viết bị báo cáo!");
         return null;
       }
     } catch (error) {
@@ -289,7 +289,7 @@ export default function ManageReportScreen() {
         toast.success("Đã bác bỏ báo cáo");
         setReports(prev => prev.map(r =>
           r._id === selectedReportId
-            ? { ...r, status: 'dismissed', processing_action: `Từ chối với lý do: ${rejectReason}` }
+            ? { ...r, status: 'rejected', processing_action: `Từ chối với lý do: ${rejectReason}` }
             : r
         ));
         setShowRejectModal(false);
@@ -395,13 +395,13 @@ export default function ManageReportScreen() {
             )}
 
             {!hasMorePages && reports.length > 0 && (
-              <p style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>
+              <p style={{ textAlign: 'center', color: '#6b7280', padding: '0.5rem' }}>
                 Đã hiển thị tất cả báo cáo
               </p>
             )}
 
             {reports.length === 0 && !isLoading && (
-              <p style={{ textAlign: 'center', color: '#6b7280', padding: '2rem' }}>
+              <p style={{ textAlign: 'center', color: '#6b7280', padding: '0.5rem' }}>
                 Không tìm thấy báo cáo nào
               </p>
             )}
@@ -443,22 +443,17 @@ export default function ManageReportScreen() {
                 />
               </div>
 
-              {selectedReport.reported_item_type === 'message' && reportedItemContent && (
+              {selectedReport.reported_item_type === 'post' && reportedItemContent && (
                 <div className={styles.contentSection}>
-                  <h3 className={styles.sectionTitle}>NỘI DUNG TIN NHẮN BỊ BÁO CÁO</h3>
+                  <h3 className={styles.sectionTitle}>NỘI DUNG BÀI VIẾT BỊ BÁO CÁO</h3>
                   <p className={styles.contentText}>{reportedItemContent}</p>
                 </div>
               )}
 
-              {selectedReport.reported_item_type === 'document' && reportedItemContent && (
+              {selectedReport.reported_item_type === 'comment' && reportedItemContent && (
                 <div className={styles.evidenceSection}>
-                  <h3 className={styles.sectionTitle}>TÀI LIỆU BỊ BÁO CÁO</h3>
-                  <div className={styles.evidenceItem}>
-                    <span className={styles.fileIcon}>📄</span>
-                    <a href={reportedItemContent} target="_blank" rel="noopener noreferrer">
-                      Xem tài liệu
-                    </a>
-                  </div>
+                  <h3 className={styles.sectionTitle}>NỘI DUNG BÌNH LUẬN BỊ BÁO CÁO</h3>
+                  <p className={styles.contentText}>{reportedItemContent}</p>
                 </div>
               )}
 
@@ -483,12 +478,12 @@ export default function ManageReportScreen() {
                   </span>
                 </div>
                 {/* Simplified history display as processing_action might not exist for Approved reports now, or is simple string */}
-                {(selectedReport.status === 'dismissed' || selectedReport.status === 'approved') && (
+                {(selectedReport.status === 'rejected' || selectedReport.status === 'approved') && (
                   <div className={styles.historyItem}>
                     <span className={styles.historyDot}></span>
                     <span className={styles.historyText}>
-                      {selectedReport.status === "dismissed"
-                        ? `Từ chối: ${selectedReport.processing_action?.replace('Từ chối với lý do: ', '') || ''}`
+                      {selectedReport.status === "rejected"
+                        ? `Từ chối với lý do: ${selectedReport.processing_action?.replace('Từ chối với lý do: ', '') || ''}`
                         : "Đã chấp thuận báo cáo"}
                     </span>
                   </div>

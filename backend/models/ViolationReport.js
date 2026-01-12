@@ -24,7 +24,7 @@ const ViolationReportSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['Pending', 'Reviewed', 'Resolved'],
+        enum: ['Pending', 'Reviewed', 'Resolved', 'Approved', 'Rejected'],
         default: 'Pending',
     },
     decision: {

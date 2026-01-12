@@ -88,18 +88,20 @@ export const getReports = async (req, res) => {
             });
         }
 
-        const { status = 'Pending', targetType, page = 1, limit = 10 } = req.query;
+        const { status, targetType, page = 1, limit = 10 } = req.query;
         const filter = {};
 
         const statusMap = {
             'pending': 'Pending',
+            'rejected': 'Rejected',   
             'dismissed': 'Rejected',
             'approved': 'Approved'
         };
         
-        if (status) {
-            filter.status = statusMap[status] || status; // Handle both formats
+        if (status && status !== 'all') {
+            filter.status = statusMap[status] || status;
         }
+
         if (targetType) {
             filter.targetType = targetType;
         }
@@ -129,7 +131,7 @@ export const getReports = async (req, res) => {
             content: report.reason,
             status: report.status.toLowerCase(), // 'Pending' -> 'pending'
             created_at: report.createdAt,
-            processing_action: report.resolutionNote || ''
+            processing_action: report.actionTaken || ''
         }));
 
         res.status(200).json({
@@ -230,8 +232,20 @@ export const approveReport = async (req, res) => {
             await ForumPost.findByIdAndDelete(report.targetItemId);
             actionTaken = 'Đã xóa bài viết';
         } else if (report.targetType === 'Comment') {
-            await ForumComment.findByIdAndDelete(report.targetItemId);
-            actionTaken = 'Đã xóa bình luận';
+            const commentToDelete = await ForumComment.findById(report.targetItemId);
+            
+            if (commentToDelete) {
+                await ForumComment.findByIdAndDelete(report.targetItemId);
+                
+                if (commentToDelete.postId) {
+                    await ForumPost.findByIdAndUpdate(commentToDelete.postId, { 
+                        $inc: { commentCount: -1 } 
+                    });
+                }
+                actionTaken = 'Đã xóa bình luận';
+            } else {
+                actionTaken = 'Bình luận đã bị xóa trước đó';
+            }
         }
 
         const previousViolations = await ViolationReport.countDocuments({
@@ -245,7 +259,7 @@ export const approveReport = async (req, res) => {
         actionTaken += `\nTài khoản bị ban: ${banResult.message}`;
 
         report.status = 'Approved';
-        report.resolutionNote = actionTaken;
+        report.actionTaken = actionTaken;
         await report.save();
 
         res.status(200).json({
@@ -291,7 +305,7 @@ export const rejectReport = async (req, res) => {
         }
 
         report.status = 'Rejected';
-        report.resolutionNote = `Từ chối với lý do: ${reason}`;
+        report.actionTaken = `Từ chối với lý do: ${reason}`;
         await report.save();
 
         res.status(200).json({
