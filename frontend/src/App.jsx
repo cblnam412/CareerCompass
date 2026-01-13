@@ -28,6 +28,7 @@ import {
   ManageUniversityScreen,
   CareerPredictionScreen,
   ManageReportScreen,
+  ExploreUniversityScreen,
 } from "./screens";
 
 function App() {
@@ -59,6 +60,7 @@ function App() {
           <Route path="quiz/mbti" element={<MBTIQuizScreen />} />
           <Route path="quiz/holland" element={<HollandQuizScreen />} />
           <Route path="predict" element={<CareerPredictionScreen />} />
+          <Route path="explore-university" element={<ExploreUniversityScreen />} />
 
           <Route path="profile" element={<ProfileScreen />} />
           <Route path="profile/:userId" element={<ProfileScreen />} />
