@@ -13,8 +13,8 @@ export const getConversations = async (req, res) => {
             ],
             isActive: true
         })
-        .populate('studentId', 'fullName avatar email')
-        .populate('uniManagerId', 'fullName avatar email')
+        .populate('studentId', 'fullName avatar email avatar')
+        .populate('uniManagerId', 'fullName avatar email avatar')
         .populate('universityId', 'name')
         .sort({ updatedAt: -1 });
 
@@ -94,9 +94,11 @@ export const startConversation = async (req, res) => {
             });
         }
 
-        const populated = await conversation.populate('studentId', 'fullName avatar email')
-            .populate('uniManagerId', 'fullName avatar email')
-            .populate('universityId', 'name');
+        const populated = await conversation.populate([
+            { path: 'studentId', select: 'fullName avatar email' },
+            { path: 'uniManagerId', select: 'fullName avatar email' },
+            { path: 'universityId', select: 'name' }
+        ]);
 
         res.status(200).json({
             success: true,

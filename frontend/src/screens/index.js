@@ -21,6 +21,7 @@ import ManageSubjectScreen from './ManageSubjectScreen/ManageSubjectScreen'
 import ManageUniversityScreen from './ManageUniversityScreen/ManageUniversityScreen'
 import CareerPredictionScreen from './CareerPredictionScreen/CareerPredictionScreen'
 import ManageReportScreen from './ManageReportScreen/ManageReportScreen'
+import ExploreUniversityScreen from './ExploreUniversityScreen/ExploreUniversityScreen'
 
 export {
     MessageScreen,
@@ -46,4 +47,5 @@ export {
     ManageUniversityScreen,
     CareerPredictionScreen,
     ManageReportScreen,
+    ExploreUniversityScreen
 }

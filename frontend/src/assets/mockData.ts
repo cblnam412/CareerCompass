@@ -12,6 +12,8 @@ import type {
   TestCombination,
   SoftSkill,
   RepresentativeApplication,
+  University,
+  UniversityMajor,
 } from "./types"
 
 // Mock current user
@@ -662,6 +664,95 @@ export const mockUserHollandResults: { code: string; completedAt: string }[] = [
   { code: "IRA", completedAt: new Date(Date.now() - 1209600000).toISOString() },
 ]
 
+// Mock universities and their majors data
+export const mockUniversities: University[] = [
+  {
+    id: "univ-1",
+    name: "Đại học Công nghệ Thông tin (UIT-VNUHCM)",
+    city: "Hồ Chí Minh",
+    logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=uit",
+  },
+  {
+    id: "univ-2",
+    name: "Đại học Kinh tế Thành phố Hồ Chí Minh (UEH)",
+    city: "Hồ Chí Minh",
+    logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=ueh",
+  },
+  {
+    id: "univ-3",
+    name: "Đại học Bách Khoa (HUST)",
+    city: "Hà Nội",
+    logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=hust",
+  },
+  {
+    id: "univ-4",
+    name: "Đại học Quốc gia Hà Nội (VNU)",
+    city: "Hà Nội",
+    logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=vnu",
+  },
+  {
+    id: "univ-5",
+    name: "Đại học Kinh tế Quốc dân (NEU)",
+    city: "Hà Nội",
+    logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=neu",
+  },
+  {
+    id: "univ-6",
+    name: "Đại học Thương mại (FTU)",
+    city: "Hà Nội",
+    logo: "https://api.dicebear.com/7.x/avataaars/svg?seed=ftu",
+  },
+]
+
+export const mockUniversityMajors: { [universityId: string]: UniversityMajor[] } = {
+  "univ-1": [
+    { id: "major-1", name: "Kỹ thuật Phần mềm", combination: "A00", tuitionFee: 850, avgScore: 26.5 },
+    { id: "major-2", name: "Công nghệ Thông tin", combination: "A00", tuitionFee: 850, avgScore: 26.2 },
+    { id: "major-3", name: "An ninh Mạng", combination: "A00", tuitionFee: 900, avgScore: 25.8 },
+    { id: "major-4", name: "Khoa học Dữ liệu", combination: "A00", tuitionFee: 950, avgScore: 27.1 },
+    { id: "major-5", name: "Hệ thống Thông tin", combination: "A00", tuitionFee: 850, avgScore: 25.5 },
+    { id: "major-6", name: "Thiết kế Đồ họa", combination: "A01", tuitionFee: 800, avgScore: 24.8 },
+    { id: "major-7", name: "Phát triển Web", combination: "A00", tuitionFee: 875, avgScore: 26.0 },
+    { id: "major-8", name: "Lập trình Di động", combination: "A00", tuitionFee: 875, avgScore: 25.9 },
+    { id: "major-9", name: "Trí tuệ Nhân tạo", combination: "A00", tuitionFee: 1000, avgScore: 27.5 },
+    { id: "major-10", name: "Điện toán Đám mây", combination: "A00", tuitionFee: 900, avgScore: 26.3 },
+    { id: "major-11", name: "Công nghệ Blockchain", combination: "A00", tuitionFee: 950, avgScore: 26.8 },
+    { id: "major-12", name: "Kỹ thuật Cơ sở dữ liệu", combination: "A00", tuitionFee: 875, avgScore: 26.1 },
+    { id: "major-13", name: "Kiểm thử Phần mềm", combination: "A00", tuitionFee: 800, avgScore: 24.9 },
+    { id: "major-14", name: "Quản lý Dự án CNTT", combination: "A01", tuitionFee: 825, avgScore: 25.3 },
+    { id: "major-15", name: "Hệ thống Nhúng", combination: "A00", tuitionFee: 925, avgScore: 26.4 },
+    { id: "major-16", name: "Xử lý Ảnh và Video", combination: "A00", tuitionFee: 950, avgScore: 27.0 },
+    { id: "major-17", name: "Lập trình Game", combination: "A00", tuitionFee: 925, avgScore: 26.6 },
+    { id: "major-18", name: "Kỹ thuật Phần cứng", combination: "A00", tuitionFee: 900, avgScore: 26.2 },
+    { id: "major-19", name: "Mạng Máy tính", combination: "A00", tuitionFee: 875, avgScore: 25.8 },
+    { id: "major-20", name: "Ứng dụng Thực tế Ảo", combination: "A00", tuitionFee: 1000, avgScore: 27.3 },
+    { id: "major-21", name: "Mô phỏng Máy tính", combination: "A00", tuitionFee: 900, avgScore: 26.5 },
+    { id: "major-22", name: "Quy trình Phần mềm", combination: "A01", tuitionFee: 850, avgScore: 25.9 },
+    { id: "major-23", name: "Bảo mật Thông tin", combination: "A00", tuitionFee: 925, avgScore: 26.7 },
+    { id: "major-24", name: "Phân tích Dữ liệu", combination: "A00", tuitionFee: 950, avgScore: 27.2 },
+  ],
+  "univ-2": [
+    { id: "major-25", name: "Kinh tế Chính trị", combination: "A03", tuitionFee: 700, avgScore: 24.5 },
+    { id: "major-26", name: "Quản lý Kinh doanh", combination: "A01", tuitionFee: 750, avgScore: 25.0 },
+    { id: "major-27", name: "Kế toán", combination: "A01", tuitionFee: 700, avgScore: 24.8 },
+    { id: "major-28", name: "Tài chính Ngân hàng", combination: "A01", tuitionFee: 800, avgScore: 25.5 },
+    { id: "major-29", name: "Marketing", combination: "A02", tuitionFee: 750, avgScore: 24.9 },
+    { id: "major-30", name: "Quản lý Du lịch", combination: "A02", tuitionFee: 700, avgScore: 24.3 },
+    { id: "major-31", name: "Thương mại Điện tử", combination: "A00", tuitionFee: 800, avgScore: 25.2 },
+    { id: "major-32", name: "Kinh tế Lương", combination: "A01", tuitionFee: 750, avgScore: 25.1 },
+    { id: "major-33", name: "Kiểm toán", combination: "A01", tuitionFee: 750, avgScore: 25.0 },
+    { id: "major-34", name: "Logistics", combination: "A01", tuitionFee: 750, avgScore: 24.9 },
+  ],
+  "univ-3": [
+    { id: "major-35", name: "Kỹ thuật Máy", combination: "A00", tuitionFee: 1000, avgScore: 26.8 },
+    { id: "major-36", name: "Kỹ thuật Xây dựng", combination: "A00", tuitionFee: 900, avgScore: 26.0 },
+    { id: "major-37", name: "Kỹ thuật Điện", combination: "A00", tuitionFee: 950, avgScore: 26.5 },
+    { id: "major-38", name: "Kỹ thuật Điện tử", combination: "A00", tuitionFee: 950, avgScore: 26.4 },
+    { id: "major-39", name: "Kỹ thuật Hóa chất", combination: "A00", tuitionFee: 1050, avgScore: 27.0 },
+    { id: "major-40", name: "Kỹ thuật Giao thông", combination: "A00", tuitionFee: 900, avgScore: 25.9 },
+  ],
+}
+
 // In-memory storage for new data
 export const inMemoryStorage = {
   posts: [...mockPosts],
@@ -679,6 +770,8 @@ export const inMemoryStorage = {
   userTestResults: mockUserTestResults,
   userMBTIResults: mockUserMBTIResults,
   userHollandResults: mockUserHollandResults,
+  universities: [...mockUniversities],
+  universityMajors: mockUniversityMajors,
 }
 
 export const mockData = {
@@ -700,4 +793,6 @@ export const mockData = {
   userTestResults: mockUserTestResults,
   userMBTIResults: mockUserMBTIResults,
   userHollandResults: mockUserHollandResults,
+  universities: mockUniversities,
+  universityMajors: mockUniversityMajors,
 }
