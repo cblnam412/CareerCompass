@@ -1,78 +1,76 @@
-// import { useEffect, useState, useRef, createContext, useContext } from "react";
-// import { useAuth } from "./AuthContext";
-// import { io } from "socket.io-client";
-// import API from "../API/api";
+import { useEffect, useState, createContext, useContext } from "react";
+import { useAuth } from "./AuthContext";
+import { io } from "socket.io-client";
+import API from "../API/API"; 
 
-// const SocketContext = createContext();
+const SocketContext = createContext();
 
-// export function useSocket() {
-//   const socketCtx = useContext(SocketContext);
-//   if (!socketCtx)
-//     throw new Error("useSocket must be used inside SocketProvider!");
-//   return socketCtx;
-// }
+export function useSocket() {
+  const socketCtx = useContext(SocketContext);
+  if (!socketCtx)
+    throw new Error("useSocket must be used inside SocketProvider!");
+  return socketCtx;
+}
 
-// export function SocketProvider({ children }) {
-//   const { accessToken } = useAuth();
-//   const socketRef = useRef(null);
-//   const [onlineUsers, setOnlineUsers] = useState([]);
-//   const [loadingSocket, setLoadingSocket] = useState(true);
+export function SocketProvider({ children }) {
+  const { accessToken, userID } = useAuth();
+  
+  // FIX: Use useState instead of useRef so the Context updates when socket connects
+  const [socket, setSocket] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(new Set()); 
 
-//   useEffect(() => {
-//     if (!accessToken) {
-//       //console.log(`Access token not found | ${accessToken}`);
-//       return;
-//     }
+  useEffect(() => {
+    // Wait for Auth to be ready
+    if (!accessToken || !userID) {
+      return;
+    }
 
-//     const socket = io(API, {
-//       auth: { token: accessToken },
-//       transports: ["websocket"],
-//       reconnectionAttempts: 5,
-//     });
+    console.log("Initializing socket for User:", userID);
 
-//     socketRef.current = socket;
+    // 1. Initialize Socket
+    const newSocket = io(API, {
+      auth: { token: accessToken },
+      transports: ["websocket"],
+      reconnectionAttempts: 5,
+    });
 
-//     socket.on("connect", () => {
-//       console.log("Socket connected:", socket.id);
-//       setTimeout(() => setLoadingSocket(false), 1000);
-//     });
+    // 2. Setup Event Listeners
+    newSocket.on("connect", () => {
+      console.log("Socket connected:", newSocket.id);
+      newSocket.emit("user_online", userID);
+    });
 
-//     socket.on("connect_error", (err) => {
-//       console.error(
-//         "Socket connect_error:",
-//         err && err.message ? err.message : err
-//       );
-//       if (err && err.message && /unauthor/i.test(err.message)) {
-//         logout();
-//         navigate("/login");
-//       }
-//     });
+    newSocket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+    });
 
-//     socket.on("disconnect", (reason) => {
-//       console.log("Socket disconnected:", reason);
-//     });
+    newSocket.on("connect_error", (err) => {
+      console.error("Socket connection error:", err);
+    });
 
-//     socket.on("global:user_online", ({ userName }) => {
-//       setOnlineUsers((prev) =>
-//         prev.includes(userName) ? prev : [...prev, userName]
-//       );
-//     });
+    newSocket.on("user_status", ({ userId, status }) => {
+        setOnlineUsers(prev => {
+            const newSet = new Set(prev);
+            if (status === 'online') newSet.add(userId);
+            else newSet.delete(userId);
+            return newSet;
+        });
+    });
 
-//     socket.on("global:user_offline", ({ userName }) => {
-//       setOnlineUsers((prev) => prev.filter((n) => n !== userName));
-//     });
+    // 3. Save socket to state to trigger re-render for consumers
+    setSocket(newSocket);
 
-//     return () => {
-//       if (socketRef) {
-//         socketRef.current.disconnect();
-//         socketRef.current = null;
-//       }
-//     };
-//   }, [accessToken]);
+    // Cleanup
+    return () => {
+      newSocket.disconnect();
+      setSocket(null);
+    };
+  }, [accessToken, userID]);
 
-//   return (
-//     <SocketContext.Provider value={{ socketRef, onlineUsers, loadingSocket }}>
-//       {children}
-//     </SocketContext.Provider>
-//   );
-// }
+  return (
+    // Pass the state 'socket', not the ref
+    <SocketContext.Provider value={{ socket, onlineUsers }}>
+      {children}
+    </SocketContext.Provider>
+  );
+}

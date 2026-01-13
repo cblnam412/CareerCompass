@@ -3,13 +3,14 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
-//import { SocketProvider } from "./context/SocketContext";
+import { SocketProvider } from "./context/SocketContext";
 import { ToastContainer, Zoom } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <AuthProvider>
+      <SocketProvider>
         <App />
         <ToastContainer
           position="top-center"
@@ -23,6 +24,7 @@ createRoot(document.getElementById("root")).render(
           theme="dark"
           transition={Zoom}
         />
+      </SocketProvider>
     </AuthProvider>
   </React.StrictMode>
 );

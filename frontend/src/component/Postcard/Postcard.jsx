@@ -533,15 +533,101 @@ const submitReport = async () => {
     return `${days} ngày trước`;
   };
 
-  const handleUserClick = (id, name, avatar, e) => {
+  const handleUserClick = (id, name, avatar, role, universityId, e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    setSelectedUser({ id: id, display_name: name, avatar_url: avatar });
+    
+    // Store full details needed for the API call
+    setSelectedUser({ 
+        id: id, 
+        display_name: name, 
+        avatar_url: avatar,
+        role: role,
+        universityId: universityId 
+    });
+    
     setUserPopoverPos({
       top: rect.bottom + 8,
       left: Math.min(rect.left, window.innerWidth - 350),
     });
     setShowUserProfile(true);
+  };
+
+  const handleMessage = async () => {
+    if (!userID) {
+        toast.error("Vui lòng đăng nhập");
+        return;
+    }
+
+    if (!selectedUser) return;
+
+    // Based on your backend 'startConversation' controller, we need specific IDs
+    // The backend expects: { studentId, uniManagerId, universityId }
+    
+    let payload = {};
+    const myRole = userInfo?.role;
+    const targetRole = selectedUser.role;
+
+    // Case 1: I am a Student -> Message a Uni Rep
+    if (myRole === 'user' && (targetRole === 'uniManager' || targetRole === 'uniRep')) {
+        if (!selectedUser.universityId) {
+            toast.error("Người dùng này không liên kết với trường đại học nào.");
+            return;
+        }
+        payload = {
+            studentId: userID,
+            uniManagerId: selectedUser.id,
+            universityId: selectedUser.universityId._id || selectedUser.universityId // Handle if it's object or string
+        };
+    } 
+    // Case 2: I am a Uni Rep -> Message a Student
+    else if ((myRole === 'uniManager' || myRole === 'uniRep') && targetRole === 'user') {
+        // Assuming the logged in Uni Rep has a universityId in their profile
+        if (!userInfo.universityId) {
+            toast.error("Tài khoản của bạn chưa liên kết với trường.");
+            return;
+        }
+        payload = {
+            studentId: selectedUser.id,
+            uniManagerId: userID,
+            universityId: userInfo.universityId
+        };
+    } 
+    else {
+        console.log(`My role ${myRole}, target role: ${targetRole}`);
+        toast.info("Hệ thống hiện chỉ hỗ trợ nhắn tin giữa Học sinh và Đại diện trường.");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API}/api/messages/conversations/start`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();  
+
+        if (data.success) {
+            // Navigate to message screen and pass the conversation ID
+            // The MessageScreen needs to handle location.state to auto-select this
+            navigate('/user/messages', { 
+                state: { 
+                    selectedConversationId: data.data._id,
+                    autoConnect: true 
+                } 
+            });
+            setShowUserProfile(false);
+        } else {
+            toast.error(data.message || "Không thể tạo cuộc trò chuyện");
+        }
+    } catch (error) {
+        console.error("Chat error:", error);
+        toast.error("Lỗi kết nối");
+    }
   };
 
   return (
@@ -552,13 +638,13 @@ const submitReport = async () => {
             src={authorAvatar}
             alt={authorName}
             className={styles.avatar}
-            onClick={(e) => handleUserClick(authorId, authorName, authorAvatar, e)}
+            onClick={(e) => handleUserClick(authorId, authorName, authorAvatar, authorRole, author.universityId, e)}
             style={{ cursor: "pointer" }}
           />
           <div>
             <p
               className={styles.authorName}
-              onClick={(e) => handleUserClick(authorId, authorName, authorAvatar, e)}
+              onClick={(e) => handleUserClick(authorId, authorName, authorAvatar, authorRole, author.universityId, e)}
               style={{ cursor: "pointer" }}
             >
               {authorName}
@@ -892,11 +978,12 @@ const submitReport = async () => {
                 <X size={18} />
               </button>
             </div>
-            {/* {userID !== selectedUser.id && (
-              <button className={styles.messageButton} onClick={() => console.log("Chat not implemented")}>
+            {userID !== selectedUser.id && (
+              <button className={styles.messageButton} onClick={handleMessage}>
+                <MessageCircle size={16} style={{marginRight: '8px'}}/>
                 <span>Nhắn tin</span>
               </button>
-            )} */}
+            )}
           </div>
         </>
       )}
