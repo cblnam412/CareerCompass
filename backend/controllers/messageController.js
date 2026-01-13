@@ -1,6 +1,7 @@
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import User from '../models/User.js';
+import { uploadFileToSupabase, deleteFileFromSupabase } from '../utils/supabaseUtils.js';
 
 export const getConversations = async (req, res) => {
     try {
@@ -134,6 +135,18 @@ export const deleteMessage = async (req, res) => {
             });
         }
 
+        // Delete file from Supabase if exists
+        if (message.fileUrl) {
+            try {
+                const urlParts = message.fileUrl.split('/');
+                const filePath = `documents/${urlParts[urlParts.length - 1]}`;
+                await deleteFileFromSupabase('messages', filePath);
+            } catch (deleteError) {
+                console.error('Error deleting file from Supabase:', deleteError);
+                // Continue anyway - message will be deleted
+            }
+        }
+
         await Message.findByIdAndDelete(messageId);
 
         res.status(200).json({
@@ -203,6 +216,102 @@ export const getUnreadCount = async (req, res) => {
         });
     } catch (error) {
         console.error('Get unread count error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+export const sendMessageWithDocument = async (req, res) => {
+    try {
+        const { conversationId, content } = req.body;
+        const userId = req.userId;
+        const file = req.file;
+
+        if (!conversationId || !userId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng cung cấp conversationId'
+            });
+        }
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cuộc trò chuyện không tồn tại'
+            });
+        }
+
+        if (conversation.studentId.toString() !== userId && conversation.uniManagerId.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn không có quyền gửi tin nhắn trong cuộc trò chuyện này'
+            });
+        }
+
+        const receiverId = conversation.studentId.toString() === userId ? 
+            conversation.uniManagerId : conversation.studentId;
+
+        let fileUrl = null;
+        let fileName = null;
+        let messageType = 'text';
+
+        if (file) {
+            try {
+                const uploadResult = await uploadFileToSupabase(
+                    file,
+                    'messages',
+                    'documents'
+                );
+
+                if (!uploadResult.success) {
+                    return res.status(400).json({
+                        success: false,
+                        message: uploadResult.error || 'Không thể upload file'
+                    });
+                }
+
+                fileUrl = uploadResult.url;
+                fileName = file.originalname;
+                messageType = 'file';
+            } catch (uploadError) {
+                console.error('Upload error:', uploadError);
+                return res.status(400).json({
+                    success: false,
+                    message: 'Lỗi khi upload file: ' + uploadError.message
+                });
+            }
+        }
+
+        const message = await Message.create({
+            conversationId,
+            senderId: userId,
+            receiverId,
+            content: content || `Đã gửi tài liệu: ${fileName}`,
+            fileUrl,
+            messageType
+        });
+
+        const populatedMessage = await message.populate([
+            { path: 'senderId', select: 'fullName avatar' },
+            { path: 'receiverId', select: 'fullName avatar' }
+        ]);
+
+        await Conversation.findByIdAndUpdate(
+            conversationId,
+            { updatedAt: new Date() }
+        );
+
+        res.status(201).json({
+            success: true,
+            data: populatedMessage,
+            message: 'Gửi tin nhắn thành công'
+        });
+
+    } catch (error) {
+        console.error('Send message with document error:', error);
         res.status(500).json({
             success: false,
             message: error.message

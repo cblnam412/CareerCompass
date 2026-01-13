@@ -5,13 +5,12 @@ import {
     getOutdatedUniversityMajors,
     updateAdmissionScore 
 } from '../utils/scraperUtils.js';
+import {
+    fetchAllAdmissionScoresFromAI
+} from '../utils/aiAdmissionScorer.js';
 
-/**
- * Admin: Scrape admission scores from vnexpress
- */
 export const scrapeAndUpdateScores = async (req, res) => {
     try {
-        // Check admin role
         if (req.userRole !== 'admin') {
             return res.status(403).json({
                 success: false,
@@ -25,7 +24,6 @@ export const scrapeAndUpdateScores = async (req, res) => {
             return res.status(500).json(scrapeResult);
         }
 
-        // Bulk update with scraped data
         const updateResult = await bulkUpdateAdmissionScores(scrapeResult.data);
 
         res.status(200).json({
@@ -45,9 +43,6 @@ export const scrapeAndUpdateScores = async (req, res) => {
     }
 };
 
-/**
- * Admin: Get outdated UniversityMajors that need update
- */
 export const getOutdatedMajors = async (req, res) => {
     try {
         if (req.userRole !== 'admin') {
@@ -69,9 +64,6 @@ export const getOutdatedMajors = async (req, res) => {
     }
 };
 
-/**
- * Admin: Manually update admission score for a UniversityMajor
- */
 export const updateMajorScore = async (req, res) => {
     try {
         if (req.userRole !== 'admin') {
@@ -204,6 +196,83 @@ export const getUniversityMajorsForAdmin = async (req, res) => {
         console.error('Get UniversityMajors error:', error);
         res.status(500).json({
             success: false,
+            error: error.message
+        });
+    }
+};
+
+export const fetchAdmissionScoresWithAI = async (req, res) => {
+    try {
+        if (req.userRole !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Chỉ admin mới có quyền thực hiện tác vụ này'
+            });
+        }
+
+        console.log('\n[AI Score Fetch] Starting admin batch fetch for admission scores...');
+        
+        const universityMajors = await UniversityMajor.find()
+            .populate('universityId', 'name')
+            .populate('majorId', 'name')
+            .lean();
+
+        if (!universityMajors || universityMajors.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không tìm thấy ngành nào để cập nhật'
+            });
+        }
+
+        console.log(`[AI Score Fetch] Found ${universityMajors.length} university-major combinations to process`);
+
+        const aiResults = await fetchAllAdmissionScoresFromAI(universityMajors);
+
+        console.log(`[AI Score Fetch] AI fetch complete: ${aiResults.results.length} successful, ${aiResults.errors.length} failed`);
+
+        let updateStats = {
+            updated: 0,
+            failed: 0,
+            unchanged: 0
+        };
+
+        if (aiResults.results.length > 0) {
+            const updateData = aiResults.results.map(result => ({
+                universityMajorId: result.universityMajorId,
+                admissionScore: result.admissionScore,
+                year: result.year || new Date().getFullYear(),
+                method: result.method || 'AI'
+            }));
+
+            const bulkUpdateResult = await bulkUpdateAdmissionScores(updateData);
+            updateStats = bulkUpdateResult.results || updateStats;
+
+            console.log(`[AI Score Fetch] Database updated: ${updateStats.updated} records updated`);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Cập nhật điểm chuẩn từ AI thành công`,
+            statistics: {
+                totalProcessed: universityMajors.length,
+                successfullyFetched: aiResults.results.length,
+                failedToFetch: aiResults.errors.length,
+                databaseUpdated: updateStats.updated,
+                databaseFailed: updateStats.failed,
+                databaseUnchanged: updateStats.unchanged
+            },
+            details: {
+                successes: aiResults.results.length,
+                errors: aiResults.errors.length,
+                failedDetails: aiResults.errors.slice(0, 10) // Return first 10 errors for debugging
+            }
+        });
+
+    } catch (error) {
+        console.error('[AI Score Fetch] Fatal error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy điểm chuẩn từ AI',
             error: error.message
         });
     }

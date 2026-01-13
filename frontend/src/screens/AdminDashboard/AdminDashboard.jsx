@@ -56,7 +56,7 @@ export default function AdminDashboard() {
     { icon: Library, label: "Tổ hợp môn", count: statsData.totalSubjectCombinations },
     { icon: FileText, label: "Đề thi", count: statsData.totalMockExams },
     { icon: FileQuestionMark, label: "Câu hỏi", count: statsData.totalQuestions }, 
-    { icon: AlertCircle, label: "Báo cáo vi phạm", count: 7 },
+    { icon: AlertCircle, label: "Báo cáo vi phạm", count: 2 },
   ];
 
   const violationData = [
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card className={styles.chartCard}>
+        {/* <Card className={styles.chartCard}>
           <div className={styles.cardHeader}>
             <h3 className={styles.cardTitle}>Trạng thái báo cáo vi phạm</h3>
           </div>
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
               height={300}
             />
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* <Card className={styles.infoCard}>

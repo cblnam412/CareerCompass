@@ -1320,8 +1320,7 @@ export const trainRecommendationModel = async (req, res) => {
             actualMajorId: { $exists: true, $ne: null }
         }).populate('actualMajorId', 'name _id').lean();
         
-        // === FEEDBACK INTEGRATION ===
-        // Lấy feedback data để tăng cường training
+            // Lấy feedback data để tăng cường training
         const feedbackRecords = await RecommendationFeedBack.find({
             isHelpful: true  // Chỉ lấy positive feedback để tăng cường training
         }).populate('majorId', 'name _id')
@@ -1353,7 +1352,6 @@ export const trainRecommendationModel = async (req, res) => {
         const majorIdMap = {};
         let majorIdCounter = 0;
         
-        // === COMBINE BASE TRAINING DATA + FEEDBACK DATA ===
         const allTrainingData = [...trainingDataRecords];
         
         // Thêm feedback data vào training set
@@ -1367,7 +1365,7 @@ export const trainRecommendationModel = async (req, res) => {
                     gpa: feedback.recommendationId?.gpa,
                     subjectScores: feedback.recommendationId?.subjectScores || {},
                     softSkills: feedback.recommendationId?.softSkills || {},
-                    isFeedbackDerived: true  // Mark as feedback-derived
+                    isFeedbackDerived: true 
                 };
                 allTrainingData.push(feedbackTrainingRecord);
             }
@@ -1377,7 +1375,6 @@ export const trainRecommendationModel = async (req, res) => {
         
         for (const record of allTrainingData) {
             try {
-                // Map major ID to numeric label
                 const majorId = record.actualMajorId?._id?.toString() || record.actualMajorId?.toString();
                 if (!majorId) continue;
                 
@@ -1385,7 +1382,6 @@ export const trainRecommendationModel = async (req, res) => {
                     majorIdMap[majorId] = majorIdCounter++;
                 }
                 
-                // Extract features (MBTI, Holland Code, GPA, subject scores, soft skills)
                 const featureVector = [];
                 
                 // 1. MBTI Type (convert to numeric)

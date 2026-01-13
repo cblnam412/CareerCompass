@@ -1,0 +1,300 @@
+
+.messageInputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  border-radius: 0 0 8px 8px;
+}
+
+.errorMessage {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: #fee;
+  border: 1px solid #fcc;
+  border-radius: 6px;
+  animation: slideDown 0.3s ease;
+}
+
+.errorMessage p {
+  margin: 0;
+  color: #c33;
+  font-size: 14px;
+  flex: 1;
+}
+
+.closeError {
+  background: none;
+  border: none;
+  color: #c33;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeError:hover {
+  color: #a00;
+}
+
+.filePreview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: #f0f7ff;
+  border: 1px solid #b3d9ff;
+  border-radius: 6px;
+  animation: slideDown 0.3s ease;
+}
+
+.fileInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.fileInfo svg {
+  flex-shrink: 0;
+  color: #0066cc;
+}
+
+.fileName {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fileName .name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fileName .size {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.removeButton {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.removeButton:hover:not(:disabled) {
+  background-color: #ff9999;
+  color: #fff;
+}
+
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Input wrapper */
+.inputWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Text input */
+.textInput {
+  flex: 1;
+  min-height: 60px;
+  padding: 12px;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+  background-color: #fff;
+}
+
+.textInput:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+}
+
+.textInput::placeholder {
+  color: #999;
+}
+
+/* Hidden file input */
+.hiddenFileInput {
+  display: none;
+}
+
+/* Button area */
+.buttonArea {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #fafafa;
+  border-top: 1px solid #eee;
+  align-items: center;
+}
+
+/* Attach file button */
+.fileButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  color: #666;
+}
+
+.fileButton:hover:not(:disabled) {
+  background-color: #e8e8e8;
+  border-color: #bbb;
+}
+
+.fileButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+  color: #999;
+}
+
+/* Send button */
+.sendButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 8px 16px;
+  background-color: #0066cc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: #fff;
+}
+
+.sendButton:hover:not(:disabled) {
+  background-color: #0052a3;
+  box-shadow: 0 2px 8px rgba(0, 102, 204, 0.2);
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #ccc;
+}
+
+/* Spinner animation */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Help text */
+.helpText {
+  padding: 0 4px;
+  text-align: center;
+}
+
+.helpText small {
+  color: #999;
+  font-size: 12px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .messageInputContainer {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .buttonArea {
+    flex-wrap: wrap;
+  }
+
+  .sendButton {
+    width: 100%;
+  }
+
+  .fileButton {
+    flex: 1;
+  }
+
+  .textInput {
+    min-height: 50px;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+}
+
+/* Focus states for accessibility */
+.textInput:focus {
+  box-shadow: inset 0 0 0 2px #0066cc;
+}
+
+.fileButton:focus,
+.sendButton:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}

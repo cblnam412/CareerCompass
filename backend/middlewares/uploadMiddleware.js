@@ -66,6 +66,26 @@ const excelFileFilter = (req, file, cb) => {
     }
 };
 
+const documentFileFilter = (req, file, cb) => {
+    const allowedMimes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain',
+        'text/csv'
+    ];
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
+    
+    if (allowedMimes.includes(file.mimetype) || allowedExts.includes(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Chỉ chấp nhận file PDF, Word, Excel, TXT hoặc CSV'), false);
+    }
+};
+
 const uploadMiddleware = multer({
     storage: storage,
     fileFilter: fileFilter,
@@ -98,6 +118,14 @@ const excelUploadMiddleware = multer({
     }
 });
 
+const documentUploadMiddleware = multer({
+    storage: storage,
+    fileFilter: documentFileFilter,
+    limits: {
+        fileSize: 20 * 1024 * 1024 // 20MB cho file tài liệu
+    }
+});
+
 export const uploadStudentCard = uploadMiddleware.fields([
     { name: 'studentCardFront', maxCount: 1 },
     { name: 'studentCardBack', maxCount: 1 }
@@ -112,5 +140,7 @@ export const uploadDocxFile = docxUploadMiddleware.single('file');
 export const uploadTxtFile = txtUploadMiddleware.single('file');
 
 export const uploadExcelFile = excelUploadMiddleware.single('file');
+
+export const uploadMessageDocument = documentUploadMiddleware.single('document');
 
 export default uploadMiddleware;
