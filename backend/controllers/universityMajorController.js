@@ -69,6 +69,58 @@ export const getUniversityMajorById = async (req, res) => {
     }
 };
 
+export const getMajorsByUniversity = async (req, res) => {
+    try {
+        const { universityId } = req.params;
+        const { page = 1, limit = 20, search } = req.query;
+        const skip = (page - 1) * limit;
+
+        const university = await University.findById(universityId);
+        if (!university) {
+            return res.status(404).json({
+                success: false,
+                message: 'Trường đại học không tồn tại'
+            });
+        }
+
+        let query = { universityId };
+        if (search) {
+            query.$or = [
+                { majorName: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const total = await UniversityMajor.countDocuments(query);
+        const data = await UniversityMajor.find(query)
+            .populate('majorId', 'name category')
+            .populate('universityId', 'name code region')
+            .skip(skip)
+            .limit(parseInt(limit))
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data,
+            university: {
+                id: university._id,
+                name: university.name,
+                code: university.code
+            },
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                pages: Math.ceil(total / limit)
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 export const createUniversityMajor = async (req, res) => {
     try {
         const { universityId, majorId, majorName, tutionFee, duration, quota, addmissionMethods } = req.body;
