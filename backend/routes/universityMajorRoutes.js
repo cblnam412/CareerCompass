@@ -3,6 +3,7 @@ import { verifyToken, checkAdminRole} from '../middlewares/authMiddleware.js';
 import {
     getAllUniversityMajors,
     getUniversityMajorById,
+    getMajorsByUniversity,
     createUniversityMajor,
     updateUniversityMajor,
     deleteUniversityMajor,
@@ -22,6 +23,7 @@ import { parseExcelData } from '../middlewares/excelParserMiddleware.js';
 const router = express.Router();
 
 router.get('/', getAllUniversityMajors);
+router.get('/university/:universityId', getMajorsByUniversity);
 router.get('/:id', getUniversityMajorById);
 
 router.post('/', verifyToken, checkAdminRole, createUniversityMajor);
