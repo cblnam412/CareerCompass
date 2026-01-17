@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { useParams } from "react-router-dom"
 import { PostCard } from "../../component/Postcard/Postcard"
 import { useAuth } from "../../context/AuthContext"
-import { Info, Edit2, User, Mail, Calendar, MapPin, Camera, Clock, Globe, Map, Tag} from "lucide-react"
+import { Info, Edit2, User, Mail, Calendar, MapPin, Camera, Clock, Globe, Map, Tag, School, GraduationCap } from "lucide-react"
 import { toast } from "react-toastify"
 import API from "../../API/API"
 import styles from "./ProfileScreen.module.css"
@@ -228,7 +228,20 @@ export default function ProfileScreen() {
               )}
             </div>
             <div className={styles.userInfo}>
-              <h1 className={styles.userName}>{ profileData.role !== "uniManager" ? profileData.fullName : profileData.universityId.name }</h1>
+              <h1 className={styles.userName} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Name */}
+                {profileData.role !== "uniManager" ? profileData.fullName : profileData.universityId.name}
+                
+                {/* Corresponding icon */}
+                {profileData.role === "uniManager" && (
+                  <School size={28} color="black" strokeWidth={2} />
+                )}
+                
+                {profileData.role === "uniRep" && (
+                  <GraduationCap size={28} color="black" strokeWidth={2} />
+                )}
+              </h1>
+
               <p className={styles.userHandle}>
                 { profileData.role !== "uniManager" ? (ROLE_TRANSLATIONS[profileData.role] + " ") || "Thành viên" : "" }
                 { profileData.role === "uniRep" ? (profileData.universityId.name): "" } 

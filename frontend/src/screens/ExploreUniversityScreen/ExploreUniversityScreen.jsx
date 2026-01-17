@@ -96,35 +96,44 @@ export default function ExploreUniversityScreen() {
 
   // 1. Fetch University List
   useEffect(() => {
-    const fetchUniversities = async () => {
-      try {
-        const response = await fetch(`${API}/api/universities`)
-        
-        if (response.ok) {
-          const data = await response.json()
-          
-          if (Array.isArray(data)) {
-            setUniversities(data)
-          } else {
-            throw new Error("Invalid data format received")
-          }
-        } else {
-          throw new Error(`Server returned ${response.status}`)
-        }
-      } catch (error) {
-        console.error("Error fetching universities:", error)
-        
-        // Notify user and use fallback
-        // 'toastId' prevents duplicate toasts if fetch runs twice in Strict Mode
-        toast.error("Không thể tải danh sách trường. Đang hiển thị dữ liệu mẫu.", {
-          toastId: "univ-fetch-error" 
-        })
-        setUniversities(FALLBACK_UNIVERSITIES)
-      }
-    }
+  const fetchUniversities = async () => {
+    try {
+      const response = await fetch(`${API}/api/universities`)
 
-    fetchUniversities()
-  }, [])
+      if (response.ok) {
+        const jsonResponse = await response.json()
+
+        // Check strictly for the structure shown in your API response
+        // It wraps the array inside a "data" property
+        if (jsonResponse.success && Array.isArray(jsonResponse.data)) {
+          
+          // Map the API fields to the format your component expects
+          const formattedUniversities = jsonResponse.data.map((u) => ({
+            id: u._id, // Map '_id' from backend to 'id' for frontend
+            name: u.name,
+            // Handle missing province field to prevent UI issues
+            province: u.region || "Khác" 
+          }))
+
+          setUniversities(formattedUniversities)
+        } else {
+          throw new Error("Invalid data format received")
+        }
+      } else {
+        throw new Error(`Server returned ${response.status}`)
+      }
+    } catch (error) {
+      console.error("Error fetching universities:", error)
+
+      toast.error("Không thể tải danh sách trường. Đang hiển thị dữ liệu mẫu.", {
+        toastId: "univ-fetch-error"
+      })
+      setUniversities(FALLBACK_UNIVERSITIES)
+    }
+  }
+
+  fetchUniversities()
+}, [])
 
   // 2. Fetch Majors
   useEffect(() => {
@@ -211,14 +220,13 @@ export default function ExploreUniversityScreen() {
               }}
               className={styles.select}
             >
-              <option value="">-- Chọn trường --</option>
+              <option value="">Chọn trường</option>
               {Array.isArray(universities) && universities.map((univ) => (
                 <option key={univ.id} value={univ.id}>
                   {univ.name} ({univ.province})
                 </option>
               ))}
             </select>
-            <ChevronDown size={20} className={styles.selectIcon} />
           </div>
         </div>
 

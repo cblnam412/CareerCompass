@@ -127,7 +127,7 @@ export const importUniversitiesFromExcel = async (req, res) => {
 
 export const getAllUniversities = async (req, res) => {
     try {
-        const universities = await University.find();
+        const universities = await University.find().select('_id name region');
         res.status(200).json({
             success: true,
             count: universities.length,

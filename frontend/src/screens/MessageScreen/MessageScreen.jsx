@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react"
-import { User, Send, Search, Info, Smile, Paperclip, GraduationCap, School, Reply, Flag } from "lucide-react"
+import { User, Send, Search, Info, Smile, Paperclip, GraduationCap, School, Reply, Flag, X } from "lucide-react"
 import EmojiPicker from "emoji-picker-react"
 import { useAuth } from "../../context/AuthContext"
 import { useSocket } from "../../context/SocketContext"
 import { useLocation, useNavigate } from "react-router-dom"
+import { toast } from 'react-toastify'
 import API from "../../API/API"
 import styles from "./MessageScreen.module.css"
 
@@ -21,7 +22,16 @@ export default function MessageScreen() {
   const [showInfoSidebar, setShowInfoSidebar] = useState(false)
   const [hoveredMessage, setHoveredMessage] = useState(null)
   
+  // State for handling files
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef(null)
+
   const messagesEndRef = useRef(null)
+
+  // Typing indicator ref
+  const [typingUser, setTypingUser] = useState(null) 
+  const typingTimeoutRef = useRef(null)
 
   // Scroll to bottom helper
   const scrollToBottom = () => {
@@ -61,6 +71,7 @@ export default function MessageScreen() {
         if (selectedConversation && message.conversationId === selectedConversation._id) {
             setMessages((prev) => [...prev, message]);
             scrollToBottom();
+            setTypingUser(null);
         }
 
         // Update last message in conversation list
@@ -129,29 +140,150 @@ export default function MessageScreen() {
     }
   }, [location.state, conversations]);
 
-  // Helper: Safer getOtherUser Logic
+  // Handle typing events from Socket
+  useEffect(() => {
+    if (!socket || !selectedConversation) return;
+
+    const handleUserTyping = ({ userId, fullName }) => {
+      // Don't show typing indicator for yourself
+      if (userId !== userID) {
+        setTypingUser(fullName);
+        //scrollToBottom(); // scroll to show the dots
+      }
+    };
+
+    const handleUserStopTyping = ({ userId }) => {
+      if (userId !== userID) {
+        setTypingUser(null);
+      }
+    };
+
+    socket.on("user_typing", handleUserTyping);
+    socket.on("user_stop_typing", handleUserStopTyping);
+
+    return () => {
+      socket.off("user_typing", handleUserTyping);
+      socket.off("user_stop_typing", handleUserStopTyping);
+      setTypingUser(null); // Clear status on unmount/change
+    };
+  }, [socket, selectedConversation, userID]);
+
+  // Reset typing status when changing conversations
+  useEffect(() => {
+    setTypingUser(null);
+  }, [selectedConversation]);
+
+  // Handler for modifying input
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setNewMessage(value);
+
+    if (!socket || !selectedConversation) return;
+
+    // Emit 'typing' event
+    socket.emit("typing", {
+      conversationId: selectedConversation._id,
+      userId: userID,
+      fullName: userInfo?.fullName || "User"
+    });
+
+    // Debounce 'stop_typing' event (5 seconds after last keystroke)
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stop_typing", {
+        conversationId: selectedConversation._id,
+        userId: userID
+      });
+    }, 5000);
+  };
+
   const getOtherUser = (conv) => {
     if (!conv) return null;
 
     const studentId = conv.studentId?._id || conv.studentId;
     
-    // Convert to String for safe comparison
+    // Current user is Student, looking at Manager/University
     if (String(studentId) === String(userID)) {
+        const managerObj = typeof conv.uniManagerId === 'object' ? conv.uniManagerId : { _id: conv.uniManagerId };
+        
+        const uniName = conv.universityId?.name;
+
         return { 
-            ...(typeof conv.uniManagerId === 'object' ? conv.uniManagerId : { _id: conv.uniManagerId }), 
+            ...managerObj, 
+            fullName: uniName || managerObj.fullName,
             role: 'uniManager' 
         };
     }
     
+    // Current user is Uni, looking at Student (user)
     return { 
         ...(typeof conv.studentId === 'object' ? conv.studentId : { _id: conv.studentId }), 
-        role: 'student' 
+        role: 'user' 
     };
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+  const handleSendMessage = async () => {
+    // Allow send if there is text OR a file
+    if ((!newMessage.trim() && !selectedFile) || !selectedConversation) return;
     
+    // Clear the timeout and stop emitting typing status (to the other user) immediately
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    if (socket) {
+      socket.emit("stop_typing", {
+        conversationId: selectedConversation._id,
+        userId: userID
+      });
+    }
+
+    // Scenario 1: Sending a File 
+    if (selectedFile) {
+      if (isUploading) return;
+      setIsUploading(true);
+
+      const formData = new FormData();
+      formData.append('conversationId', selectedConversation._id);
+      formData.append('document', selectedFile);
+      if (newMessage.trim()) {
+        formData.append('content', newMessage);
+      }
+
+      try {
+        const response = await fetch(`${API}/api/messages/send-with-document`, {
+            method: 'POST',
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Append the new message returned from API to UI immediately
+            setMessages((prev) => [...prev, data.data]);
+            
+            // Cleanup
+            setNewMessage("");
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            setShowEmojiPicker(false);
+            setTimeout(scrollToBottom, 100);
+        } else {
+            toast.error(data.message || "Gửi file thất bại");
+        }
+      } catch (error) {
+        toast.error("Có lỗi xảy ra khi gửi file");
+      } finally {
+        setIsUploading(false);
+      }
+      return; 
+    }
+
+    // Text Only 
     if (!socket) {
         console.error("Socket not connected");
         return;
@@ -179,11 +311,40 @@ export default function MessageScreen() {
     setShowEmojiPicker(false);
   }
 
+  // Handle File Selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // 20MB in bytes 
+      const MAX_SIZE = 20 * 1024 * 1024;
+
+      if (file.size > MAX_SIZE) {
+          toast.error("File quá lớn! Vui lòng chọn file dưới 20MB.");
+          
+          // Clear the input so the user can try selecting again
+          if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+          }
+          return;
+      }
+      setSelectedFile(file);
+      setShowEmojiPicker(false); 
+    }
+  }
+
+  // Remove Selected File
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  }
+
   const handleEmojiClick = (emojiData) => {
     setNewMessage(prev => prev + emojiData.emoji)
   }
 
-  // --- Render Helpers ---
+  // Render Helpers ---
 
   const renderRoleIcon = (role) => {
     if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
@@ -326,17 +487,58 @@ export default function MessageScreen() {
                   </div>
                 )
               })}
+
+
+              {/* Typing indicator  */}
+              {typingUser && (
+                <div className={`${styles.messageGroup} ${styles.otherMessage}`}>
+                  <img
+                    src={currentOtherUser?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg"}
+                    alt=""
+                    className={styles.messageAvatar}
+                  />
+                  <div className={styles.typingBubble}>
+                    <div className={styles.typingDot}></div>
+                    <div className={styles.typingDot}></div>
+                    <div className={styles.typingDot}></div>
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
+            {/* File Preview Area (Only shows if file selected) */}
+             {selectedFile && (
+                <div className={styles.filePreviewContainer}>
+                    <div className={styles.filePreviewBox}>
+                        <span className={styles.fileName}>{selectedFile.name}</span>
+                        <button onClick={handleRemoveFile} className={styles.removeFileBtn}>
+                            <X size={14} />
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className={styles.inputArea}>
-              <button className={styles.iconButton} title="Attachment">
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+                accept="image/*,.pdf,.doc,.docx"
+              />
+              
+              <button 
+                className={`${styles.iconButton} ${selectedFile ? styles.activeIcon : ''}`} 
+                title="Attachment"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Paperclip size={18} />
               </button>
               <input
                 type="text"
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={handleInputChange}
                 onFocus={() => setShowEmojiPicker(false)}
                 onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
                 placeholder="Nhắn tin..."
@@ -348,7 +550,7 @@ export default function MessageScreen() {
                   title="Emoji picker"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                 >
-                  <Smile size={18} />
+                  <Smile size={18} color="#f39c12"/>
                 </button>
                 {showEmojiPicker && (
                   <div className={styles.emojiPickerWrapper}>
@@ -366,7 +568,8 @@ export default function MessageScreen() {
               <button 
                 onClick={handleSendMessage} 
                 className={styles.sendButton}
-                disabled={!newMessage.trim() || !userID || !currentOtherUser?._id}
+                // Enable button if text OR file exists
+                disabled={(!newMessage.trim() && !selectedFile) || !userID || !currentOtherUser?._id || isUploading}
               >
                 <Send size={18} />
               </button>

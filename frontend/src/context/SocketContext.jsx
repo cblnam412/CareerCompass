@@ -15,7 +15,7 @@ export function useSocket() {
 export function SocketProvider({ children }) {
   const { accessToken, userID } = useAuth();
   
-  // FIX: Use useState instead of useRef so the Context updates when socket connects
+  // Use useState instead of useRef so the Context updates when socket connects
   const [socket, setSocket] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState(new Set()); 
 
