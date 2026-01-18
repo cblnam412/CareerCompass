@@ -227,7 +227,7 @@ export default function MessageScreen() {
     // Allow send if there is text OR a file
     if ((!newMessage.trim() && !selectedFile) || !selectedConversation) return;
     
-    // Clear the timeout and stop emitting typing status (to the other user) immediately
+    // Clear typing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
@@ -239,7 +239,7 @@ export default function MessageScreen() {
       });
     }
 
-    // Scenario 1: Sending a File 
+    // Scenario 1: Sending a File
     if (selectedFile) {
       if (isUploading) return;
       setIsUploading(true);
@@ -247,11 +247,9 @@ export default function MessageScreen() {
       const formData = new FormData();
       formData.append('conversationId', selectedConversation._id);
       formData.append('document', selectedFile);
-      if (newMessage.trim()) {
-        formData.append('content', newMessage);
-      }
 
       try {
+        // 1. Send the File Message first
         const response = await fetch(`${API}/api/messages/send-with-document`, {
             method: 'POST',
             headers: {
@@ -263,9 +261,26 @@ export default function MessageScreen() {
         const data = await response.json();
 
         if (data.success) {
-            // Append the new message returned from API to UI immediately
+            // Append the file message to UI
             setMessages((prev) => [...prev, data.data]);
             
+            // If there is also text, send it as a SEPARATE message via Socket
+            if (newMessage.trim()) {
+                const otherUser = getOtherUser(selectedConversation);
+                const receiverId = otherUser?._id;
+
+                if (socket && userID && receiverId) {
+                    const messageData = {
+                        conversationId: selectedConversation._id,
+                        senderId: userID,
+                        receiverId: receiverId,
+                        content: newMessage, // The text content
+                        messageType: 'text'
+                    };
+                    socket.emit("send_message", messageData);
+                }
+            }
+
             // Cleanup
             setNewMessage("");
             setSelectedFile(null);
@@ -277,13 +292,14 @@ export default function MessageScreen() {
         }
       } catch (error) {
         toast.error("Có lỗi xảy ra khi gửi file");
+        console.error(error);
       } finally {
         setIsUploading(false);
       }
       return; 
     }
 
-    // Text Only 
+    // Scenario 2: Text Only
     if (!socket) {
         console.error("Socket not connected");
         return;
@@ -357,6 +373,7 @@ export default function MessageScreen() {
   }
 
   const currentOtherUser = selectedConversation ? getOtherUser(selectedConversation) : null;
+  const isImage = (url) => /\.(jpeg|jpg|gif|png|webp|bmp)$/i.test(url);
 
   return (
     <div className={styles.container}>
@@ -462,16 +479,35 @@ export default function MessageScreen() {
                         />
                       )}
                       
-                      <div className={styles.messageBubble}>
-                        {msg.fileUrl && (
-                          <img
-                            src={msg.fileUrl}
-                            alt="attachment"
-                            className={styles.messageImage}
-                          />
-                        )}
-                        <p className={styles.messageText}>{msg.content}</p>
-                      </div>
+                      {msg.messageType === 'file' ? (
+                        <div className={styles.mediaContainer}>
+                          {isImage(msg.fileUrl) ? (
+                            <img
+                              src={msg.fileUrl}
+                              alt="attachment"
+                              className={styles.messageImage}
+                            />
+                          ) : (
+                            <a
+                              href={msg.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`${styles.fileCard} ${isOwn ? styles.ownFileCard : styles.otherFileCard}`}
+                            >
+                              <div className={styles.fileIconWrapper}>
+                                <Paperclip size={24} />
+                              </div>
+                              <div className={styles.fileDetails}>
+                                <span className={styles.fileName}>{msg.content}</span>
+                              </div>
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <div className={styles.messageBubble}>
+                          <p className={styles.messageText}>{msg.content}</p>
+                        </div>
+                      )}
 
                       {!isOwn && hoveredMessage === msg._id && (
                         <div className={styles.messageActions}>

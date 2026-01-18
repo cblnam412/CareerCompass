@@ -274,7 +274,15 @@ export default function ExploreUniversityScreen() {
                   <div key={major._id} className={styles.majorCard}>
                     <div className={styles.majorCardHeader}>
                       <h3 className={styles.majorName}>{major.majorName}</h3>
-                      <span className={styles.combinationBadge}>{major.admissionMethods[0].split(',')[0]}</span>
+                      <div className={styles.combinationWrapper}>
+                        <span className={styles.combinationBadge}>
+                          {major.admissionMethods[0]?.split(',')[0]}
+                          
+                          <span className={styles.tooltip}>
+                            {major.admissionMethods[0]?.replaceAll(',', ', ')}
+                          </span>
+                        </span>
+                      </div>
                     </div>
 
                     <div className={styles.majorStats}>

@@ -77,7 +77,7 @@ const documentFileFilter = (req, file, cb) => {
         'text/csv'
     ];
     const ext = path.extname(file.originalname).toLowerCase();
-    const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv'];
+    const allowedExts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.png'];
     
     if (allowedMimes.includes(file.mimetype) || allowedExts.includes(ext)) {
         cb(null, true);

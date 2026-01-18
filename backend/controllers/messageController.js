@@ -289,7 +289,7 @@ export const sendMessageWithDocument = async (req, res) => {
             conversationId,
             senderId: userId,
             receiverId,
-            content: content || `Đã gửi tài liệu: ${fileName}`,
+            content: content || `${fileName}`,
             fileUrl,
             messageType
         });

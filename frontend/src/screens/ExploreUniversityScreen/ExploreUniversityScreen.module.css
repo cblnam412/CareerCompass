@@ -164,6 +164,7 @@
 }
 
 .combinationBadge {
+  position: relative;
   display: inline-block;
   padding: 6px 12px;
   background-color: #007bff;
@@ -172,8 +173,54 @@
   font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+  cursor: pointer;
 }
 
+.tooltip {
+  visibility: hidden;
+  opacity: 0;
+  width: max-content;
+  max-width: 220px;
+  
+  background-color: #003366; 
+  color: #ffffff;
+  
+  text-align: center;
+  border-radius: 8px; 
+  padding: 8px 12px;
+  
+  position: absolute;
+  z-index: 100;
+  bottom: 135%; 
+  left: 50%;
+  
+  transform: translateX(-50%) translateY(8px) scale(0.95);
+  
+  font-weight: 500; 
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none; 
+}
+
+.tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: #003366 transparent transparent transparent; 
+}
+
+.combinationBadge:hover .tooltip {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
 .majorStats {
   display: flex;
   justify-content: space-between;
