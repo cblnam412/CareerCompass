@@ -18,6 +18,7 @@ export default function CareerPredictionScreen() {
   const [examResults, setExamResults] = useState([]) // Exam results with subject scores
   const [subjectScoreAverages, setSubjectScoreAverages] = useState({}) // Average scores per subject
   const [subjects, setSubjects] = useState([]) // All available subjects for ID mapping
+  const[provinces, setProvinces] = useState([]) // Old 63-province data
   
   // Loading states
   const [isLoadingData, setIsLoadingData] = useState(true)
@@ -30,7 +31,7 @@ export default function CareerPredictionScreen() {
   const [selectedSoftSkills, setSelectedSoftSkills] = useState([])
   
   // Feedback states
-  const [feedbackOpen, setFeedbackOpen] = useState({}) // { majorId: true/false }
+  const [activeFeedbackMajor, setActiveFeedbackMajor] = useState(null) // Stores the full major object
   const [feedbackData, setFeedbackData] = useState({}) // { majorId: { helpful: bool, comment: string } }
   const [submittingFeedback, setSubmittingFeedback] = useState({})
   
@@ -39,12 +40,6 @@ export default function CareerPredictionScreen() {
   const [universityMajors, setUniversityMajors] = useState([]) // List of UniversityMajor
   const [loadingMajors, setLoadingMajors] = useState(false)
   const [selectedUniversityMajor, setSelectedUniversityMajor] = useState(null) // Detailed view
-
-  // Log state changes for debugging
-  useEffect(() => {
-    console.log("=== SUBMITTED STATE CHANGED ===", submitted)
-    console.log("=== MAJOR RECOMMENDATIONS ===", majorRecommendations)
-  }, [submitted, majorRecommendations])
 
   // Fetch initial data
   useEffect(() => {
@@ -57,12 +52,13 @@ export default function CareerPredictionScreen() {
         }
 
         // Fetch all data in parallel
-        const [combinationsRes, softSkillsRes, studentProfileRes, examResultsRes, subjectsRes] = await Promise.all([
+        const [combinationsRes, softSkillsRes, studentProfileRes, examResultsRes, subjectsRes, provincesRes] = await Promise.all([
           fetch(`${API}/api/subject-combinations?limit=100`, { headers }),
           fetch(`${API}/api/soft-skills?limit=100`, { headers }),
           accessToken ? fetch(`${API}/api/student-profile/my-profile`, { headers }) : Promise.resolve(null),
           accessToken ? fetch(`${API}/api/student/exam-results?limit=1000`, { headers }) : Promise.resolve(null),
           fetch(`${API}/api/subjects?limit=100`, { headers }),
+          fetch(`${API}/api/universities/provinces`,  { headers }),
         ])
 
         // Process combinations
@@ -180,6 +176,21 @@ export default function CareerPredictionScreen() {
             console.log("Subject score averages:", averages) // Debug log
           }
         }
+
+        // Set provinces data
+        if (provincesRes && provincesRes.ok)
+        {
+          const provinceData = await provincesRes.json();
+          
+          if (provinceData.success && provinceData.data.length > 0)
+          { 
+            setProvinces(provinceData.data);
+          }
+          else {
+            toast.warning("Dữ liệu tỉnh thành rỗng! Tính năng lọc theo tỉnh/thành tạm không hoạt động!");
+          }
+        }
+
       } catch (error) {
         console.error("Error fetching initial data:", error)
         toast.error("Không thể tải dữ liệu. Vui lòng thử lại sau.")
@@ -330,10 +341,9 @@ export default function CareerPredictionScreen() {
 
       const result = await response.json()
       if (result.success) {
-        toast.success(`Cảm ơn bạn đã phản hồi về "${majorName}"`)
-        // Reset feedback for this major
-        setFeedbackOpen(prev => ({...prev, [majorId]: false}))
+        toast.success(`Cảm ơn bạn đã gửi phản hồi về kết quả tư vấn!`)
         setFeedbackData(prev => ({...prev, [majorId]: { helpful: null, comment: "" }}))
+        setActiveFeedbackMajor(null)
       } else {
         toast.error(result.message || "Không thể lưu phản hồi")
       }
@@ -707,80 +717,21 @@ export default function CareerPredictionScreen() {
                 getFilteredRecommendations().map((major) => (
                   <Card key={major.id} className={styles.majorCard}>
                     <div className={styles.majorCardInner}>
-                      {/* Feedback button - top right corner */}
-                      <div className={styles.feedbackButtonGroup}>
-                        <button
-                          onClick={() => setFeedbackOpen(prev => ({...prev, [major.id]: !prev[major.id]}))}
-                          className={styles.feedbackToggleButton}
-                          title="Phản hồi về gợi ý này"
-                        >
-                          <MessageSquare size={18} />
-                        </button>
-                      </div>
-
-                      {/* Feedback Modal */}
-                      {feedbackOpen[major.id] && (
-                        <div className={styles.feedbackModal}>
-                          <div className={styles.feedbackContent}>
-                            <div className={styles.feedbackHeader}>
-                              <h4>Phản hồi về {major.name}</h4>
-                              <button
-                                onClick={() => setFeedbackOpen(prev => ({...prev, [major.id]: false}))}
-                                className={styles.feedbackClose}
-                              >
-                                <X size={18} />
-                              </button>
-                            </div>
-
-                            <div className={styles.feedbackQuestion}>
-                              <p>Gợi ý này có hữu ích không?</p>
-                              <div className={styles.feedbackButtons}>
-                                <button
-                                  onClick={() => setFeedbackData(prev => ({...prev, [major.id]: {...(prev[major.id] || {}), helpful: true}}))}
-                                  className={`${styles.feedbackOption} ${feedbackData[major.id]?.helpful === true ? styles.selected : ''}`}
-                                >
-                                  <ThumbsUp size={18} />
-                                  Có
-                                </button>
-                                <button
-                                  onClick={() => setFeedbackData(prev => ({...prev, [major.id]: {...(prev[major.id] || {}), helpful: false}}))}
-                                  className={`${styles.feedbackOption} ${feedbackData[major.id]?.helpful === false ? styles.selected : ''}`}
-                                >
-                                  <ThumbsDown size={18} />
-                                  Không
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className={styles.feedbackComment}>
-                              <label>Bình luận (tùy chọn)</label>
-                              <textarea
-                                value={feedbackData[major.id]?.comment || ''}
-                                onChange={(e) => setFeedbackData(prev => ({...prev, [major.id]: {...(prev[major.id] || {}), comment: e.target.value}}))}
-                                placeholder="Chia sẻ lý do của bạn..."
-                                className={styles.feedbackTextarea}
-                              />
-                            </div>
-
-                            <div className={styles.feedbackActions}>
-                              <button
-                                onClick={() => handleFeedbackSubmit(major.id, major.name)}
-                                disabled={submittingFeedback[major.id] || feedbackData[major.id]?.helpful === null}
-                                className={styles.feedbackSubmitButton}
-                              >
-                                {submittingFeedback[major.id] ? 'Đang gửi...' : 'Gửi phản hồi'}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Header with major name and badge */}
                       <div className={styles.majorCardHeader}>
                         <div className={styles.majorCardTitle}>
                           <h3 className={styles.majorName}>{major.name}</h3>
                         </div>
                           <div className={styles.matchBadge}>{selectedCombination}</div>
+
+                          <div className={styles.feedbackButtonGroup}>
+                            <button
+                              onClick={() => setActiveFeedbackMajor(major)}
+                              className={styles.feedbackToggleButton}
+                              title="Phản hồi về gợi ý này"
+                            >
+                              <MessageSquare size={18} />
+                            </button>
+                          </div>
                       </div>
 
                       {/* Click to view universities - new feature */}
@@ -840,11 +791,9 @@ export default function CareerPredictionScreen() {
                         <span className={styles.uniMajorCode}>{uniMajor.universityId?.code}</span>
                       </div>
                       <p className={styles.uniMajorMajor}>{uniMajor.majorName || uniMajor.majorId?.name}</p>
-                      {uniMajor.quota && (
-                        <div className={styles.uniMajorScore}>
-                          Chỉ tiêu: <strong>{uniMajor.quota}</strong>
-                        </div>
-                      )}
+                        <div className={styles.uniTuitionFee}>
+                          Học phí: {uniMajor.tuitionFee ? <strong>{uniMajor.tuitionFee.toLocaleString()} VND</strong> : <strong> Không có dữ liệu</strong> }
+                        </div> 
                       <p className={styles.uniMajorHint}>Nhấp để xem chi tiết →</p>
                     </div>
                   ))}
@@ -883,15 +832,10 @@ export default function CareerPredictionScreen() {
                   <p className={styles.detailValue}>{selectedUniversityMajor.majorName || selectedUniversityMajor.majorId?.name}</p>
                 </div>
 
-                <div className={styles.detailSection}>
-                  <label>Tên ngành tại trường</label>
-                  <p className={styles.detailValue}>{selectedUniversityMajor.majorName}</p>
-                </div>
-
-                <div className={styles.detailSection}>
-                  <label>Mã ngành tại trường</label>
-                  <p className={styles.detailValue}>{selectedUniversityMajor.majorId?.code || 'N/A'}</p>
-                </div>
+                {/* <div className={styles.detailSection}>
+                  <label>Tổ hợp tuyển sinh</label>
+                  <p className={styles.detailValue}>{selectedUniversityMajor.admissionMethods[0].replaceAll(',', ', ') || "Không có dữ liệu"}</p>
+                </div> */}
 
                 {selectedUniversityMajor.quota > 0 && (
                   <div className={styles.detailSection}>
@@ -900,10 +844,10 @@ export default function CareerPredictionScreen() {
                   </div>
                 )}
 
-                {selectedUniversityMajor.tutionFee > 0 && (
+                {selectedUniversityMajor.tuitionFee > 0 && (
                   <div className={styles.detailSection}>
                     <label>Học phí</label>
-                    <p className={styles.detailValue}>{selectedUniversityMajor.tutionFee.toLocaleString('vi-VN')} VNĐ</p>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.tuitionFee.toLocaleString('vi-VN')} VNĐ</p>
                   </div>
                 )}
 
@@ -914,10 +858,10 @@ export default function CareerPredictionScreen() {
                   </div>
                 )}
 
-                {selectedUniversityMajor.addmissionMethods && selectedUniversityMajor.addmissionMethods.length > 0 && (
+                {selectedUniversityMajor.admissionMethods && selectedUniversityMajor.admissionMethods.length > 0 && (
                   <div className={styles.detailSection}>
                     <label>Phương thức xét tuyển</label>
-                    <p className={styles.detailValue}>{selectedUniversityMajor.addmissionMethods.join(', ')}</p>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.admissionMethods[0].replaceAll(',', ', ')}</p>
                   </div>
                 )}
 
@@ -933,6 +877,76 @@ export default function CareerPredictionScreen() {
             </div>
           </div>
         )}
+
+
+        {/* FEEDBACK MODAL */}
+        {activeFeedbackMajor && (
+        <div className={styles.feedbackModal}>
+          <div className={styles.feedbackContent}>
+            <div className={styles.feedbackHeader}>
+              <h4>Phản hồi về {activeFeedbackMajor.name}</h4>
+              <button
+                onClick={() => setActiveFeedbackMajor(null)}
+                className={styles.feedbackClose}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className={styles.feedbackQuestion}>
+              <p>Gợi ý này có hữu ích không?</p>
+              <div className={styles.feedbackButtons}>
+                <button
+                  onClick={() => setFeedbackData(prev => ({
+                    ...prev, 
+                    [activeFeedbackMajor.id]: {...(prev[activeFeedbackMajor.id] || {}), helpful: true}
+                  }))}
+                  className={`${styles.feedbackOption} ${feedbackData[activeFeedbackMajor.id]?.helpful === true ? styles.selected : ''}`}
+                >
+                  <ThumbsUp size={18} /> Có
+                </button>
+                <button
+                  onClick={() => setFeedbackData(prev => ({
+                    ...prev, 
+                    [activeFeedbackMajor.id]: {...(prev[activeFeedbackMajor.id] || {}), helpful: false}
+                  }))}
+                  className={`${styles.feedbackOption} ${feedbackData[activeFeedbackMajor.id]?.helpful === false ? styles.selected : ''}`}
+                >
+                  <ThumbsDown size={18} /> Không
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.feedbackComment}>
+              <label>Bình luận (tùy chọn)</label>
+              <textarea
+                value={feedbackData[activeFeedbackMajor.id]?.comment || ''}
+                onChange={(e) => setFeedbackData(prev => ({
+                  ...prev, 
+                  [activeFeedbackMajor.id]: {...(prev[activeFeedbackMajor.id] || {}), comment: e.target.value}
+                }))}
+                placeholder="Chia sẻ lý do của bạn..."
+                className={styles.feedbackTextarea}
+              />
+            </div>
+
+            <div className={styles.feedbackActions}>
+              <button
+                onClick={async () => {
+                   // Pass the ID and Name from the active state
+                   await handleFeedbackSubmit(activeFeedbackMajor.id, activeFeedbackMajor.name);
+                   // Close modal after success (optional, logic currently inside handleFeedbackSubmit)
+                   setActiveFeedbackMajor(null);
+                }}
+                disabled={submittingFeedback[activeFeedbackMajor.id] || feedbackData[activeFeedbackMajor.id]?.helpful === null}
+                className={styles.feedbackSubmitButton}
+              >
+                {submittingFeedback[activeFeedbackMajor.id] ? 'Đang gửi...' : 'Gửi phản hồi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   )

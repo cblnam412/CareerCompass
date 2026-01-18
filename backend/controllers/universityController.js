@@ -1,4 +1,5 @@
 import University from '../models/University.js';
+import provinces from '../../Data/provinces.js';
 import { parseUniversitiesFromExcel, validateBulkUniversities } from '../utils/excelParserUtils.js';
 import fs from 'fs';
 
@@ -259,6 +260,26 @@ export const deleteUniversity = async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message
+        });
+    }
+};
+
+export const getProvinces = async (req, res) => {
+    try {
+        const provinceNames = provinces.map(province => province.name);
+        
+        provinceNames.sort((a, b) => a.localeCompare(b, 'vi'));
+
+        res.status(200).json({
+            success: true,
+            count: provinces.length,
+            data: provinceNames,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error retrieving province data',
+            error: error.message
         });
     }
 };
