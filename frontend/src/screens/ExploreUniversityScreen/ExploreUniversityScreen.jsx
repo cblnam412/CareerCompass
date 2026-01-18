@@ -145,12 +145,12 @@ export default function ExploreUniversityScreen() {
     const fetchMajors = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`${API}/api/universities/${selectedUniversity}/majors`)
+        const response = await fetch(`${API}/api/university-majors/university/${selectedUniversity}`)
         
         if (response.ok) {
-          const data = await response.json()
-          if (Array.isArray(data)) {
-            setMajors(data)
+          const jsonResponse = await response.json()
+          if (jsonResponse.success && Array.isArray(jsonResponse.data)) {
+            setMajors(jsonResponse.data)
           } else {
             throw new Error("Invalid majors format")
           }
@@ -158,13 +158,7 @@ export default function ExploreUniversityScreen() {
           throw new Error("Failed to fetch majors")
         }
       } catch (error) {
-        console.error("Error fetching majors:", error)
-        
-        toast.warn("Không thể tải ngành học. Đang hiển thị dữ liệu mẫu.", {
-          toastId: `major-error-${selectedUniversity}` // Unique ID per university
-        })
-        const fallbackData = FALLBACK_MAJORS[selectedUniversity] || []
-        setMajors(fallbackData)
+        toast.warn("Không thể tải dữ liệu ngành học.");
       } finally {
         setIsLoading(false)
       }
@@ -227,6 +221,7 @@ export default function ExploreUniversityScreen() {
                 </option>
               ))}
             </select>
+            <ChevronDown size={20} className={styles.selectIcon} />
           </div>
         </div>
 
@@ -276,10 +271,10 @@ export default function ExploreUniversityScreen() {
             <>
               <div className={styles.majorsList}>
                 {paginatedMajors.map((major) => (
-                  <div key={major.id} className={styles.majorCard}>
+                  <div key={major._id} className={styles.majorCard}>
                     <div className={styles.majorCardHeader}>
-                      <h3 className={styles.majorName}>{major.name}</h3>
-                      <span className={styles.combinationBadge}>{major.combination}</span>
+                      <h3 className={styles.majorName}>{major.majorName}</h3>
+                      <span className={styles.combinationBadge}>{major.admissionMethods[0].split(',')[0]}</span>
                     </div>
 
                     <div className={styles.majorStats}>
@@ -292,7 +287,7 @@ export default function ExploreUniversityScreen() {
                       <div className={styles.statItem}>
                         <span className={styles.statLabel}>Học phí/năm</span>
                         <span className={styles.statValue}>
-                          {major.tuitionFee ? `${major.tuitionFee.toLocaleString()} K` : "Miễn phí"}
+                          {major.tuitionFee ? `${major.tuitionFee.toLocaleString()} VND` : "N/A"}
                         </span>
                       </div>
                     </div>

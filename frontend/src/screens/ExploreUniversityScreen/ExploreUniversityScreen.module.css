@@ -65,9 +65,9 @@
   background-color: #ffffff;
   cursor: pointer;
   transition: all 0.2s ease;
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;    
+  
+  background-image: none !important; 
+  background-position: 0 0;
 }
 
 .select:hover {
@@ -175,8 +175,8 @@
 }
 
 .majorStats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
+  justify-content: space-between;
   gap: 12px;
   padding-top: 12px;
   border-top: 1px solid #d1d5db;

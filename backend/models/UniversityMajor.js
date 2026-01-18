@@ -14,7 +14,7 @@ const universityMajorSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    tutionFee: {
+    tuitionFee: {
         type: Number,
     },
     duration: {
@@ -31,7 +31,7 @@ const universityMajorSchema = new mongoose.Schema({
         type: Number,
         description: 'Năm xét tuyển của điểm chuẩn'
     },
-    addmissionMethods: [{
+    admissionMethods: [{
         type: String,
     }],
 }, {
