@@ -41,6 +41,10 @@ export default function CareerPredictionScreen() {
   const [loadingMajors, setLoadingMajors] = useState(false)
   const [selectedUniversityMajor, setSelectedUniversityMajor] = useState(null) // Detailed view
 
+  // Filter states
+  const [filterProvince, setFilterProvince] = useState("")
+  const [filterTuition, setFilterTuition] = useState("")
+
   // Fetch initial data
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -202,6 +206,35 @@ export default function CareerPredictionScreen() {
     fetchInitialData()
   }, [accessToken])
 
+  // Reset filters when opening a new major group 
+  useEffect(() => {
+    if (selectedMajorGroup) {
+      setFilterProvince("")
+      setFilterTuition("")
+    }
+  }, [selectedMajorGroup])
+
+  // Filtering logic 
+  const filteredUniversityMajors = universityMajors.filter((uniMajor) => {
+    //  by Province
+    const matchProvince = filterProvince 
+      ? uniMajor.universityId?.region === filterProvince 
+      : true
+
+    // Filter by Tuition Fee
+    let matchTuition = true
+    const fee = uniMajor.tuitionFee || 0
+    
+    if (filterTuition) {
+        if (filterTuition === "under_15") matchTuition = fee > 0 && fee < 15000000
+        else if (filterTuition === "15_30") matchTuition = fee >= 15000000 && fee <= 30000000
+        else if (filterTuition === "30_50") matchTuition = fee > 30000000 && fee <= 50000000
+        else if (filterTuition === "above_50") matchTuition = fee > 50000000
+    }
+
+    return matchProvince && matchTuition
+  })
+
   // Helper to get score data for a subject using normalized matching
   const getSubjectScoreData = (subjectName) => {
     const normalizedKey = subjectName.toLowerCase().trim()
@@ -277,9 +310,6 @@ export default function CareerPredictionScreen() {
   }
 
   const getFilteredRecommendations = () => {
-    console.log("=== FILTER DEBUG ===")
-    console.log("selectedSoftSkills:", selectedSoftSkills)
-    
     // If no soft skills selected, show all
     if (selectedSoftSkills.length === 0) {
       console.log("No soft skills selected, returning all")
@@ -300,7 +330,6 @@ export default function CareerPredictionScreen() {
       return match
     })
     
-    console.log("Filtered count:", filtered.length)
     return filtered
   }
 
@@ -764,45 +793,75 @@ export default function CareerPredictionScreen() {
           <div className={styles.modalOverlay} onClick={() => setSelectedMajorGroup(null)}>
             <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
               <div className={styles.modalHeader}>
-                <h3>Ngành {selectedMajorGroup.name} tại các trường</h3>
+                <div className={styles.modalHeaderTitleSection}>
+                  <h3>Ngành {selectedMajorGroup.name} tại các trường</h3>
+                  
+                  <div className={styles.filterRow}>
+                    <select 
+                        className={styles.filterSelect}
+                        value={filterTuition}
+                        onChange={(e) => setFilterTuition(e.target.value)}
+                    >
+                        <option value="">Tất cả mức học phí</option>
+                        <option value="under_15">Dưới 15 triệu</option>
+                        <option value="15_30">15 - 30 triệu</option>
+                        <option value="30_50">30 - 50 triệu</option>
+                        <option value="above_50">Trên 50 triệu</option>
+                    </select>
+
+                    <select 
+                        className={styles.filterSelect}
+                        value={filterProvince}
+                        onChange={(e) => setFilterProvince(e.target.value)}
+                    >
+                        <option value="">Tất cả tỉnh/thành</option>
+                        {provinces.map((prov, index) => (
+                          <option key={index} value={prov}>{prov}</option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => setSelectedMajorGroup(null)}
                   className={styles.modalClose}
                 >
                   <X size={24} />
-                </button>
+                </button>          
               </div>
-
-              {loadingMajors ? (
-                <div className={styles.loadingContainer}>
-                  <Loader2 size={32} className={styles.spinner} />
-                  <p>Đang tải dữ liệu...</p>
-                </div>
-              ) : universityMajors.length > 0 ? (
-                <div className={styles.universityMajorsList}>
-                  {universityMajors.map((uniMajor) => (
-                    <div
-                      key={uniMajor._id}
-                      className={styles.universityMajorCard}
-                      onClick={() => handleUniversityMajorClick(uniMajor._id)}
-                    >
-                      <div className={styles.uniMajorHeader}>
-                        <h4>{uniMajor.universityId?.name || 'Trường chưa biết'}</h4>
-                        <span className={styles.uniMajorCode}>{uniMajor.universityId?.code}</span>
+              
+              <div className={styles.modalBody}>
+                {loadingMajors ? (
+                  <div className={styles.loadingContainer}>
+                    <Loader2 size={32} className={styles.spinner} />
+                    <p>Đang tải dữ liệu...</p>
+                  </div>
+                  ) : filteredUniversityMajors.length > 0 ? (
+                  <div className={styles.universityMajorsList}>
+                    {filteredUniversityMajors.map((uniMajor) => (
+                      <div
+                        key={uniMajor._id}
+                        className={styles.universityMajorCard}
+                        onClick={() => handleUniversityMajorClick(uniMajor._id)}
+                      >
+                        <div className={styles.uniMajorHeader}>
+                          <h4>{uniMajor.universityId?.name || 'Trường chưa biết'}</h4>
+                          <span className={styles.uniMajorCode}>{uniMajor.universityId?.code}</span>
+                        </div>
+                        <p className={styles.uniMajorMajor}>{uniMajor.majorName || uniMajor.majorId?.name}</p>
+                          <div className={styles.uniTuitionFee}>
+                            Học phí: {uniMajor.tuitionFee ? <strong>{uniMajor.tuitionFee.toLocaleString()} VND</strong> : <strong> Không có dữ liệu</strong> }
+                          </div> 
+                        <p className={styles.uniMajorHint}>Nhấp để xem chi tiết →</p>
                       </div>
-                      <p className={styles.uniMajorMajor}>{uniMajor.majorName || uniMajor.majorId?.name}</p>
-                        <div className={styles.uniTuitionFee}>
-                          Học phí: {uniMajor.tuitionFee ? <strong>{uniMajor.tuitionFee.toLocaleString()} VND</strong> : <strong> Không có dữ liệu</strong> }
-                        </div> 
-                      <p className={styles.uniMajorHint}>Nhấp để xem chi tiết →</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{padding: '20px', textAlign: 'center', color: '#65676b'}}>
-                  <p>Không tìm thấy ngành-trường nào</p>
-                </div>
-              )}
+                    ))}
+                  </div>
+                  ) : (
+                  <div style={{padding: '20px', textAlign: 'center', color: '#65676b'}}>
+                    <p>Không tìm thấy ngành phù hợp yêu cầu</p>
+                  </div>
+                  )}
+              </div>
             </div>
           </div>
         )}

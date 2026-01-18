@@ -957,8 +957,11 @@
   max-width: 600px;
   width: 100%;
   max-height: 80vh;
-  overflow-y: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+
+  display: flex;           
+  flex-direction: column;  
+  overflow: hidden;       
 }
 
 .modalContent.detailModal {
@@ -967,12 +970,13 @@
 
 .modalHeader {
   display: flex;
+  flex-direction: column;
+  flex-shrink: 0; 
+  gap: 16px;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px 24px;
   border-bottom: 1px solid #eee;
-  position: sticky;
-  top: 0;
   background: white;
   z-index: 10;
 }
@@ -982,6 +986,13 @@
   font-weight: 600;
   color: #262626;
   margin: 0;
+}
+
+.modalBody {
+  flex: 1;            
+  overflow-y: auto;    
+  min-height: 0;       
+  position: relative;
 }
 
 .modalClose {
@@ -994,10 +1005,44 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s;
+  position: absolute;
+  top: 16px;  
+  right: 16px; 
 }
 
 .modalClose:hover {
   color: #262626;
+}
+
+.modalHeaderTitleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  width: 100%;
+}
+
+.filterRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filterSelect {
+  padding: 8px 12px;
+  border: 1px solid #dbdbdb;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #262626;
+  background-color: white;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: #2196F3;
 }
 
 /* University Majors List */
@@ -1073,6 +1118,8 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 80vh;
+  overflow-y: auto;
 }
 
 .detailSection {
