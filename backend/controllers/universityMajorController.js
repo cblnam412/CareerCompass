@@ -2,6 +2,24 @@ import UniversityMajor from '../models/UniversityMajor.js';
 import Major from '../models/Major.js';
 import University from '../models/University.js';
 
+const transformDataToPastScore = (data) => {
+    if (Array.isArray(data)) {
+        return data.map(item => {
+            const itemObj = item.toObject ? item.toObject() : item;
+            return {
+                ...itemObj,
+                pastScore: itemObj.admissionScore
+            };
+        });
+    } else {
+        const itemObj = data.toObject ? data.toObject() : data;
+        return {
+            ...itemObj,
+            pastScore: itemObj.admissionScore
+        };
+    }
+};
+
 export const getAllUniversityMajors = async (req, res) => {
     try {
         const { majorId, universityId, page = 1, limit = 20, search } = req.query;
@@ -26,7 +44,7 @@ export const getAllUniversityMajors = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data,
+            data: transformDataToPastScore(data),
             pagination: {
                 page: parseInt(page),
                 limit: parseInt(limit),
@@ -59,7 +77,7 @@ export const getUniversityMajorById = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            data
+            data: transformDataToPastScore(data)
         });
     } catch (error) {
         res.status(500).json({
@@ -97,10 +115,12 @@ export const getMajorsByUniversity = async (req, res) => {
             .skip(skip)
             .limit(parseInt(limit))
             .sort({ createdAt: -1 });
+        
+        console.log('Majors found:', data);
 
         res.status(200).json({
             success: true,
-            data,
+            data: transformDataToPastScore(data),
             university: {
                 id: university._id,
                 name: university.name,
@@ -123,7 +143,7 @@ export const getMajorsByUniversity = async (req, res) => {
 
 export const createUniversityMajor = async (req, res) => {
     try {
-        const { universityId, majorId, majorName, tutionFee, duration, quota, addmissionMethods } = req.body;
+        const { universityId, majorId, majorName, tuitionFee, duration, quota, admissionMethods, admissionScore } = req.body;
 
         // Validate
         if (!universityId || !majorId || !majorName) {
@@ -156,10 +176,11 @@ export const createUniversityMajor = async (req, res) => {
             universityId,
             majorId,
             majorName,
-            tutionFee: tutionFee || 0,
+            tuitionFee: tuitionFee || 0,
             duration: duration || 0,
             quota: quota || 0,
-            addmissionMethods: addmissionMethods || []
+            admissionScore: admissionScore || null,
+            admissionMethods: admissionMethods || []
         });
 
         const saved = await newRecord.save();
@@ -168,7 +189,7 @@ export const createUniversityMajor = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'UniversityMajor created successfully',
-            data: populated
+            data: transformDataToPastScore(populated)
         });
     } catch (error) {
         res.status(500).json({
@@ -181,16 +202,17 @@ export const createUniversityMajor = async (req, res) => {
 export const updateUniversityMajor = async (req, res) => {
     try {
         const { id } = req.params;
-        const { majorName, tutionFee, duration, quota, addmissionMethods } = req.body;
+        const { majorName, tuitionFee, duration, quota, admissionMethods, admissionScore } = req.body;
 
         const data = await UniversityMajor.findByIdAndUpdate(
             id,
             {
                 majorName,
-                tutionFee,
+                tuitionFee,
                 duration,
                 quota,
-                addmissionMethods
+                admissionScore,
+                admissionMethods
             },
             { new: true, runValidators: true }
         ).populate('majorId').populate('universityId');
@@ -205,7 +227,7 @@ export const updateUniversityMajor = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'UniversityMajor updated successfully',
-            data
+            data: transformDataToPastScore(data)
         });
     } catch (error) {
         res.status(500).json({
@@ -298,6 +320,7 @@ export const importFromExcel = async (req, res) => {
                 message: 'No valid records in Excel file'
             });
         }
+        await UniversityMajor.collection.drop();
 
         const allUniversities = await University.find({}, 'name');
 
@@ -335,39 +358,19 @@ export const importFromExcel = async (req, res) => {
                 });
 
                 if (existing) {
-                    const needsUpdate = 
-                        existing.tutionFee === 0 ||
-                        existing.duration === 0 ||
-                        existing.quota === 0 ||
-                        !existing.addmissionMethods ||
-                        existing.addmissionMethods.length === 0;
+                    const updateData = {
+                        tuitionFee: parseFloat(record.tuition) || 0,
+                        admissionScore: parseFloat(record.score) || null,
+                        admissionMethods: record.subjects ? [record.subjects] : []
+                    };
                     
-                    if (needsUpdate) {
-                        const updateData = {};
-                        
-                        if (existing.tutionFee === 0) {
-                            updateData.tutionFee = parseFloat(record.tuition) || 0;
-                        }
-                        if (existing.duration === 0) {
-                            updateData.duration = 0;
-                        }
-                        if (existing.quota === 0) {
-                            updateData.quota = 0; 
-                        }
-                        if (!existing.addmissionMethods || existing.addmissionMethods.length === 0) {
-                            updateData.addmissionMethods = record.subjects ? [record.subjects] : [];
-                        }
-                        
-                        await UniversityMajor.findByIdAndUpdate(
-                            existing._id,
-                            updateData,
-                            { new: true }
-                        );
-                        
-                        results.imported++;
-                    } else {
-                        results.skipped++;
-                    }
+                    await UniversityMajor.findByIdAndUpdate(
+                        existing._id,
+                        updateData,
+                        { new: true }
+                    );
+                    
+                    results.imported++;
                     continue;
                 }
 
@@ -375,10 +378,11 @@ export const importFromExcel = async (req, res) => {
                     universityId: universityMatch.id,
                     majorId: majorMatch.id,
                     majorName: record.majorName,
-                    tutionFee: parseFloat(record.tuition) || 0,
+                    tuitionFee: parseFloat(record.tuition) || 0,
                     duration: 0,
                     quota: 0,
-                    addmissionMethods: record.subjects ? [record.subjects] : []
+                    admissionScore: parseFloat(record.score) || null,
+                    admissionMethods: record.subjects ? [record.subjects] : []
                 });
 
                 results.imported++;
