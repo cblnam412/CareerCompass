@@ -23,7 +23,7 @@ const ReportCard = ({ data, isSelected, onClick }) => {
   };
 
   const getStatusConfig = (status) => {
-    if (status === 'dismissed') {
+    if (status === 'rejected') {
       return styles.statusDismissed;
     }
     if (status === 'approved') {

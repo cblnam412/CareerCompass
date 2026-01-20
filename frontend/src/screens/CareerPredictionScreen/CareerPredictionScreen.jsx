@@ -44,6 +44,7 @@ export default function CareerPredictionScreen() {
   // Filter states
   const [filterProvince, setFilterProvince] = useState("")
   const [filterTuition, setFilterTuition] = useState("")
+  const [filterAdmissionScore, setFilterAdmissionScore] = useState("")
 
   // Fetch initial data
   useEffect(() => {
@@ -211,6 +212,7 @@ export default function CareerPredictionScreen() {
     if (selectedMajorGroup) {
       setFilterProvince("")
       setFilterTuition("")
+      setFilterAdmissionScore("")
     }
   }, [selectedMajorGroup])
 
@@ -232,7 +234,18 @@ export default function CareerPredictionScreen() {
         else if (filterTuition === "above_50") matchTuition = fee > 50000000
     }
 
-    return matchProvince && matchTuition
+    let matchScore = true
+    const score = uniMajor.admissionScore || 0
+
+    if (filterAdmissionScore) {
+        if (filterAdmissionScore === "under_15") matchScore = score > 0 && score < 15
+        else if (filterAdmissionScore === "15_20") matchScore = score >= 15 && score <= 20
+        else if (filterAdmissionScore === "20_25") matchScore = score > 20 && score <= 25
+        else if (filterAdmissionScore === "25_27") matchScore = score > 25 && score <= 27
+        else if (filterAdmissionScore === "above_27") matchScore = score > 27
+    }
+
+    return matchProvince && matchTuition && matchScore
   })
 
   // Helper to get score data for a subject using normalized matching
@@ -795,8 +808,21 @@ export default function CareerPredictionScreen() {
               <div className={styles.modalHeader}>
                 <div className={styles.modalHeaderTitleSection}>
                   <h3>Ngành {selectedMajorGroup.name} tại các trường</h3>
-                  
+
                   <div className={styles.filterRow}>
+                    <select 
+                      className={styles.filterSelect}
+                      value={filterAdmissionScore}
+                      onChange={(e) => setFilterAdmissionScore(e.target.value)}
+                    >
+                      <option value="">Tất cả mức điểm</option>
+                      <option value="under_15">Dưới 15 điểm</option>
+                      <option value="15_20">15 - 20 điểm</option>
+                      <option value="20_25">20 - 25 điểm</option>
+                      <option value="25_27">25 - 27 điểm</option>
+                      <option value="above_27">Trên 27 điểm</option>
+                    </select>
+
                     <select 
                         className={styles.filterSelect}
                         value={filterTuition}
@@ -818,7 +844,7 @@ export default function CareerPredictionScreen() {
                         {provinces.map((prov, index) => (
                           <option key={index} value={prov}>{prov}</option>
                         ))}
-                    </select>
+                    </select>             
                   </div>
                 </div>
 
@@ -850,8 +876,11 @@ export default function CareerPredictionScreen() {
                         </div>
                         <p className={styles.uniMajorMajor}>{uniMajor.majorName || uniMajor.majorId?.name}</p>
                           <div className={styles.uniTuitionFee}>
-                            Học phí: {uniMajor.tuitionFee ? <strong>{uniMajor.tuitionFee.toLocaleString()} VND</strong> : <strong> Không có dữ liệu</strong> }
+                            Điểm chuẩn: {uniMajor.admissionScore ? <strong>{uniMajor.admissionScore} điểm</strong> : <strong> Không có dữ liệu</strong> }
                           </div> 
+                          <div className={styles.uniTuitionFee}>
+                            Học phí: {uniMajor.tuitionFee ? <strong>{uniMajor.tuitionFee.toLocaleString()} VND</strong> : <strong> Không có dữ liệu</strong> }
+                          </div>
                         <p className={styles.uniMajorHint}>Nhấp để xem chi tiết →</p>
                       </div>
                     ))}
@@ -896,10 +925,10 @@ export default function CareerPredictionScreen() {
                   <p className={styles.detailValue}>{selectedUniversityMajor.admissionMethods[0].replaceAll(',', ', ') || "Không có dữ liệu"}</p>
                 </div> */}
 
-                {selectedUniversityMajor.quota > 0 && (
+                {selectedUniversityMajor.admissionScore > 0 && (
                   <div className={styles.detailSection}>
-                    <label>Số chỉ tiêu</label>
-                    <p className={styles.detailValue}>{selectedUniversityMajor.quota}</p>
+                    <label>Điểm chuẩn</label>
+                    <p className={styles.detailValue}>{selectedUniversityMajor.admissionScore}</p>
                   </div>
                 )}
 
