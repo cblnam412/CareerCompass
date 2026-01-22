@@ -8,7 +8,8 @@ import {
     deleteMessage,
     deleteConversation,
     getUnreadCount,
-    sendMessageWithDocument
+    sendMessageWithDocument,
+    searchMessages
 } from '../controllers/messageController.js';
 
 const router = express.Router();
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get('/conversations', verifyToken, getConversations);
 router.post('/conversations/start', verifyToken, startConversation);
 router.get('/conversations/:conversationId/messages', verifyToken, getMessages);
+router.get('/conversations/:conversationId/search', verifyToken, searchMessages);
 router.post('/send-with-document', verifyToken, uploadMessageDocument, sendMessageWithDocument);
 router.delete('/messages/:messageId', verifyToken, deleteMessage);
 router.delete('/conversations/:conversationId', verifyToken, deleteConversation);

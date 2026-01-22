@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { User, Send, Search, Info, Smile, Paperclip, GraduationCap, School, Reply, Flag, X } from "lucide-react"
+import { User, Send, Search, Info, Smile, Paperclip, GraduationCap, School, Reply, Flag, X, ArrowLeft } from "lucide-react"
 import EmojiPicker from "emoji-picker-react"
 import { useAuth } from "../../context/AuthContext"
 import { useSocket } from "../../context/SocketContext"
@@ -28,6 +28,18 @@ export default function MessageScreen() {
   const fileInputRef = useRef(null)
 
   const messagesEndRef = useRef(null)
+  const messageRefs = useRef({})
+
+  // Search states
+  const [showSearchSidebar, setShowSearchSidebar] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [searchPage, setSearchPage] = useState(1)
+  const [hasMoreResults, setHasMoreResults] = useState(false)
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null)
+  const searchInputRef = useRef(null)
+  const searchTimeoutRef = useRef(null)
 
   // Typing indicator ref
   const [typingUser, setTypingUser] = useState(null) 
@@ -222,6 +234,138 @@ export default function MessageScreen() {
         role: 'user' 
     };
   };
+
+  // Search functions
+  const handleSearchMessages = async (query, page = 1) => {
+    if (!query.trim() || !selectedConversation) return;
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `${API}/api/messages/conversations/${selectedConversation._id}/search?query=${encodeURIComponent(query)}&page=${page}&limit=15`,
+        {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        if (page === 1) {
+          setSearchResults(data.data);
+        } else {
+          setSearchResults(prev => [...prev, ...data.data]);
+        }
+        setHasMoreResults(data.pagination.hasMore);
+        setSearchPage(page);
+      }
+    } catch (error) {
+      console.error("Error searching messages:", error);
+      toast.error("Lỗi khi tìm kiếm tin nhắn");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchInputChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    
+    // Debounce search
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    
+    if (value.trim()) {
+      searchTimeoutRef.current = setTimeout(() => {
+        handleSearchMessages(value, 1);
+      }, 500);
+    } else {
+      setSearchResults([]);
+      setHasMoreResults(false);
+    }
+  };
+
+  const handleLoadMoreResults = () => {
+    if (hasMoreResults && !isSearching) {
+      handleSearchMessages(searchQuery, searchPage + 1);
+    }
+  };
+
+  const scrollToMessage = (messageId) => {
+    const messageElement = messageRefs.current[messageId];
+    
+    if (messageElement) {
+      messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Wait until it's actually on screen
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            
+            // Trigger the animation
+            setHighlightedMessageId(messageId);
+            observer.disconnect();
+
+            setTimeout(() => {
+              setHighlightedMessageId((prev) => 
+                prev === messageId ? null : prev
+              );
+            }, 2000);
+          }
+        },
+        { threshold: 0.5 }
+      );
+      
+      observer.observe(messageElement);
+    }
+  };
+
+  const highlightText = (text, query) => {
+    if (!query.trim()) return text;
+    
+    const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+    return parts.map((part, index) => 
+      part.toLowerCase() === query.toLowerCase() 
+        ? <mark key={index} className={styles.highlight}>{part}</mark> 
+        : part
+    );
+  };
+
+  const toggleSearchSidebar = () => {
+    if (showSearchSidebar) {
+      // Closing search
+      setShowSearchSidebar(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      setSearchPage(1);
+      setHasMoreResults(false);
+    } else {
+      // Opening search
+      setShowInfoSidebar(false);
+      setShowSearchSidebar(true);
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  };
+
+  const toggleInfoSidebar = () => {
+    if (showInfoSidebar) {
+      setShowInfoSidebar(false);
+    } else {
+      setShowSearchSidebar(false);
+      setSearchQuery("");
+      setSearchResults([]);
+      setShowInfoSidebar(true);
+    }
+  };
+
+  // Clear search when conversation changes
+  useEffect(() => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchPage(1);
+    setHasMoreResults(false);
+    setShowSearchSidebar(false);
+  }, [selectedConversation]);
 
   const handleSendMessage = async () => {
     // Allow send if there is text OR a file
@@ -431,7 +575,11 @@ export default function MessageScreen() {
                 </div>
               </div>
               <div className={styles.headerActions}>
-                <button className={styles.actionButton} title="Info" onClick={() => setShowInfoSidebar(!showInfoSidebar)}>
+                <button 
+                  className={`${styles.actionButton} ${showInfoSidebar ? styles.activeActionButton : ''}`} 
+                  title="Info" 
+                  onClick={toggleInfoSidebar}
+                >
                   <Info size={20} />
                 </button>
               </div>
@@ -449,7 +597,11 @@ export default function MessageScreen() {
                     new Date(msg.createdAt).getTime() / (1000 * 60) > 5;
 
                 return (
-                  <div key={msg._id || index}>
+                  <div 
+                    key={msg._id || index}
+                    ref={el => { if (msg._id) messageRefs.current[msg._id] = el; }}
+                    className={highlightedMessageId === msg._id ? styles.highlightedMessage : ''}
+                  >
                     {showTimestamp && index > 0 && (
                       <div className={styles.timestamp}>
                         {new Date(msg.createdAt).toLocaleTimeString("vi-VN", {
@@ -641,7 +793,7 @@ export default function MessageScreen() {
                 <span>Profile</span>
               </button>
 
-              <button className={styles.infoActionButton}>
+              <button className={styles.infoActionButton} onClick={toggleSearchSidebar}>
                 <div className={styles.infoActionIcon}>
                   <Search size={24} />
                 </div>
@@ -649,6 +801,122 @@ export default function MessageScreen() {
               </button>
             </div>
             
+          </div>
+        </div>
+      )}
+
+      {showSearchSidebar && selectedConversation && (
+        <div className={styles.searchSidebar}>
+          <div className={styles.searchHeader}>
+            <button className={styles.backBtn} onClick={toggleInfoSidebar} title="Back to Info">
+              <ArrowLeft size={20} />
+            </button>
+            <h3 className={styles.searchTitle}>Tìm kiếm tin nhắn</h3>
+          </div>
+          
+          <div className={styles.searchInputContainer}>
+            <Search size={18} className={styles.searchIcon} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={handleSearchInputChange}
+              placeholder="Tìm kiếm trong cuộc trò chuyện..."
+              className={styles.searchInput}
+            />
+            {searchQuery && (
+              <button 
+                className={styles.clearSearchBtn}
+                onClick={() => {
+                  setSearchQuery("");
+                  setSearchResults([]);
+                  setHasMoreResults(false);
+                  searchInputRef.current?.focus();
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          <div className={styles.searchResultsContainer}>
+            {isSearching && searchResults.length === 0 && (
+              <div className={styles.searchLoading}>
+                <div className={styles.searchSpinner}></div>
+                <span>Đang tìm kiếm...</span>
+              </div>
+            )}
+
+            {!isSearching && searchQuery && searchResults.length === 0 && (
+              <div className={styles.noResults}>
+                <Search size={48} className={styles.noResultsIcon} />
+                <p>Không tìm thấy kết quả</p>
+                <span>Thử tìm với từ khóa khác</span>
+              </div>
+            )}
+
+            {!searchQuery && (
+              <div className={styles.searchPlaceholder}>
+                <Search size={48} className={styles.searchPlaceholderIcon} />
+                <p>Nhập từ khóa để tìm kiếm</p>
+              </div>
+            )}
+
+            {searchResults.length > 0 && (
+              <>
+                <div className={styles.searchResultsCount}>
+                  Tìm thấy {searchResults.length}{hasMoreResults ? '+' : ''} kết quả
+                </div>
+                <div className={styles.searchResultsList}>
+                  {searchResults.map((result) => {
+                    const senderId = typeof result.senderId === 'object' ? result.senderId._id : result.senderId;
+                    const isOwn = senderId === userID;
+                    const senderName = isOwn 
+                      ? 'Bạn' 
+                      : (typeof result.senderId === 'object' ? result.senderId.fullName : getDisplayName(currentOtherUser));
+                    
+                    return (
+                      <button
+                        key={result._id}
+                        className={styles.searchResultItem}
+                        onClick={() => scrollToMessage(result._id)}
+                      >
+                        <div className={styles.searchResultContent}>
+                          <div className={styles.searchResultSender}>{senderName}</div>
+                          <div className={styles.searchResultText}>
+                            {highlightText(
+                              result.content.length > 80 
+                                ? result.content.substring(0, 80) + '...' 
+                                : result.content,
+                              searchQuery
+                            )}
+                          </div>
+                          <div className={styles.searchResultTime}>
+                            {new Date(result.createdAt).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                
+                {hasMoreResults && (
+                  <button 
+                    className={styles.loadMoreBtn}
+                    onClick={handleLoadMoreResults}
+                    disabled={isSearching}
+                  >
+                    {isSearching ? 'Đang tải...' : 'Tải thêm kết quả'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

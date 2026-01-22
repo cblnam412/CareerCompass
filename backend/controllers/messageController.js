@@ -223,6 +223,76 @@ export const getUnreadCount = async (req, res) => {
     }
 };
 
+export const searchMessages = async (req, res) => {
+    try {
+        const { conversationId } = req.params;
+        const { query, page = 1, limit = 15 } = req.query;
+        const userId = req.userId;
+
+        if (!query || !query.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng nhập từ khóa tìm kiếm'
+            });
+        }
+
+        const conversation = await Conversation.findById(conversationId);
+        if (!conversation) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cuộc trò chuyện không tồn tại'
+            });
+        }
+
+        // Check if user is part of the conversation
+        if (conversation.studentId.toString() !== userId && conversation.uniManagerId.toString() !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: 'Bạn không có quyền tìm kiếm trong cuộc trò chuyện này'
+            });
+        }
+
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Search messages with regex (case-insensitive)
+        const searchRegex = new RegExp(query.trim(), 'i');
+        
+        const messages = await Message.find({
+            conversationId,
+            content: { $regex: searchRegex },
+            messageType: 'text' // Only search text messages
+        })
+        .populate('senderId', 'fullName avatar')
+        .populate('receiverId', 'fullName avatar')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+
+        const totalCount = await Message.countDocuments({
+            conversationId,
+            content: { $regex: searchRegex },
+            messageType: 'text'
+        });
+
+        res.status(200).json({
+            success: true,
+            data: messages,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalCount,
+                hasMore: skip + messages.length < totalCount
+            }
+        });
+    } catch (error) {
+        console.error('Search messages error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
 export const sendMessageWithDocument = async (req, res) => {
     try {
         const { conversationId, content } = req.body;
