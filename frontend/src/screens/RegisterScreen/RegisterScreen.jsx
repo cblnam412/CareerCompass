@@ -200,7 +200,7 @@ const RegisterScreen = () => {
           dataToSend.append("studentCardBack", formData.studentCardBack);
         }
 
-        response = await fetch(`${API}/auth/register-uni-rep`, {
+        response = await fetch(`${API}/api/auth/register-uni-rep`, {
           method: "POST",
           body: dataToSend, 
         });
@@ -216,7 +216,7 @@ const RegisterScreen = () => {
           userType: "student"
         };
 
-        response = await fetch(`${API}/auth/register`, {
+        response = await fetch(`${API}/api/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),

@@ -128,7 +128,7 @@ if (authService) {
 /**
  * Catch all routes không được xử lý
  */
-router.use('*', (req, res) => {
+router.use('{/*path}', (req, res) => {
     const path = req.path;
     const servicePrefix = path.split('/')[1]; // Lấy service prefix (e.g., 'auth' from '/auth/login')
 

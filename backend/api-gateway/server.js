@@ -31,7 +31,7 @@ app.get('/health', (req, res) => {
 app.use('/api', gatewayRoutes);
 
 // 404 handler
-app.use('*', (req, res) => {
+app.use('{/*path}', (req, res) => {
     res.status(404).json({
         success: false,
         message: 'Route không tìm thấy',
@@ -44,7 +44,7 @@ app.use(errorHandler);
 
 // ==================== Server ====================
 app.listen(PORT, () => {
-    console.log(`\n✅ API Gateway đang chạy trên port ${PORT}`);
-    console.log(`📍 API URL: http://localhost:${PORT}/api`);
-    console.log(`🏥 Health check: http://localhost:${PORT}/health\n`);
+    console.log(`\nAPI Gateway đang chạy trên port ${PORT}`);
+    console.log(`API URL: http://localhost:${PORT}/api`);
+    console.log(`Health check: http://localhost:${PORT}/health\n`);
 });

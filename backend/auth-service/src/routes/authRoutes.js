@@ -5,13 +5,13 @@ import { authenticateToken, authorizeRole } from '../middlewares/auth.js';
 const router = express.Router();
 
 // Public routes
-router.post('/auth/login', authController.login);
-router.post('/auth/register', authController.registerUser);
-router.post('/auth/register-uni-rep', authController.registerUniversityRep);
-router.get('/auth/profile/:userId', authController.getUserProfile);
+router.post('/login', authController.login);
+router.post('/register', authController.registerUser);
+router.post('/register-uni-rep', authController.registerUniversityRep);
+router.get('/profile/:userId', authController.getUserProfile);
 
 // Protected routes
-router.get('/api/users/me', authenticateToken, authController.getMyProfile);
+router.get('/users/me', authenticateToken, authController.getMyProfile);
 router.get('/verify', authenticateToken, authController.verifyToken);
 router.put('/profile', authenticateToken, authController.updateMyProfile);
 router.post('/avatar', authenticateToken, authController.uploadAvatar);

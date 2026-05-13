@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BookOpen, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import API from '../../API/API';
 import styles from './ForgotPasswordScreen.module.css';
 
 const ForgotPasswordScreen = () => {
@@ -32,7 +33,7 @@ const ForgotPasswordScreen = () => {
         setLoading(true);
         
         try {
-            const response = await fetch('http://localhost:3000/auth/forgot-password', {
+            const response = await fetch(`${API}/api/auth/forgot-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
