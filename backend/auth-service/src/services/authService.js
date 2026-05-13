@@ -7,6 +7,22 @@ import bcrypt from 'bcrypt';
 import { uploadFileToSupabase, deleteFileFromSupabase, ensureBucketExists } from '../utils/supabaseHelper.js';
 
 class AuthService {
+    async checkBirthday(DOB) {
+        //Kiểm tra định dạng ngày tháng và người dùng có trên 15 tuổi không
+        const today = new Date();
+        const birthDate = new Date(DOB);
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();  
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        if (isNaN(age) || age < 15) {
+            throw {
+                status: 400,
+                message: 'Ngày sinh không hợp lệ hoặc bạn phải trên 15 tuổi'
+            };
+        }
+    }
     // Đăng nhập
     async login(email, password) {
         const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
@@ -155,6 +171,9 @@ class AuthService {
             }
         }
 
+        await this.checkBirthday(DOB);
+
+
         const newUser = new User({
             fullName: fullName.trim(),
             email: email.toLowerCase(),
@@ -162,7 +181,7 @@ class AuthService {
             DOB,
             address,
             studentId: studentId ? studentId.trim() : undefined,
-            role: 'user',
+            role: 'student',
             status: 'active'
         });
 

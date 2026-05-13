@@ -27,8 +27,8 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['admin', 'uniManager', 'uniRep', 'user'],
-        default: 'user'
+        enum: ['admin', 'uniManager', 'uniRep', 'student'],
+        default: 'student'
     },
     status: {
         type: String,
@@ -55,14 +55,13 @@ const userSchema = new mongoose.Schema({
 // Hash password trước khi lưu
 userSchema.pre('save', async function(next) {
     if (!this.isModified('password')) {
-        return next();
+        return;
     }
     try {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
-        next();
     } catch (error) {
-        next(error);
+        return error;
     }
 });
 

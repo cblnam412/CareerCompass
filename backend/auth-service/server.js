@@ -25,7 +25,7 @@ app.use(fileUpload({
 
 connectDB();
 
-app.use('/api/auth', authRoutes);
+app.use('/', authRoutes);
 
 app.get('/health', (req, res) => {
     res.status(200).json({
@@ -44,8 +44,8 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-    console.log(`✓ Server đang chạy trên port ${PORT}`);
-    console.log(`✓ API URL: http://localhost:${PORT}/api`);
+    console.log(`Server đang chạy trên port ${PORT}`);
+    console.log(`API URL: http://localhost:${PORT}/api`);
 });
 
 export default app;
