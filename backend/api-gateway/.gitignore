@@ -6,7 +6,6 @@ npm-debug.log
 .env.*.local
 dist/
 build/
-uploads/
 *.log
 .vscode/
 .idea/

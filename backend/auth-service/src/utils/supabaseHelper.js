@@ -1,52 +1,53 @@
 import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
 
+dotenv.config();
 // Khởi tạo Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project.supabase.co';
-const supabaseKey = process.env.SUPABASE_KEY || 'your-anon-key';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Upload file lên Supabase
-export const uploadFileToSupabase = async (file, bucketName, fileType = '') => {
+export const uploadFileToSupabase = async (file, bucketName, fileType = 'avatars') => {
     try {
-        if (!file) {
-            return {
-                success: false,
-                error: 'Không có file để upload'
-            };
+        if (!file || !file.data) {
+            return { success: false, error: 'File không hợp lệ hoặc không có dữ liệu' };
         }
 
-        const fileBuffer = file.buffer;
-        const fileName = `${Date.now()}-${fileType}-${file.originalname}`;
-        const filePath = `${bucketName}/${fileName}`;
+        const fileContent = file.data;
+        console.log(fileContent);
+        const originalName = file.name || 'unnamed.png';
+        const extension = originalName.split('.').pop();
+        // Loại bỏ ký tự không an toàn
+        const safeFileName = `${Date.now()}-${fileType}.${extension}`.replace(/[^a-zA-Z0-9.-]/g, '_');
+        
+        console.log(`Upload lên bucket: ${bucketName}, file: ${safeFileName}`);
 
         const { data, error } = await supabase.storage
             .from(bucketName)
-            .upload(filePath, fileBuffer, {
-                contentType: file.mimetype,
+            .upload(safeFileName, fileContent, {
+                contentType: file.mimetype || 'application/octet-stream',
+                cacheControl: '3600',
                 upsert: false
             });
 
         if (error) {
+            console.error('Supabase upload error detail:', error);
             throw error;
         }
 
-        // Lấy URL public
-        const { data: publicData } = supabase
-            .storage
+        const { data: publicData } = supabase.storage
             .from(bucketName)
-            .getPublicUrl(filePath);
+            .getPublicUrl(safeFileName);
 
+        console.log('Upload thành công, URL:', publicData.publicUrl);
         return {
             success: true,
-            path: filePath,
-            url: publicData.publicUrl
+            url: publicData.publicUrl,
+            path: safeFileName
         };
     } catch (error) {
         console.error('Upload error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
+        return { success: false, error: error.message };
     }
 };
 

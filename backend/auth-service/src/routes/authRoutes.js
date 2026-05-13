@@ -7,14 +7,16 @@ const router = express.Router();
 // Public routes
 router.post('/login', authController.login);
 router.post('/register', authController.registerUser);
+
 router.post('/register-uni-rep', authController.registerUniversityRep);
 router.get('/profile/:userId', authController.getUserProfile);
 
 // Protected routes
-router.get('/users/me', authenticateToken, authController.getMyProfile);
+router.get('/me', authenticateToken, authController.getMyProfile);
+router.patch('/me', authenticateToken, authController.updateMyProfile);
+router.post('/me/avatar', authenticateToken, authController.uploadAvatar);
+
 router.get('/verify', authenticateToken, authController.verifyToken);
-router.put('/profile', authenticateToken, authController.updateMyProfile);
-router.post('/avatar', authenticateToken, authController.uploadAvatar);
 router.delete('/avatar', authenticateToken, authController.deleteAvatar);
 
 export default router;

@@ -295,31 +295,32 @@ class AuthController {
 
     // Upload avatar
     async uploadAvatar(req, res) {
-        try {
-            if (!req.files || !req.files.avatar || req.files.avatar.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Vui lòng chọn ảnh'
-                });
-            }
-
-            const user = await authService.uploadAvatar(req.userId, req.files.avatar[0]);
-
-            res.status(200).json({
-                success: true,
-                message: 'Cập nhật avatar thành công',
-                data: user
-            });
-        } catch (error) {
-            console.error('Upload avatar error:', error);
-            const status = error.status || 500;
-
-            res.status(status).json({
+    try {
+        if (!req.files || !req.files.avatar) {
+            return res.status(400).json({
                 success: false,
-                message: error.message
+                message: 'Vui lòng chọn ảnh'
             });
         }
+        // Lấy file đầu tiên nếu upload nhiều file
+        const avatarFile = Array.isArray(req.files.avatar) ? req.files.avatar[0] : req.files.avatar;
+        
+        const user = await authService.uploadAvatar(req.userId, avatarFile);
+        
+        res.status(200).json({
+            success: true,
+            message: 'Cập nhật avatar thành công',
+            data: user
+        });
+    } catch (error) {
+        console.error('Upload avatar error:', error);
+        const status = error.status || 500;
+        res.status(status).json({
+            success: false,
+            message: error.message
+        });
     }
+}
 
     // Xóa avatar
     async deleteAvatar(req, res) {

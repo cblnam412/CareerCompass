@@ -377,7 +377,7 @@ class AuthService {
             };
         }
 
-        if (!['user', 'uniRep', 'uniManager'].includes(user.role)) {
+        if (!['student', 'uniRep', 'uniManager'].includes(user.role)) {
             throw {
                 status: 403,
                 message: 'Không có quyền chỉnh sửa profile'
@@ -403,25 +403,24 @@ class AuthService {
         return userResponse;
     }
 
-    // Upload avatar
+    // authService.js - uploadAvatar method
     async uploadAvatar(userId, file) {
         if (!file) {
-            throw {
-                status: 400,
-                message: 'Vui lòng chọn ảnh'
-            };
+            throw { status: 400, message: 'Vui lòng chọn ảnh' };
         }
 
         const user = await User.findById(userId);
-
         if (!user) {
-            throw {
-                status: 404,
-                message: 'Người dùng không tồn tại'
-            };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
-        // Xóa avatar cũ nếu có
+        // Đảm bảo bucket 'user-avatars' tồn tại
+        const bucketCheck = await ensureBucketExists('user-avatars');
+        if (!bucketCheck.success) {
+            throw { status: 500, message: 'Lỗi kiểm tra bucket: ' + bucketCheck.error };
+        }
+
+        // Xóa avatar cũ nếu có (giữ nguyên code cũ)
         if (user.avatar) {
             try {
                 const fileKey = user.avatar.split('/').pop();
@@ -432,17 +431,9 @@ class AuthService {
         }
 
         // Upload avatar mới
-        const avatarResult = await uploadFileToSupabase(
-            file,
-            'user-avatars',
-            'avatars'
-        );
-
+        const avatarResult = await uploadFileToSupabase(file, 'user-avatars', 'avatars');
         if (!avatarResult.success) {
-            throw {
-                status: 500,
-                message: 'Lỗi upload avatar: ' + avatarResult.error
-            };
+            throw { status: 500, message: 'Lỗi upload avatar: ' + avatarResult.error };
         }
 
         user.avatar = avatarResult.url;
@@ -451,7 +442,6 @@ class AuthService {
 
         const userResponse = updated.toObject();
         delete userResponse.password;
-
         return userResponse;
     }
 

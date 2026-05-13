@@ -43,7 +43,7 @@ export default function ProfileScreen() {
         let options = {}
 
         if (isOwnProfile) {
-          url = `${API}/api/users/me`
+          url = `${API}/api/auth/me`
           options = {
             headers: { "Authorization": `Bearer ${accessToken}` }
           }
@@ -105,7 +105,7 @@ export default function ProfileScreen() {
     formData.append("avatar", file)
 
     try {
-      const res = await fetch(`${API}/api/users/me/avatar`, {
+      const res = await fetch(`${API}/api/auth/me/avatar`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`
@@ -152,7 +152,7 @@ export default function ProfileScreen() {
     if (!validateDob(dob)) return;
 
     try {
-      const res = await fetch(`${API}/api/users/me`, {
+      const res = await fetch(`${API}/api/auth/me`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

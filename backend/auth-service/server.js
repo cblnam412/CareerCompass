@@ -2,11 +2,17 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fileUpload from 'express-fileupload';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { connectDB } from './src/utils/dbConnect.js';
 import authRoutes from './src/routes/authRoutes.js';
 import { errorHandler } from './src/middlewares/auth.js';
 
 dotenv.config();
+
+// Lấy __dirname cho ES module
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,9 +25,10 @@ app.use(fileUpload({
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
     abortOnLimit: true,
     responseOnLimit: 'Kích thước file vượt quá giới hạn 50MB',
-    useTempFiles: true,
-    tempFileDir: '/tmp/'
 }));
+
+// Serve static files từ uploads folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 connectDB();
 
