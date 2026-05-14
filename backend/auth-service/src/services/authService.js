@@ -1,17 +1,18 @@
-import User from '../models/User.js';
-import StudentProfile from '../models/StudentProfile.js';
-import University from '../models/University.js';
-import UniversityAffiliation from '../models/UniversityAffiliation.js';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
-import { uploadFileToSupabase, deleteFileFromSupabase, ensureBucketExists } from '../utils/supabaseHelper.js';
+import {
+    UserRepository,
+    StudentProfileRepository,
+    UniversityRepository,
+    UniversityAffiliationRepository,
+    FileRepository
+} from '../repositories/index.js';
 
 class AuthService {
     async checkBirthday(DOB) {
-        //Kiểm tra định dạng ngày tháng và người dùng có trên 15 tuổi không
         const today = new Date();
         const birthDate = new Date(DOB);
-        const age = today.getFullYear() - birthDate.getFullYear();
+        let age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();  
         if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
             age--;
@@ -25,7 +26,7 @@ class AuthService {
     }
     // Đăng nhập
     async login(email, password) {
-        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+        const user = await UserRepository.findByEmailWithPassword(email);
         
         if (!user) {
             throw {
@@ -79,7 +80,7 @@ class AuthService {
     async register(userData) {
         const { email, password, firstName, lastName, role } = userData;
 
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        const existingUser = await UserRepository.findByEmail(email);
         if (existingUser) {
             throw {
                 status: 400,
@@ -87,7 +88,7 @@ class AuthService {
             };
         }
 
-        const user = new User({
+        const user = await UserRepository.create({
             email: email.toLowerCase(),
             password,
             firstName,
@@ -95,8 +96,6 @@ class AuthService {
             role: role || 'student',
             status: role === 'student' ? 'active' : 'pending'
         });
-
-        await user.save();
 
         const userResponse = user.toObject();
         delete userResponse.password;
@@ -119,7 +118,7 @@ class AuthService {
 
     // Lấy thông tin user
     async getUserById(userId) {
-        const user = await User.findById(userId);
+        const user = await UserRepository.findById(userId);
         if (!user) {
             throw {
                 status: 404,
@@ -131,13 +130,7 @@ class AuthService {
 
     // Cập nhật thông tin user
     async updateUser(userId, updateData) {
-        const { password, ...otherData } = updateData;
-        
-        const user = await User.findByIdAndUpdate(
-            userId,
-            { ...otherData, updatedAt: Date.now() },
-            { new: true, runValidators: true }
-        );
+        const user = await UserRepository.update(userId, updateData);
 
         if (!user) {
             throw {
@@ -153,7 +146,7 @@ class AuthService {
     async registerUser(userData) {
         const { fullName, email, password, DOB, address, studentId } = userData;
 
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        const existingUser = await UserRepository.findByEmail(email);
         if (existingUser) {
             throw {
                 status: 400,
@@ -162,7 +155,7 @@ class AuthService {
         }
 
         if (studentId) {
-            const existingStudentId = await User.findOne({ studentId: studentId.trim() });
+            const existingStudentId = await UserRepository.findByStudentId(studentId);
             if (existingStudentId) {
                 throw {
                     status: 400,
@@ -170,11 +163,11 @@ class AuthService {
                 };
             }
         }
-
+        console.log('hello');
         await this.checkBirthday(DOB);
+        console.log('Birthday check passed for DOB:', DOB);
 
-
-        const newUser = new User({
+        const newUser = await UserRepository.create({
             fullName: fullName.trim(),
             email: email.toLowerCase(),
             password,
@@ -184,12 +177,10 @@ class AuthService {
             role: 'student',
             status: 'active'
         });
-
-        const savedUser = await newUser.save();
-
+        console.log('New user created:', newUser);
         // Tạo student profile
-        const studentProfile = new StudentProfile({
-            userId: savedUser._id,
+        await StudentProfileRepository.create({
+            userId: newUser._id,
             province: '',
             gpa: null,
             currentGradeLevel: null,
@@ -200,9 +191,7 @@ class AuthService {
             targetUniversityIds: []
         });
 
-        await studentProfile.save();
-
-        const userResponse = savedUser.toObject();
+        const userResponse = newUser.toObject();
         delete userResponse.password;
 
         return userResponse;
@@ -235,7 +224,7 @@ class AuthService {
             };
         }
 
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        const existingUser = await UserRepository.findByEmail(email);
         if (existingUser) {
             throw {
                 status: 400,
@@ -244,7 +233,7 @@ class AuthService {
         }
 
         if (studentId) {
-            const existingStudentId = await User.findOne({ studentId: studentId.trim() });
+            const existingStudentId = await UserRepository.findByStudentId(studentId);
             if (existingStudentId) {
                 throw {
                     status: 400,
@@ -253,7 +242,7 @@ class AuthService {
             }
         }
 
-        const university = await University.findById(universityId);
+        const university = await UniversityRepository.findById(universityId);
         if (!university) {
             throw {
                 status: 404,
@@ -262,12 +251,11 @@ class AuthService {
         }
 
         // Kiểm tra bucket tồn tại
-        await ensureBucketExists('student-cards');
+        await FileRepository.ensureBucketExists('student-cards');
 
         // Upload ảnh mặt trước
-        const frontCardUpload = await uploadFileToSupabase(
+        const frontCardUpload = await FileRepository.uploadStudentCard(
             files.studentCardFront[0],
-            'student-cards',
             'front'
         );
 
@@ -279,15 +267,14 @@ class AuthService {
         }
 
         // Upload ảnh mặt sau
-        const backCardUpload = await uploadFileToSupabase(
+        const backCardUpload = await FileRepository.uploadStudentCard(
             files.studentCardBack[0],
-            'student-cards',
             'back'
         );
 
         if (!backCardUpload.success) {
             // Xóa ảnh mặt trước nếu upload mặt sau thất bại
-            await deleteFileFromSupabase('student-cards', frontCardUpload.path);
+            await FileRepository.deleteStudentCard(frontCardUpload.path);
             throw {
                 status: 500,
                 message: 'Lỗi upload ảnh mặt sau: ' + backCardUpload.error
@@ -295,7 +282,7 @@ class AuthService {
         }
 
         // Tạo user
-        const newUser = new User({
+        const newUser = await UserRepository.create({
             fullName: fullName.trim(),
             email: email.toLowerCase(),
             password,
@@ -307,11 +294,9 @@ class AuthService {
             universityId
         });
 
-        const savedUser = await newUser.save();
-
         // Tạo affiliation
-        const affiliation = new UniversityAffiliation({
-            studentId: savedUser._id,
+        const affiliation = await UniversityAffiliationRepository.create({
+            studentId: newUser._id,
             studentIdNumber: studentId.trim(),
             universityId,
             studentCardFront: frontCardUpload.url,
@@ -321,22 +306,21 @@ class AuthService {
             appliedAt: new Date()
         });
 
-        const savedAffiliation = await affiliation.save();
-
-        const userResponse = savedUser.toObject();
+        const userResponse = newUser.toObject();
         delete userResponse.password;
 
         return {
             user: userResponse,
-            affiliation: savedAffiliation
+            affiliation: affiliation
         };
     }
 
     // Lấy profile user theo userId
     async getUserProfile(userId) {
-        const user = await User.findById(userId)
-            .populate('universityId', 'name code region address phone website description')
-            .select('fullName DOB studentId avatar address role universityId createdAt');
+        const user = await UserRepository.findByIdSelectFields(
+            userId,
+            'fullName DOB studentId avatar address role universityId createdAt'
+        );
 
         if (!user) {
             throw {
@@ -345,14 +329,15 @@ class AuthService {
             };
         }
 
+        // Populate university info
+        await user.populate('universityId', 'name code region address phone website description');
+
         return user;
     }
 
     // Lấy profile user hiện tại
     async getMyProfile(userId) {
-        const user = await User.findById(userId)
-            .populate('universityId', 'name code region address phone website description')
-            .select('-password');
+        const user = await UserRepository.findByIdWithPopulatedUniversity(userId);
 
         if (!user) {
             throw {
@@ -368,7 +353,7 @@ class AuthService {
     async updateMyProfile(userId, updateData) {
         const { fullName, DOB, address, studentId, password } = updateData;
 
-        const user = await User.findById(userId);
+        const user = await UserRepository.findById(userId);
 
         if (!user) {
             throw {
@@ -384,18 +369,14 @@ class AuthService {
             };
         }
 
-        if (fullName) user.fullName = fullName.trim();
-        if (DOB) user.DOB = DOB;
-        if (address) user.address = address.trim();
-        if (studentId) user.studentId = studentId.trim();
+        const updatePayload = {};
+        if (fullName) updatePayload.fullName = fullName.trim();
+        if (DOB) updatePayload.DOB = DOB;
+        if (address) updatePayload.address = address.trim();
+        if (studentId) updatePayload.studentId = studentId.trim();
+        if (password) updatePayload.password = password;
 
-        if (password) {
-            const hashedPassword = await bcrypt.hash(password, 10);
-            user.password = hashedPassword;
-        }
-
-        user.updatedAt = Date.now();
-        const updated = await user.save();
+        const updated = await UserRepository.update(userId, updatePayload);
 
         const userResponse = updated.toObject();
         delete userResponse.password;
@@ -403,42 +384,40 @@ class AuthService {
         return userResponse;
     }
 
-    // authService.js - uploadAvatar method
+    // Upload avatar
     async uploadAvatar(userId, file) {
         if (!file) {
             throw { status: 400, message: 'Vui lòng chọn ảnh' };
         }
 
-        const user = await User.findById(userId);
+        const user = await UserRepository.findById(userId);
         if (!user) {
             throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         // Đảm bảo bucket 'user-avatars' tồn tại
-        const bucketCheck = await ensureBucketExists('user-avatars');
+        const bucketCheck = await FileRepository.ensureBucketExists('user-avatars');
         if (!bucketCheck.success) {
             throw { status: 500, message: 'Lỗi kiểm tra bucket: ' + bucketCheck.error };
         }
 
-        // Xóa avatar cũ nếu có (giữ nguyên code cũ)
+        // Xóa avatar cũ nếu có
         if (user.avatar) {
             try {
-                const fileKey = user.avatar.split('/').pop();
-                await deleteFileFromSupabase('user-avatars', fileKey);
+                const fileKey = FileRepository.extractFileNameFromUrl(user.avatar);
+                await FileRepository.deleteAvatar(fileKey);
             } catch (error) {
                 console.error('Error deleting old avatar:', error);
             }
         }
 
         // Upload avatar mới
-        const avatarResult = await uploadFileToSupabase(file, 'user-avatars', 'avatars');
+        const avatarResult = await FileRepository.uploadAvatar(file);
         if (!avatarResult.success) {
             throw { status: 500, message: 'Lỗi upload avatar: ' + avatarResult.error };
         }
 
-        user.avatar = avatarResult.url;
-        user.updatedAt = Date.now();
-        const updated = await user.save();
+        const updated = await UserRepository.updateAvatar(userId, avatarResult.url);
 
         const userResponse = updated.toObject();
         delete userResponse.password;
@@ -447,7 +426,7 @@ class AuthService {
 
     // Xóa avatar
     async deleteAvatar(userId) {
-        const user = await User.findById(userId);
+        const user = await UserRepository.findById(userId);
 
         if (!user) {
             throw {
@@ -458,15 +437,13 @@ class AuthService {
 
         if (user.avatar) {
             try {
-                const fileKey = user.avatar.split('/').pop();
-                await deleteFileFromSupabase('user-avatars', fileKey);
+                const fileKey = FileRepository.extractFileNameFromUrl(user.avatar);
+                await FileRepository.deleteAvatar(fileKey);
             } catch (error) {
                 console.error('Error deleting avatar:', error);
             }
 
-            user.avatar = null;
-            user.updatedAt = Date.now();
-            await user.save();
+            await UserRepository.deleteAvatar(userId);
         }
 
         return { success: true };
