@@ -145,7 +145,7 @@ export default function ExploreUniversityScreen() {
     const fetchMajors = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`${API}/api/university-majors/university/${selectedUniversity}`)
+        const response = await fetch(`${API}/api/universities/university-majors/university/${selectedUniversity}`)
         
         if (response.ok) {
           const jsonResponse = await response.json()

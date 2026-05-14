@@ -408,7 +408,7 @@ export default function CareerPredictionScreen() {
       }
       
       // Fetch UniversityMajor for this major
-      const response = await fetch(`${API}/api/university-majors?majorId=${majorId}&limit=100`, { 
+      const response = await fetch(`${API}/api/universities/university-majors?majorId=${majorId}&limit=100`, {
         headers 
       })
       
@@ -434,7 +434,7 @@ export default function CareerPredictionScreen() {
       }
       
       // Fetch detailed info
-      const response = await fetch(`${API}/api/university-majors/${universityMajorId}`, { 
+      const response = await fetch(`${API}/api/universities/university-majors/${universityMajorId}`, {
         headers 
       })
       

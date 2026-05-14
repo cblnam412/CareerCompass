@@ -47,6 +47,37 @@ services:
       retries: 5
       start_period: 20s
 
+  university-service:
+    build:
+      context: ./backend/university-service
+    container_name: doan1-university-service
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      PORT: 5001
+      NODE_ENV: development
+      MONGO_URL: mongodb://mongo:27017/university-service
+      JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+    volumes:
+      - ./backend/university-service:/app
+      - university-node-modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   api-gateway:
     build:
       context: ./backend/api-gateway
@@ -58,6 +89,7 @@ services:
       PORT: 3000
       NODE_ENV: development
       AUTH_SERVICE_URL: http://auth-service:5000
+      UNIVERSITY_SERVICE_URL: http://university-service:5001
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
     volumes:
@@ -65,6 +97,8 @@ services:
       - gateway-node-modules:/app/node_modules
     depends_on:
       auth-service:
+        condition: service_healthy
+      university-service:
         condition: service_healthy
     healthcheck:
       test:
@@ -100,4 +134,5 @@ volumes:
   mongo-data:
   auth-node-modules:
   gateway-node-modules:
+  university-node-modules:
   frontend-node-modules:

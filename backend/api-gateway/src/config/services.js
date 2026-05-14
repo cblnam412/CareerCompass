@@ -7,6 +7,14 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    university: {
+        name: 'University Service',
+        url: process.env.UNIVERSITY_SERVICE_URL || 'http://localhost:5001',
+        prefix: '/universities',
+        targetPrefix: '/api/universities',
+        timeout: 30000,
+        retries: 1
+    },
     // Thêm các services khác ở đây
     // university: {
     //     name: 'University Service',

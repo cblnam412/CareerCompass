@@ -61,7 +61,7 @@ const createProxyMiddleware = (service) => {
         // Transform request path
         proxyReqPathResolver: (req) => {
             const path = req.url.replace(service.prefix, '');
-            return path;
+            return service.targetPrefix ? `${service.targetPrefix}${path}` : path;
         },
 
         // Transform request
@@ -111,6 +111,11 @@ const createProxyMiddleware = (service) => {
 const authService = getService('/auth');
 if (authService) {
     router.use('/auth', createProxyMiddleware(authService));
+}
+
+const universityService = getService('/universities');
+if (universityService) {
+    router.use('/universities', createProxyMiddleware(universityService));
 }
 
 // Thêm các services khác tương tự:
