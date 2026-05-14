@@ -36,12 +36,12 @@ const userSchema = new mongoose.Schema({
         default: 'active'
     },
     universityId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'University',
+        type: String,
         required: function() {
             return this.role === 'uniManager' || this.role === 'uniRep';
         }
     },
+    banReleaseDate: Date,
     createdAt: {
         type: Date,
         default: Date.now

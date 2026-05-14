@@ -5,16 +5,19 @@ import {
   getAllUniversities,
   getProvinces,
   getUniversityById,
+  getUniversityByIdInternal,
   importUniversitiesFromExcel,
   updateUniversity,
 } from '../controllers/universityController.js';
 import { checkAdminOrUniManager, checkAdminRole, verifyToken } from '../middlewares/auth.js';
+import { verifyInternalRequest } from '../middlewares/internalAuth.js';
 import { uploadExcelFile } from '../middlewares/upload.js';
 import { validateObjectIdParam } from '../middlewares/validators.js';
 
 const router = express.Router();
 
 router.post('/import/excel', verifyToken, checkAdminRole, uploadExcelFile, importUniversitiesFromExcel);
+router.get('/internal/:id', verifyInternalRequest, validateObjectIdParam('id'), getUniversityByIdInternal);
 router.get('/provinces', getProvinces);
 
 router.post('/', verifyToken, checkAdminRole, createUniversity);

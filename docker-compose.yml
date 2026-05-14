@@ -26,6 +26,8 @@ services:
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/auth-service
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      UNIVERSITY_SERVICE_URL: http://university-service:5001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
       SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
       SUPABASE_KEY: ${SUPABASE_KEY:-doan1-dev-supabase-key}
     volumes:
@@ -59,6 +61,8 @@ services:
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/university-service
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:5000
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
     volumes:
       - ./backend/university-service:/app
       - university-node-modules:/app/node_modules

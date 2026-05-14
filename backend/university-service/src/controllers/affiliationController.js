@@ -11,6 +11,15 @@ export const getAffiliations = async (req, res, next) => {
   }
 };
 
+export const createAffiliationFromAuth = async (req, res, next) => {
+  try {
+    const data = await affiliationService.createFromAuth(req.body);
+    res.status(201).json({ success: true, message: 'Tao yeu cau dai dien truong thanh cong', data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getAffiliationById = async (req, res, next) => {
   try {
     const data = await affiliationService.getById(req.params.id, requester(req));

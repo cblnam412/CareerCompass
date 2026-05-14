@@ -2,9 +2,8 @@ import mongoose from 'mongoose';
 
 const universityAffiliationSchema = new mongoose.Schema(
   {
-    studentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+    authUserId: {
+      type: String,
       required: true,
     },
     studentIdNumber: {
@@ -38,12 +37,10 @@ const universityAffiliationSchema = new mongoose.Schema(
       default: Date.now,
     },
     reviewerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      type: String,
     },
     reviewedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      type: String,
     },
     reviewNote: {
       type: String,

@@ -2,10 +2,7 @@ import UniversityAffiliation from '../models/UniversityAffiliation.js';
 
 const populateList = (query) =>
   query
-    .populate('studentId', 'fullName email DOB studentId address avatar status')
-    .populate('universityId', 'name code')
-    .populate('reviewerId', 'fullName email')
-    .populate('reviewedBy', 'fullName email');
+    .populate('universityId', 'name code');
 
 class UniversityAffiliationRepository {
   findById(id, populated = false) {
@@ -24,6 +21,11 @@ class UniversityAffiliationRepository {
 
   count(filter = {}) {
     return UniversityAffiliation.countDocuments(filter);
+  }
+
+  async create(data) {
+    const affiliation = await UniversityAffiliation.create(data);
+    return populateList(UniversityAffiliation.findById(affiliation._id));
   }
 
   updateById(id, data) {

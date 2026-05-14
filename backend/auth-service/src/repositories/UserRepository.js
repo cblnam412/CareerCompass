@@ -23,6 +23,10 @@ class UserRepository {
         return await User.findById(userId);
     }
 
+    async findByIds(userIds) {
+        return await User.find({ _id: { $in: userIds } }).select('-password');
+    }
+
     /**
      * Tìm user theo ID và loại bỏ password
      */
@@ -34,8 +38,7 @@ class UserRepository {
      * Tìm user theo ID với populate universityId
      */
     async findByIdWithUniversity(userId) {
-        return await User.findById(userId)
-            .populate('universityId', 'name code region address phone website description');
+        return await User.findById(userId);
     }
 
     /**
@@ -152,9 +155,7 @@ class UserRepository {
      * Lấy user với populate university
      */
     async findByIdWithPopulatedUniversity(userId) {
-        return await User.findById(userId)
-            .populate('universityId', 'name code region address phone website description')
-            .select('-password');
+        return await User.findById(userId).select('-password');
     }
 }
 

@@ -1,21 +1,53 @@
 import UniversityAffiliationRepository from '../repositories/UniversityAffiliationRepository.js';
 import UniversityRepository from '../repositories/UniversityRepository.js';
-import UserRepository from '../repositories/UserRepository.js';
+import {
+  getUserById,
+  getUsersByIds,
+  updateUserStatus,
+} from '../clients/authServiceClient.js';
 import { getPagination } from '../utils/query.js';
 import { HttpError } from '../utils/httpError.js';
 
-const ensureManagerCanAccess = (currentUser, universityId, action = 'xử lý') => {
+const ensureManagerCanAccess = (currentUser, universityId, action = 'xu ly') => {
   if (currentUser.role === 'admin') return;
   if (!currentUser.universityId || currentUser.universityId.toString() !== universityId.toString()) {
-    throw new HttpError(403, `Bạn chỉ có quyền ${action} yêu cầu của trường mình quản lý`);
+    throw new HttpError(403, `Ban chi co quyen ${action} yeu cau cua truong minh quan ly`);
   }
 };
 
+const toPlainObject = (item) => (item?.toObject ? item.toObject() : item);
+
+const mapById = (items = []) =>
+  new Map(items.map((item) => [item._id?.toString?.() || item._id, item]));
+
 class AffiliationService {
   async getCurrentUser(userId) {
-    const currentUser = await UserRepository.findById(userId);
-    if (!currentUser) throw new HttpError(401, 'Người dùng không tồn tại');
+    const currentUser = await getUserById(userId);
+    if (!currentUser) throw new HttpError(401, 'Nguoi dung khong ton tai');
     return currentUser;
+  }
+
+  async attachAuthUsers(affiliations) {
+    const isList = Array.isArray(affiliations);
+    const items = isList ? affiliations : [affiliations];
+    const plainItems = items.map(toPlainObject);
+    const userIds = [
+      ...new Set(
+        plainItems
+          .flatMap((item) => [item.authUserId, item.reviewerId, item.reviewedBy])
+          .filter(Boolean),
+      ),
+    ];
+
+    const usersById = mapById(await getUsersByIds(userIds));
+    const enriched = plainItems.map((item) => ({
+      ...item,
+      studentId: usersById.get(item.authUserId) || null,
+      reviewerId: item.reviewerId ? usersById.get(item.reviewerId) || item.reviewerId : undefined,
+      reviewedBy: item.reviewedBy ? usersById.get(item.reviewedBy) || item.reviewedBy : undefined,
+    }));
+
+    return isList ? enriched : enriched[0];
   }
 
   async list(query, requester) {
@@ -29,7 +61,11 @@ class AffiliationService {
       UniversityAffiliationRepository.findMany(filter, { sort: { createdAt: -1 }, skip, limit }),
       UniversityAffiliationRepository.count(filter),
     ]);
-    return { data, pagination: { total, page, limit, pages: Math.ceil(total / limit) } };
+
+    return {
+      data: await this.attachAuthUsers(data),
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+    };
   }
 
   async stats(requester) {
@@ -49,7 +85,7 @@ class AffiliationService {
     ensureManagerCanAccess(currentUser, universityId, 'xem');
 
     const university = await UniversityRepository.findById(universityId);
-    if (!university) throw new HttpError(404, 'Không tìm thấy trường đại học');
+    if (!university) throw new HttpError(404, 'Khong tim thay truong dai hoc');
 
     const { page, limit, skip } = getPagination(query, 10);
     const filter = { universityId };
@@ -59,24 +95,63 @@ class AffiliationService {
       UniversityAffiliationRepository.findMany(filter, { sort: { createdAt: -1 }, skip, limit }),
       UniversityAffiliationRepository.count(filter),
     ]);
-    return { data, pagination: { total, page, limit, pages: Math.ceil(total / limit) } };
+
+    return {
+      data: await this.attachAuthUsers(data),
+      pagination: { total, page, limit, pages: Math.ceil(total / limit) },
+    };
   }
 
   async getById(id, requester) {
     const currentUser = await this.getCurrentUser(requester.userId);
     const affiliation = await UniversityAffiliationRepository.findById(id, true);
-    if (!affiliation) throw new HttpError(404, 'Yêu cầu không tồn tại');
+    if (!affiliation) throw new HttpError(404, 'Yeu cau khong ton tai');
     ensureManagerCanAccess(currentUser, affiliation.universityId._id || affiliation.universityId, 'xem');
-    return affiliation;
+    return this.attachAuthUsers(affiliation);
+  }
+
+  async createFromAuth(payload) {
+    const {
+      authUserId,
+      studentIdNumber,
+      universityId,
+      studentCardFront,
+      studentCardBack,
+      personalNote = '',
+    } = payload;
+
+    if (!authUserId || !universityId) {
+      throw new HttpError(400, 'authUserId va universityId la bat buoc');
+    }
+
+    const university = await UniversityRepository.findById(universityId);
+    if (!university) throw new HttpError(404, 'Khong tim thay truong dai hoc');
+
+    const affiliation = await UniversityAffiliationRepository.create({
+      authUserId,
+      studentIdNumber,
+      universityId,
+      studentCardFront,
+      studentCardBack,
+      personalNote,
+      status: 'pending',
+      appliedAt: new Date(),
+    });
+
+    return this.attachAuthUsers(affiliation);
   }
 
   async review(id, requester, status, reviewNote = '') {
     const currentUser = await this.getCurrentUser(requester.userId);
     const affiliation = await UniversityAffiliationRepository.findById(id);
-    if (!affiliation) throw new HttpError(404, 'Yêu cầu không tồn tại');
-    ensureManagerCanAccess(currentUser, affiliation.universityId, status === 'approved' ? 'duyệt' : 'từ chối');
-    if (affiliation.status !== 'pending') throw new HttpError(400, `Không thể xử lý yêu cầu đang ở trạng thái '${affiliation.status}'`);
-    if (status === 'rejected' && !reviewNote?.trim()) throw new HttpError(400, 'Vui lòng cung cấp lý do từ chối');
+    if (!affiliation) throw new HttpError(404, 'Yeu cau khong ton tai');
+    ensureManagerCanAccess(currentUser, affiliation.universityId, status === 'approved' ? 'duyet' : 'tu choi');
+    if (affiliation.status !== 'pending') {
+      throw new HttpError(400, `Khong the xu ly yeu cau dang o trang thai '${affiliation.status}'`);
+    }
+    if (status === 'rejected' && !reviewNote?.trim()) {
+      throw new HttpError(400, 'Vui long cung cap ly do tu choi');
+    }
 
     const updated = await UniversityAffiliationRepository.updateById(id, {
       status,
@@ -87,11 +162,11 @@ class AffiliationService {
       reviewedAt: new Date(),
     });
 
-    await UserRepository.updateById(affiliation.studentId, status === 'approved'
+    await updateUserStatus(affiliation.authUserId, status === 'approved'
       ? { status: 'active' }
       : { status: 'banned', banReleaseDate: null });
 
-    return updated;
+    return this.attachAuthUsers(updated);
   }
 }
 

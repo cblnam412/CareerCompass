@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   approveAffiliation,
+  createAffiliationFromAuth,
   getAffiliationById,
   getAffiliationStats,
   getAffiliations,
@@ -8,9 +9,12 @@ import {
   rejectAffiliation,
 } from '../controllers/affiliationController.js';
 import { checkUniManagerRole, verifyToken } from '../middlewares/auth.js';
+import { verifyInternalRequest } from '../middlewares/internalAuth.js';
 import { validateObjectIdParam } from '../middlewares/validators.js';
 
 const router = express.Router();
+
+router.post('/internal', verifyInternalRequest, createAffiliationFromAuth);
 
 router.get('/', verifyToken, checkUniManagerRole, getAffiliations);
 router.get('/stats', verifyToken, checkUniManagerRole, getAffiliationStats);

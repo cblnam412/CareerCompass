@@ -1,8 +1,13 @@
 import express from 'express';
 import authController from '../controllers/authController.js';
 import { authenticateToken, authorizeRole } from '../middlewares/auth.js';
+import { verifyInternalRequest } from '../middlewares/internalAuth.js';
 
 const router = express.Router();
+
+router.get('/internal/users/:userId', verifyInternalRequest, authController.getInternalUser);
+router.post('/internal/users/batch', verifyInternalRequest, authController.getInternalUsersBatch);
+router.patch('/internal/users/:userId/status', verifyInternalRequest, authController.updateInternalUserStatus);
 
 // Public routes
 router.post('/login', authController.login);

@@ -37,6 +37,15 @@ export const getUniversityById = async (req, res, next) => {
   }
 };
 
+export const getUniversityByIdInternal = async (req, res, next) => {
+  try {
+    const data = await universityService.getById(req.params.id);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateUniversity = async (req, res, next) => {
   try {
     const data = await universityService.update(req.params.id, req.body);
