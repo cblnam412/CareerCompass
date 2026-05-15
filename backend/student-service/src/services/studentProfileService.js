@@ -120,6 +120,22 @@ class StudentProfileService {
     if (!profile) throw new HttpError(404, 'Khong tim thay ho so hoc sinh');
     return this.attachProfileLookups(profile);
   }
+
+  async updateAssessmentResults(userId, payload = {}) {
+    await this.ensureProfile(userId);
+
+    const updateData = {};
+    if (payload.mbtiResult !== undefined) updateData.mbtiResult = payload.mbtiResult;
+    if (payload.hollandResult !== undefined) updateData.hollandResult = payload.hollandResult;
+
+    if (Object.keys(updateData).length === 0) {
+      throw new HttpError(400, 'Can co mbtiResult hoac hollandResult de cap nhat');
+    }
+
+    const profile = await StudentProfileRepository.updateByUserId(userId, updateData);
+    if (!profile) throw new HttpError(404, 'Khong tim thay ho so hoc sinh');
+    return profile;
+  }
 }
 
 export default new StudentProfileService();

@@ -118,6 +118,21 @@ if (universityService) {
     router.use('/universities', createProxyMiddleware(universityService));
 }
 
+const assessmentServicePrefixes = [
+    '/personality-quizzes',
+    '/attempts',
+    '/my-attempts',
+    '/admin/personality-quizzes',
+    '/soft-skills'
+];
+
+assessmentServicePrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
 const mockExamPrefixes = [
     '/mock-exams',
     '/student/mock-exams',

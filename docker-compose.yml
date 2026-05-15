@@ -239,6 +239,43 @@ services:
       retries: 5
       start_period: 20s
 
+  assessment-service:
+    build:
+      context: ./backend/assessment-service
+    container_name: doan1-assessment-service
+    restart: unless-stopped
+    ports:
+      - "5006:5006"
+    environment:
+      PORT: 5006
+      NODE_ENV: development
+      MONGO_URL: mongodb://mongo:27017/assessment-service
+      JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      STUDENT_SERVICE_URL: http://student-service:5003
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
+    volumes:
+      - ./backend/assessment-service:/app
+      - assessment-node-modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      student-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5006/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   api-gateway:
     build:
       context: ./backend/api-gateway
@@ -255,6 +292,7 @@ services:
       STUDENT_SERVICE_URL: http://student-service:5003
       CONTENT_SERVICE_URL: http://content-service:5004
       MESSAGING_SERVICE_URL: http://messaging-service:5005
+      ASSESSMENT_SERVICE_URL: http://assessment-service:5006
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
     volumes:
@@ -272,6 +310,8 @@ services:
       content-service:
         condition: service_healthy
       messaging-service:
+        condition: service_healthy
+      assessment-service:
         condition: service_healthy
     healthcheck:
       test:
@@ -312,4 +352,5 @@ volumes:
   student-node-modules:
   content-node-modules:
   messaging-node-modules:
+  assessment-node-modules:
   frontend-node-modules:

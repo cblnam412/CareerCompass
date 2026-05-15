@@ -127,6 +127,46 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    personalityQuizzes: {
+        name: 'Assessment Service',
+        url: process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:5006',
+        prefix: '/personality-quizzes',
+        targetPrefix: '/api/personality-quizzes',
+        timeout: 30000,
+        retries: 1
+    },
+    attempts: {
+        name: 'Assessment Service',
+        url: process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:5006',
+        prefix: '/attempts',
+        targetPrefix: '/api/attempts',
+        timeout: 30000,
+        retries: 1
+    },
+    myAttempts: {
+        name: 'Assessment Service',
+        url: process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:5006',
+        prefix: '/my-attempts',
+        targetPrefix: '/api/my-attempts',
+        timeout: 30000,
+        retries: 1
+    },
+    adminPersonalityQuizzes: {
+        name: 'Assessment Service',
+        url: process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:5006',
+        prefix: '/admin/personality-quizzes',
+        targetPrefix: '/api/admin/personality-quizzes',
+        timeout: 30000,
+        retries: 1
+    },
+    softSkills: {
+        name: 'Assessment Service',
+        url: process.env.ASSESSMENT_SERVICE_URL || 'http://localhost:5006',
+        prefix: '/soft-skills',
+        targetPrefix: '/api/soft-skills',
+        timeout: 30000,
+        retries: 1
+    },
     // Thêm các services khác ở đây
     // university: {
     //     name: 'University Service',
