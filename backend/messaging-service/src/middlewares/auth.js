@@ -1,0 +1,35 @@
+import jwt from 'jsonwebtoken';
+import { env } from '../config/env.js';
+
+const readToken = (req) => {
+  const authHeader = req.headers.authorization;
+  return authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+};
+
+const assignUser = (req, decoded) => {
+  req.userId = decoded.userId;
+  req.email = decoded.email;
+  req.role = decoded.role;
+  req.userRole = decoded.role;
+};
+
+export const verifyToken = (req, res, next) => {
+  const token = readToken(req);
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Khong tim thay token xac thuc',
+    });
+  }
+
+  try {
+    assignUser(req, jwt.verify(token, env.jwtSecret));
+    next();
+  } catch {
+    res.status(403).json({
+      success: false,
+      message: 'Token khong hop le hoac da het han',
+    });
+  }
+};

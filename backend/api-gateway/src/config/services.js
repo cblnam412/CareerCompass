@@ -119,6 +119,14 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    messages: {
+        name: 'Messaging Service',
+        url: process.env.MESSAGING_SERVICE_URL || 'http://localhost:5005',
+        prefix: '/messages',
+        targetPrefix: '/api/messages',
+        timeout: 30000,
+        retries: 1
+    },
     // Thêm các services khác ở đây
     // university: {
     //     name: 'University Service',

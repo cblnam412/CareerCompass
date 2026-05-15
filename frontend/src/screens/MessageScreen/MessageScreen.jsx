@@ -408,20 +408,22 @@ export default function MessageScreen() {
             // Append the file message to UI
             setMessages((prev) => [...prev, data.data]);
             
-            // If there is also text, send it as a SEPARATE message via Socket
+            // If there is also text, send it as a SEPARATE message through the API
             if (newMessage.trim()) {
-                const otherUser = getOtherUser(selectedConversation);
-                const receiverId = otherUser?._id;
-
-                if (socket && userID && receiverId) {
-                    const messageData = {
+                const textResponse = await fetch(`${API}/api/messages/send-with-document`, {
+                    method: 'POST',
+                    headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
                         conversationId: selectedConversation._id,
-                        senderId: userID,
-                        receiverId: receiverId,
-                        content: newMessage, // The text content
-                        messageType: 'text'
-                    };
-                    socket.emit("send_message", messageData);
+                        content: newMessage
+                    })
+                });
+                const textData = await textResponse.json();
+                if (textData.success) {
+                    setMessages((prev) => [...prev, textData.data]);
                 }
             }
 
@@ -444,31 +446,32 @@ export default function MessageScreen() {
     }
 
     // Scenario 2: Text Only
-    if (!socket) {
-        console.error("Socket not connected");
-        return;
+    try {
+      const response = await fetch(`${API}/api/messages/send-with-document`, {
+        method: 'POST',
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          conversationId: selectedConversation._id,
+          content: newMessage
+        })
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setMessages((prev) => [...prev, data.data]);
+        setNewMessage("");
+        setShowEmojiPicker(false);
+        setTimeout(scrollToBottom, 100);
+      } else {
+        toast.error(data.message || "Gui tin nhan that bai");
+      }
+    } catch (error) {
+      toast.error("Co loi xay ra khi gui tin nhan");
+      console.error(error);
     }
-
-    const otherUser = getOtherUser(selectedConversation);
-    const receiverId = otherUser?._id;
-
-    if (!userID || !receiverId) {
-        console.error("Cannot send message: Missing UserID or ReceiverID");
-        return;
-    }
-
-    const messageData = {
-        conversationId: selectedConversation._id,
-        senderId: userID,
-        receiverId: receiverId,
-        content: newMessage,
-        messageType: 'text'
-    };
-
-    socket.emit("send_message", messageData);
-    
-    setNewMessage("");
-    setShowEmojiPicker(false);
   }
 
   // Handle File Selection

@@ -161,6 +161,17 @@ contentServicePrefixes.forEach((prefix) => {
     }
 });
 
+const messagingServicePrefixes = [
+    '/messages'
+];
+
+messagingServicePrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
 // Thêm các services khác tương tự:
 // const universityService = getService('/university');
 // if (universityService) {
