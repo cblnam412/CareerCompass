@@ -5,6 +5,7 @@ import {
   getAllExamResults,
   getAllMockExams,
   getExamResult,
+  getInternalStudentExamResults,
   getMockExamById,
   getMockExamForStudent,
   getStudentExamResults,
@@ -14,10 +15,13 @@ import {
   updateMockExam,
 } from '../controllers/mockExamController.js';
 import { checkAdminRole, verifyToken } from '../middlewares/auth.js';
+import { verifyInternalRequest } from '../middlewares/internalAuth.js';
 import { uploadExcelFile } from '../middlewares/upload.js';
 import { validateMockExamPayload, validateObjectIdParam, validatePaginationQuery } from '../middlewares/validators.js';
 
 const router = express.Router();
+
+router.get('/internal/students/:studentId/exam-results', verifyInternalRequest, validateObjectIdParam('studentId'), getInternalStudentExamResults);
 
 router.get('/mock-exams', validatePaginationQuery, getAllMockExams);
 router.get('/mock-exams/:examId', validateObjectIdParam('examId'), getMockExamById);

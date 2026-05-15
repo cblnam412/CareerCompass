@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { updateStudentScoreAfterExam } from '../clients/studentServiceClient.js';
 import { ExamResultRepository, MockExamRepository, SubjectRepository } from '../repositories/index.js';
 import { parseExcelQuestions, validateQuestionsStructure } from '../utils/excelParser.js';
 import { HttpError } from '../utils/httpError.js';
@@ -211,6 +212,12 @@ class MockExamService {
       strengths: strengths.length > 0 ? strengths : ['Tat ca'],
       improvementTips,
     });
+
+    try {
+      await updateStudentScoreAfterExam(studentId, exam.subject._id || exam.subject, scoreTotal);
+    } catch (error) {
+      console.warn('Could not update student score after exam:', error.message);
+    }
 
     return {
       result,

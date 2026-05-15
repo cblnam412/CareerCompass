@@ -108,6 +108,15 @@ export const getAllExamResults = async (req, res, next) => {
   }
 };
 
+export const getInternalStudentExamResults = async (req, res, next) => {
+  try {
+    const data = await examResultService.getInternalStudentResults(req.params.studentId);
+    res.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getStudentExamStats = async (req, res, next) => {
   try {
     const data = await examResultService.getStudentStats(req.userId);

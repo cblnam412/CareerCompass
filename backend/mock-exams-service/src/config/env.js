@@ -8,6 +8,7 @@ export const env = {
   mongoUrl: process.env.MONGO_URL || 'mongodb://localhost:27017/mock-exams-service',
   jwtSecret: process.env.JWT_SECRET || 'doan1-dev-jwt-secret-change-me',
   authServiceUrl: process.env.AUTH_SERVICE_URL || 'http://localhost:5000',
+  studentServiceUrl: process.env.STUDENT_SERVICE_URL || 'http://localhost:5003',
   internalServiceToken: process.env.INTERNAL_SERVICE_TOKEN || 'doan1-dev-internal-token',
 };
 

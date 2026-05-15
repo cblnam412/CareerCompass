@@ -78,6 +78,11 @@ class ExamResultService {
     };
   }
 
+  async getInternalStudentResults(studentId) {
+    if (!mongoose.Types.ObjectId.isValid(studentId)) throw new HttpError(400, 'Hoc sinh khong hop le');
+    return ExamResultRepository.findMany({ studentId }, null, { sort: '-takenAt' });
+  }
+
   async getStudentStats(studentId) {
     const results = await ExamResultRepository.findMany({ studentId }, null, { sort: '-takenAt' });
 
