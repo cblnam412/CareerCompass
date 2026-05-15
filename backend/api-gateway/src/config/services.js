@@ -15,6 +15,110 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    mockExams: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/mock-exams',
+        targetPrefix: '/api/mock-exams',
+        timeout: 30000,
+        retries: 1
+    },
+    studentMockExams: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/student/mock-exams',
+        targetPrefix: '/api/student/mock-exams',
+        timeout: 30000,
+        retries: 1
+    },
+    studentExamResults: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/student/exam-results',
+        targetPrefix: '/api/student/exam-results',
+        timeout: 30000,
+        retries: 1
+    },
+    studentExamStats: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/student/exam-stats',
+        targetPrefix: '/api/student/exam-stats',
+        timeout: 30000,
+        retries: 1
+    },
+    adminMockExams: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/admin',
+        targetPrefix: '/api/admin',
+        timeout: 30000,
+        retries: 1
+    },
+    subjects: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/subjects',
+        targetPrefix: '/api/subjects',
+        timeout: 30000,
+        retries: 1
+    },
+    subjectCombinations: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/subject-combinations',
+        targetPrefix: '/api/subject-combinations',
+        timeout: 30000,
+        retries: 1
+    },
+    examResults: {
+        name: 'Mock Exams Service',
+        url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
+        prefix: '/exam-results',
+        targetPrefix: '/api/exam-results',
+        timeout: 30000,
+        retries: 1
+    },
+    studentProfile: {
+        name: 'Student Service',
+        url: process.env.STUDENT_SERVICE_URL || 'http://localhost:5003',
+        prefix: '/student-profile',
+        targetPrefix: '/api/student-profile',
+        timeout: 30000,
+        retries: 1
+    },
+    studentScores: {
+        name: 'Student Service',
+        url: process.env.STUDENT_SERVICE_URL || 'http://localhost:5003',
+        prefix: '/student',
+        targetPrefix: '/api/student',
+        timeout: 30000,
+        retries: 1
+    },
+    forum: {
+        name: 'Content Service',
+        url: process.env.CONTENT_SERVICE_URL || 'http://localhost:5004',
+        prefix: '/forum',
+        targetPrefix: '/api/forum',
+        timeout: 30000,
+        retries: 1
+    },
+    violations: {
+        name: 'Content Service',
+        url: process.env.CONTENT_SERVICE_URL || 'http://localhost:5004',
+        prefix: '/violations',
+        targetPrefix: '/api/violations',
+        timeout: 30000,
+        retries: 1
+    },
+    reports: {
+        name: 'Content Service',
+        url: process.env.CONTENT_SERVICE_URL || 'http://localhost:5004',
+        prefix: '/reports',
+        targetPrefix: '/api/violations',
+        timeout: 30000,
+        retries: 1
+    },
     // Thêm các services khác ở đây
     // university: {
     //     name: 'University Service',

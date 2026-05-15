@@ -118,6 +118,49 @@ if (universityService) {
     router.use('/universities', createProxyMiddleware(universityService));
 }
 
+const mockExamPrefixes = [
+    '/mock-exams',
+    '/student/mock-exams',
+    '/student/exam-results',
+    '/student/exam-stats',
+    '/admin',
+    '/subjects',
+    '/subject-combinations',
+    '/exam-results'
+];
+
+mockExamPrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
+const studentServicePrefixes = [
+    '/student-profile',
+    '/student'
+];
+
+studentServicePrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
+const contentServicePrefixes = [
+    '/forum',
+    '/violations',
+    '/reports'
+];
+
+contentServicePrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
 // Thêm các services khác tương tự:
 // const universityService = getService('/university');
 // if (universityService) {

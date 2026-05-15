@@ -82,6 +82,123 @@ services:
       retries: 5
       start_period: 20s
 
+  mock-exams-service:
+    build:
+      context: ./backend/mock-exams-service
+    container_name: doan1-mock-exams-service
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      PORT: 5002
+      NODE_ENV: development
+      MONGO_URL: mongodb://mongo:27017/mock-exams-service
+      JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:5000
+      STUDENT_SERVICE_URL: http://student-service:5003
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
+    volumes:
+      - ./backend/mock-exams-service:/app
+      - mock-exams-node-modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  student-service:
+    build:
+      context: ./backend/student-service
+    container_name: doan1-student-service
+    restart: unless-stopped
+    ports:
+      - "5003:5003"
+    environment:
+      PORT: 5003
+      NODE_ENV: development
+      MONGO_URL: mongodb://mongo:27017/student-service
+      JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:5000
+      MOCK_EXAMS_SERVICE_URL: http://mock-exams-service:5002
+      UNIVERSITY_SERVICE_URL: http://university-service:5001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
+    volumes:
+      - ./backend/student-service:/app
+      - student-node-modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      university-service:
+        condition: service_healthy
+      mock-exams-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5003/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  content-service:
+    build:
+      context: ./backend/content-service
+    container_name: doan1-content-service
+    restart: unless-stopped
+    ports:
+      - "5004:5004"
+    environment:
+      PORT: 5004
+      NODE_ENV: development
+      MONGO_URL: mongodb://mongo:27017/content-service
+      JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      AUTH_SERVICE_URL: http://auth-service:5000
+      UNIVERSITY_SERVICE_URL: http://university-service:5001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
+      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
+      SUPABASE_KEY: ${SUPABASE_KEY:-doan1-dev-supabase-key}
+    volumes:
+      - ./backend/content-service:/app
+      - content-node-modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      university-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5004/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   api-gateway:
     build:
       context: ./backend/api-gateway
@@ -94,6 +211,9 @@ services:
       NODE_ENV: development
       AUTH_SERVICE_URL: http://auth-service:5000
       UNIVERSITY_SERVICE_URL: http://university-service:5001
+      MOCK_EXAMS_SERVICE_URL: http://mock-exams-service:5002
+      STUDENT_SERVICE_URL: http://student-service:5003
+      CONTENT_SERVICE_URL: http://content-service:5004
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
     volumes:
@@ -103,6 +223,12 @@ services:
       auth-service:
         condition: service_healthy
       university-service:
+        condition: service_healthy
+      mock-exams-service:
+        condition: service_healthy
+      student-service:
+        condition: service_healthy
+      content-service:
         condition: service_healthy
     healthcheck:
       test:
@@ -139,4 +265,7 @@ volumes:
   auth-node-modules:
   gateway-node-modules:
   university-node-modules:
+  mock-exams-node-modules:
+  student-node-modules:
+  content-node-modules:
   frontend-node-modules:
