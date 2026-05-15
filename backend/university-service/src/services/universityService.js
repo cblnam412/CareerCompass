@@ -89,6 +89,10 @@ class UniversityService {
     return university;
   }
 
+  async count(filter = {}) {
+    return UniversityRepository.count(filter);
+  }
+
   async update(id, payload) {
     const university = await UniversityRepository.findById(id);
     if (!university) throw new HttpError(404, 'Không tìm thấy trường đại học');

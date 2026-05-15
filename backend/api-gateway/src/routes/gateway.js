@@ -104,6 +104,60 @@ const createProxyMiddleware = (service) => {
     });
 };
 
+const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || 'doan1-dev-internal-token';
+
+const requestJson = async (url, options = {}) => {
+    const response = await fetch(url, options);
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok || body.success === false) {
+        throw new APIError(body.message || `Request failed: ${url}`, response.status || 500);
+    }
+
+    return body.data ?? body;
+};
+
+const verifyAdminRequest = async (req) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) throw new APIError('Token khong duoc tim thay', 401);
+
+    const authService = getService('/auth');
+    const verification = await requestJson(`${authService.url}/verify`, {
+        headers: { Authorization: authHeader }
+    });
+
+    if (verification.role !== 'admin') {
+        throw new APIError('Ban khong co quyen truy cap', 403);
+    }
+};
+
+router.get('/admin/stats', asyncHandler(async (req, res) => {
+    await verifyAdminRequest(req);
+
+    const authService = getService('/auth');
+    const universityService = getService('/universities');
+    const mockExamsService = getService('/mock-exams');
+    const internalHeaders = { 'x-internal-token': INTERNAL_SERVICE_TOKEN };
+
+    const [authStats, universityStats, mockStats] = await Promise.all([
+        requestJson(`${authService.url}/internal/stats`, { headers: internalHeaders }),
+        requestJson(`${universityService.url}/api/universities/internal/stats`, { headers: internalHeaders }),
+        requestJson(`${mockExamsService.url}/api/internal/stats`, { headers: internalHeaders })
+    ]);
+
+    const stats = {
+        ...(mockStats.stats || {}),
+        ...authStats,
+        ...universityStats
+    };
+
+    res.status(200).json({
+        success: true,
+        stats,
+        testResultsData: mockStats.testResultsData || []
+    });
+}));
+
 /**
  * Auth Service Routes
  * /api/auth/*
@@ -116,6 +170,11 @@ if (authService) {
 const universityService = getService('/universities');
 if (universityService) {
     router.use('/universities', createProxyMiddleware(universityService));
+}
+
+const adminUserService = getService('/admin/users');
+if (adminUserService) {
+    router.use('/admin/users', createProxyMiddleware(adminUserService));
 }
 
 const assessmentServicePrefixes = [

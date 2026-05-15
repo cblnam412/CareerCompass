@@ -293,6 +293,7 @@ services:
       CONTENT_SERVICE_URL: http://content-service:5004
       MESSAGING_SERVICE_URL: http://messaging-service:5005
       ASSESSMENT_SERVICE_URL: http://assessment-service:5006
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
     volumes:

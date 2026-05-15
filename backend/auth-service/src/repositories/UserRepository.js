@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import bcrypt from 'bcrypt';
+import { escapeRegex } from '../utils/query.js';
 
 class UserRepository {
     /**
@@ -127,6 +128,48 @@ class UserRepository {
      */
     async findByStatus(status) {
         return await User.find({ status }).select('-password');
+    }
+
+    async listUsers({ filter = {}, sort = '-createdAt', skip = 0, limit = 20 } = {}) {
+        return await User.find(filter)
+            .select('-password')
+            .sort(sort)
+            .skip(skip)
+            .limit(limit);
+    }
+
+    async count(filter = {}) {
+        return await User.countDocuments(filter);
+    }
+
+    buildSearchFilter(search) {
+        if (!search) return {};
+        const regex = { $regex: escapeRegex(search), $options: 'i' };
+        return {
+            $or: [
+                { fullName: regex },
+                { email: regex },
+                { phone: regex },
+                { studentId: regex }
+            ]
+        };
+    }
+
+    async findManagerByUniversity(universityId, excludeId = null) {
+        const query = {
+            role: 'uniManager',
+            universityId
+        };
+        if (excludeId) query._id = { $ne: excludeId };
+        return await User.findOne(query).select('-password');
+    }
+
+    async countNonAdmin() {
+        return await User.countDocuments({ role: { $ne: 'admin' } });
+    }
+
+    async countUniversityRepresentatives() {
+        return await User.countDocuments({ role: { $in: ['uniRep', 'uniManager'] } });
     }
 
     /**

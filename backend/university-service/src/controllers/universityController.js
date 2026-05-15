@@ -46,6 +46,15 @@ export const getUniversityByIdInternal = async (req, res, next) => {
   }
 };
 
+export const getInternalStats = async (req, res, next) => {
+  try {
+    const totalUniversities = await universityService.count();
+    res.status(200).json({ success: true, data: { totalUniversities } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateUniversity = async (req, res, next) => {
   try {
     const data = await universityService.update(req.params.id, req.body);

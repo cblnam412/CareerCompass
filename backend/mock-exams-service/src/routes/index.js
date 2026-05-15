@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.use('/subjects', subjectRoutes);
 router.use('/subject-combinations', subjectCombinationRoutes);
+router.use('/', statsRoutes);
 router.use('/admin', statsRoutes);
 router.use('/', mockExamRoutes);
 

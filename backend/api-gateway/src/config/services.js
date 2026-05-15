@@ -55,6 +55,14 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    adminUsers: {
+        name: 'Auth Service',
+        url: process.env.AUTH_SERVICE_URL || 'http://localhost:5000',
+        prefix: '/admin/users',
+        targetPrefix: '/admin/users',
+        timeout: 30000,
+        retries: 1
+    },
     subjects: {
         name: 'Mock Exams Service',
         url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',

@@ -3,6 +3,7 @@ import {
   createUniversity,
   deleteUniversity,
   getAllUniversities,
+  getInternalStats,
   getProvinces,
   getUniversityById,
   getUniversityByIdInternal,
@@ -17,6 +18,7 @@ import { validateObjectIdParam } from '../middlewares/validators.js';
 const router = express.Router();
 
 router.post('/import/excel', verifyToken, checkAdminRole, uploadExcelFile, importUniversitiesFromExcel);
+router.get('/internal/stats', verifyInternalRequest, getInternalStats);
 router.get('/internal/:id', verifyInternalRequest, validateObjectIdParam('id'), getUniversityByIdInternal);
 router.get('/provinces', getProvinces);
 
