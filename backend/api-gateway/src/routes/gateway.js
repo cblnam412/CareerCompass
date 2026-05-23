@@ -2,8 +2,16 @@ import express from 'express';
 import proxy from 'express-http-proxy';
 import { getService, getAllServices } from '../config/services.js';
 import { APIError, asyncHandler } from '../middlewares/errorHandler.js';
+import { createRedisCacheReadMiddleware, cacheProxyResponse } from '../middlewares/responseCache.js';
+import { alertAbnormalError, generateRequestId, getMonitoringSnapshot, getRecentLogs } from '../utils/monitoring.js';
 
 const router = express.Router();
+const RESPONSE_CACHE_ENABLED = process.env.RESPONSE_CACHE_ENABLED !== 'false';
+const RESPONSE_CACHE_TTL_SECONDS = Number(process.env.RESPONSE_CACHE_TTL_SECONDS || 60);
+const cacheReadMiddleware = createRedisCacheReadMiddleware({
+    enabled: RESPONSE_CACHE_ENABLED,
+    ttlSeconds: RESPONSE_CACHE_TTL_SECONDS,
+});
 
 /**
  * Gateway routes - Điều hướng requests tới các services
@@ -57,7 +65,7 @@ router.get('/gateway/services', asyncHandler((req, res) => {
  * Tạo proxy middleware cho từng service
  */
 const createProxyMiddleware = (service) => {
-    return proxy(service.url, {
+    const proxyMiddleware = proxy(service.url, {
         // Transform request path
         proxyReqPathResolver: (req) => {
             const path = req.url.replace(service.prefix, '');
@@ -72,7 +80,7 @@ const createProxyMiddleware = (service) => {
                 'x-forwarded-by': 'api-gateway',
                 'x-original-url': srcReq.originalUrl,
                 'x-original-method': srcReq.method,
-                'x-request-id': generateRequestId(),
+                'x-request-id': srcReq.requestId || generateRequestId(),
                 'x-forwarded-proto': srcReq.protocol,
                 'x-forwarded-host': srcReq.get('host'),
                 'x-real-ip': srcReq.ip
@@ -84,10 +92,42 @@ const createProxyMiddleware = (service) => {
             return proxyReqOpts;
         },
 
+        userResDecorator: async (proxyRes, proxyResData, userReq) => {
+            if (proxyRes.statusCode >= 500) {
+                alertAbnormalError({
+                    service: service.name,
+                    status: proxyRes.statusCode,
+                    method: userReq.method,
+                    path: userReq.originalUrl,
+                    requestId: userReq.requestId,
+                    ip: userReq.ip,
+                    message: `Service returned ${proxyRes.statusCode}`,
+                });
+            }
+
+            await cacheProxyResponse(proxyRes, proxyResData, userReq, {
+                enabled: RESPONSE_CACHE_ENABLED,
+                ttlSeconds: RESPONSE_CACHE_TTL_SECONDS,
+            });
+
+            return proxyResData;
+        },
+
         // Handle error
         onError: (err, req, res) => {
             console.error(`❌ Error from ${service.name}:`, err.message);
             
+            alertAbnormalError({
+                service: service.name,
+                status: 503,
+                method: req.method,
+                path: req.originalUrl,
+                requestId: req.requestId,
+                ip: req.ip,
+                message: err.message,
+                stack: err.stack,
+            });
+
             res.status(503).json({
                 success: false,
                 message: `Service "${service.name}" không khả dụng`,
@@ -102,6 +142,8 @@ const createProxyMiddleware = (service) => {
         // Limit response size
         limit: '100mb'
     });
+
+    return [cacheReadMiddleware, proxyMiddleware];
 };
 
 const INTERNAL_SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || 'doan1-dev-internal-token';
@@ -126,11 +168,23 @@ const forwardJsonRequest = (service, targetPath) => asyncHandler(async (req, res
             'x-forwarded-by': 'api-gateway',
             'x-original-url': req.originalUrl,
             'x-original-method': req.method,
-            'x-request-id': generateRequestId(),
+            'x-request-id': req.requestId || generateRequestId(),
         },
         body: JSON.stringify(req.body || {}),
     });
     const responseBody = await response.text();
+
+    if (response.status >= 500) {
+        alertAbnormalError({
+            service: service.name,
+            status: response.status,
+            method: req.method,
+            path: req.originalUrl,
+            requestId: req.requestId,
+            ip: req.ip,
+            message: `Service returned ${response.status}`,
+        });
+    }
 
     res
         .status(response.status)
@@ -151,6 +205,22 @@ const verifyAdminRequest = async (req) => {
         throw new APIError('Ban khong co quyen truy cap', 403);
     }
 };
+
+router.get('/gateway/monitoring/status', asyncHandler(async (req, res) => {
+    await verifyAdminRequest(req);
+    res.status(200).json(getMonitoringSnapshot());
+}));
+
+router.get('/gateway/monitoring/logs', asyncHandler(async (req, res) => {
+    await verifyAdminRequest(req);
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+    res.status(200).json({
+        success: true,
+        logs: getRecentLogs(limit),
+        timestamp: new Date().toISOString()
+    });
+}));
 
 router.get('/admin/stats', asyncHandler(async (req, res) => {
     await verifyAdminRequest(req);
@@ -312,13 +382,5 @@ router.use('{/*path}', (req, res) => {
         requestedPath: path
     });
 });
-
-// ==================== Utilities ====================
-/**
- * Generate unique request ID
- */
-function generateRequestId() {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
 
 export default router;

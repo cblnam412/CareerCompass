@@ -1,3 +1,5 @@
+import { alertAbnormalError } from '../utils/monitoring.js';
+
 /**
  * Error Handler Middleware
  * Xử lý tất cả các lỗi trong ứng dụng
@@ -14,6 +16,19 @@ export const errorHandler = (err, req, res, next) => {
     // Default error response
     const status = err.status || err.statusCode || 500;
     const message = err.message || 'Internal Server Error';
+
+    if (status >= 500) {
+        alertAbnormalError({
+            service: 'API Gateway',
+            status,
+            method: req.method,
+            path: req.originalUrl || req.path,
+            requestId: req.requestId,
+            ip: req.ip,
+            message,
+            stack: err.stack,
+        });
+    }
 
     res.status(status).json({
         success: false,

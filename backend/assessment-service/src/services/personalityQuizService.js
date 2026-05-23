@@ -1,22 +1,22 @@
 import { updateAssessmentResults } from '../clients/studentServiceClient.js';
+import { normalizeTestType } from '../constants/testType.js';
 import { PersonalityQuizRepository, QuizAttemptRepository, QuizQuestionRepository } from '../repositories/index.js';
 import { HttpError } from '../utils/httpError.js';
 import { getPagination, getSort } from '../utils/query.js';
 import {
-  calculateHollandResult,
-  calculateMBTIResult,
   generateOptions,
   getQuizStats,
   QUIZ_TYPES,
   validateAnswers,
   validatePersonalityQuizData,
 } from '../utils/quizUtils.js';
+import testResultService from './TestResultService.js';
 
 const quizQuestionService = await import('./quizQuestionService.js').then((module) => module.default);
 
 const buildQuizFilter = (query = {}) => {
   const filter = { isActive: true };
-  if (query.type) filter.type = query.type;
+  if (query.type) filter.type = normalizeTestType(query.type);
   return filter;
 };
 
@@ -52,12 +52,13 @@ class PersonalityQuizService {
   }
 
   async getByType(type) {
-    if (!QUIZ_TYPES.includes(type)) {
-      throw new HttpError(400, 'Loai trac nghiem khong hop le. Chi chap nhan MBTI hoac Holland.');
+    const normalizedType = normalizeTestType(type);
+    if (!QUIZ_TYPES.includes(normalizedType)) {
+      throw new HttpError(400, 'Loai trac nghiem khong hop le. Chi chap nhan MBTI hoac Holland/RIASEC.');
     }
 
-    const quiz = await PersonalityQuizRepository.findActiveByType(type);
-    if (!quiz) throw new HttpError(404, `Khong tim thay bai trac nghiem loai ${type}`);
+    const quiz = await PersonalityQuizRepository.findActiveByType(normalizedType);
+    if (!quiz) throw new HttpError(404, `Khong tim thay bai trac nghiem loai ${normalizedType}`);
 
     const questions = await quizQuestionService.getQuestionsWithOptions(quiz);
     return { ...quiz.toObject(), questions };
@@ -67,7 +68,7 @@ class PersonalityQuizService {
     const data = {
       title: payload.title?.trim(),
       description: payload.description?.trim() || '',
-      type: payload.type,
+      type: normalizeTestType(payload.type),
       isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : true,
       createdBy: userId,
     };
@@ -84,7 +85,7 @@ class PersonalityQuizService {
     const updateData = {};
     if (payload.title !== undefined) updateData.title = payload.title?.trim();
     if (payload.description !== undefined) updateData.description = payload.description?.trim() || '';
-    if (payload.type !== undefined) updateData.type = payload.type;
+    if (payload.type !== undefined) updateData.type = normalizeTestType(payload.type);
     if (payload.isActive !== undefined) updateData.isActive = Boolean(payload.isActive);
 
     const validation = validatePersonalityQuizData(
@@ -113,10 +114,11 @@ class PersonalityQuizService {
     const answerValidation = validateAnswers(answers, questions, quiz.type);
     if (!answerValidation.isValid) throw new HttpError(400, answerValidation.message);
 
-    const resultScore = quiz.type === 'MBTI'
-      ? calculateMBTIResult(answers, questions)
-      : calculateHollandResult(answers, questions);
-    const interpretation = quiz.type === 'MBTI' ? resultScore.type : resultScore.scores;
+    const { resultScore, interpretation, profileUpdate } = testResultService.calculateTestResult(
+      quiz.type,
+      answers,
+      questions,
+    );
 
     const attempt = await QuizAttemptRepository.create({
       studentId,
@@ -126,10 +128,6 @@ class PersonalityQuizService {
       interpretation,
       attemptedAt: new Date(),
     });
-
-    const profileUpdate = quiz.type === 'MBTI'
-      ? { mbtiResult: { type: resultScore.type, scores: resultScore.scores, completedAt: new Date() } }
-      : { hollandResult: { scores: resultScore.scores, code: resultScore.code, completedAt: new Date() } };
 
     try {
       await updateAssessmentResults(studentId, profileUpdate);

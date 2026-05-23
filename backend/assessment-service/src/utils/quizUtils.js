@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
+import { SUPPORTED_PERSONALITY_TEST_TYPES, normalizeTestType } from '../constants/testType.js';
 
-export const QUIZ_TYPES = ['MBTI', 'Holland'];
+export const QUIZ_TYPES = SUPPORTED_PERSONALITY_TEST_TYPES;
 export const MBTI_DIMENSIONS = ['E/I', 'S/N', 'T/F', 'J/P'];
 export const HOLLAND_ATTRIBUTES = ['R', 'I', 'A', 'S', 'E', 'C'];
 
@@ -30,7 +31,7 @@ export const validatePersonalityQuizData = ({ title, type }, { partial = false }
   }
 
   if (!partial || type !== undefined) {
-    if (!QUIZ_TYPES.includes(type)) errors.push('type phai la MBTI hoac Holland');
+    if (!QUIZ_TYPES.includes(normalizeTestType(type))) errors.push('type phai la MBTI hoac Holland/RIASEC');
   }
 
   return { isValid: errors.length === 0, errors };
@@ -93,57 +94,6 @@ export const validateAnswers = (answers, questions, quizType) => {
 
   if (invalid !== undefined) return { isValid: false, message: 'Cau tra loi khong hop le' };
   return { isValid: true };
-};
-
-export const calculateMBTIResult = (answers, questions) => {
-  const scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
-
-  questions.forEach((question, index) => {
-    const answerIndex = Number(answers[index]);
-    const weight = answerIndex - 2;
-    if (weight === 0) return;
-
-    const preference = weight > 0 ? question.agreePreference : question.disagreePreference;
-    if (preference && scores[preference] !== undefined) {
-      scores[preference] += Math.abs(weight);
-    }
-  });
-
-  const type = MBTI_DIMENSIONS
-    .map((dimension) => {
-      const [left, right] = dimension.split('/');
-      return scores[left] >= scores[right] ? left : right;
-    })
-    .join('');
-
-  return { type, scores };
-};
-
-export const calculateHollandResult = (answers, questions) => {
-  const totals = HOLLAND_ATTRIBUTES.reduce((acc, item) => ({ ...acc, [item]: 0 }), {});
-  const counts = HOLLAND_ATTRIBUTES.reduce((acc, item) => ({ ...acc, [item]: 0 }), {});
-
-  questions.forEach((question, index) => {
-    const attribute = question.attribute;
-    if (!HOLLAND_ATTRIBUTES.includes(attribute)) return;
-    totals[attribute] += Number(answers[index]);
-    counts[attribute] += 1;
-  });
-
-  const scores = HOLLAND_ATTRIBUTES.reduce((acc, attribute) => {
-    acc[attribute] = counts[attribute] > 0
-      ? Number((totals[attribute] / counts[attribute]).toFixed(2))
-      : 0;
-    return acc;
-  }, {});
-
-  const code = Object.entries(scores)
-    .sort(([, left], [, right]) => right - left)
-    .slice(0, 3)
-    .map(([attribute]) => attribute)
-    .join('');
-
-  return { scores, code };
 };
 
 export const getQuizStats = (quiz, attempts = []) => {

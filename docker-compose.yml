@@ -14,6 +14,22 @@ services:
       retries: 5
       start_period: 15s
 
+  redis:
+    image: redis:7-alpine
+    container_name: doan1-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   auth-service:
     build:
       context: ./backend/auth-service
@@ -27,6 +43,7 @@ services:
       PORT: 5000
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/auth-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       UNIVERSITY_SERVICE_URL: http://university-service:5001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
@@ -60,6 +77,7 @@ services:
       PORT: 5001
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/university-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
@@ -93,6 +111,7 @@ services:
       PORT: 5002
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/mock-exams-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
       STUDENT_SERVICE_URL: http://student-service:5003
@@ -129,6 +148,7 @@ services:
       PORT: 5003
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/student-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
       MOCK_EXAMS_SERVICE_URL: http://mock-exams-service:5002
@@ -172,6 +192,7 @@ services:
       PORT: 5004
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/content-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
       UNIVERSITY_SERVICE_URL: http://university-service:5001
@@ -212,6 +233,7 @@ services:
       PORT: 5005
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/messaging-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
       UNIVERSITY_SERVICE_URL: http://university-service:5001
@@ -250,6 +272,7 @@ services:
       PORT: 5006
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/assessment-service
+      REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       STUDENT_SERVICE_URL: http://student-service:5003
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
@@ -287,6 +310,7 @@ services:
       PORT: 5007
       NODE_ENV: development
       MONGO_URL: mongodb://mongo:27017/recommendation-service
+      REDIS_URL: redis://redis:6379
       STUDENT_MONGO_URL: mongodb://mongo:27017/student-service
       UNIVERSITY_MONGO_URL: mongodb://mongo:27017/university-service
       MOCK_EXAMS_MONGO_URL: mongodb://mongo:27017/mock-exams-service
@@ -339,8 +363,25 @@ services:
       MESSAGING_SERVICE_URL: http://messaging-service:5005
       ASSESSMENT_SERVICE_URL: http://assessment-service:5006
       RECOMMENDATION_SERVICE_URL: http://recommendation-service:5007
+      REDIS_URL: redis://redis:6379
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+      RESPONSE_CACHE_ENABLED: ${RESPONSE_CACHE_ENABLED:-true}
+      RESPONSE_CACHE_TTL_SECONDS: ${RESPONSE_CACHE_TTL_SECONDS:-60}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
       LOG_LEVEL: info
+      MONITORING_MEMORY_LOG_LIMIT: 200
+      SLOW_REQUEST_THRESHOLD_MS: 5000
+      ALERT_EMAIL_ENABLED: ${ALERT_EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      ALERT_EMAIL_FROM: ${ALERT_EMAIL_FROM:-}
+      ADMIN_ALERT_EMAIL: ${ADMIN_ALERT_EMAIL:-}
+      ALERT_COOLDOWN_MS: ${ALERT_COOLDOWN_MS:-300000}
       REQUEST_TIMEOUT: 30000
     volumes:
       - ./backend/api-gateway:/app
@@ -394,6 +435,7 @@ services:
 
 volumes:
   mongo-data:
+  redis-data:
   auth-node-modules:
   gateway-node-modules:
   university-node-modules:
