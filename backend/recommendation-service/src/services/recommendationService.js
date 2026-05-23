@@ -63,6 +63,35 @@ const buildFallbackCandidate = (knowledge) => ({
   isKnowledgeFallback: true,
 });
 
+const dedupeByMajor = (items = []) => {
+  const byMajor = new Map();
+  items.forEach((item) => {
+    const key = normalizeText(item.majorName || item.name || item.majorId);
+    const existing = byMajor.get(key);
+    if (!existing) {
+      byMajor.set(key, item);
+      return;
+    }
+
+    const currentRank = [
+      item.matchScore,
+      Number(item.minScore || 0),
+      item.universityName ? 1 : 0,
+    ];
+    const existingRank = [
+      existing.matchScore,
+      Number(existing.minScore || 0),
+      existing.universityName ? 1 : 0,
+    ];
+    const isBetter = currentRank.some((value, index) => value > existingRank[index]
+      && currentRank.slice(0, index).every((left, leftIndex) => left === existingRank[leftIndex]));
+
+    if (isBetter) byMajor.set(key, item);
+  });
+
+  return [...byMajor.values()];
+};
+
 const explainRecommendation = ({ profile, knowledge, features, rfScore, finalScore, candidate }) => {
   const pairs = featureNames.map((name, index) => ({ name, value: Math.round(features[index]) }));
   const strengths = pairs
@@ -219,9 +248,10 @@ class RecommendationService {
       };
     });
 
-    const minScore = Number(options.minScore || 0);
+    const minScore = Number(options.minScore ?? 50);
     const limit = Math.min(Number(options.limit || 12), 50);
-    const recommendations = scored
+    const uniqueScored = dedupeByMajor(scored);
+    const recommendations = uniqueScored
       .filter((item) => item.matchScore >= minScore)
       .sort((a, b) => b.matchScore - a.matchScore || Number(b.minScore || 0) - Number(a.minScore || 0))
       .slice(0, limit);
@@ -233,6 +263,7 @@ class RecommendationService {
       meta: {
         algorithm: 'Hybrid RandomForestRegressor with KMP keyword matching',
         candidateCount: candidates.length,
+        uniqueMajorCount: uniqueScored.length,
         returned: recommendations.length,
       },
     };

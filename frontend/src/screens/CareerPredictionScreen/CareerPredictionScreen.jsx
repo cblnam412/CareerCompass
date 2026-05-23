@@ -1,11 +1,36 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card } from "../../component/Card/Card"
 import { Button } from "../../component/Button/Button"
 import { toast } from "react-toastify"
 import styles from "./CareerPredictionScreen.module.css"
-import { BookOpen, Loader2, ThumbsUp, ThumbsDown, MessageSquare, X } from "lucide-react"
+import { BookOpen, Loader2, ThumbsUp, ThumbsDown, MessageSquare, X, Search } from "lucide-react"
 import { useAuth } from "../../context/AuthContext"
 import API from "../../API/API"
+
+const normalizeSkillText = (value = "") =>
+  String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+
+const softSkillGroups = [
+  { id: "all", label: "Tất cả", keywords: [] },
+  { id: "thinking", label: "Tư duy & phân tích", keywords: ["tu duy", "phan tich", "du lieu", "nghien cuu", "rui ro", "phap ly", "chien luoc"] },
+  { id: "communication", label: "Giao tiếp", keywords: ["giao tiep", "thuyet trinh", "lang nghe", "dam phan", "tu van", "mentoring", "khach hang"] },
+  { id: "workstyle", label: "Tổ chức công việc", keywords: ["quan ly", "lap ke hoach", "ky luat", "chu dong", "trach nhiem", "thich nghi", "phoi hop"] },
+  { id: "creative", label: "Sáng tạo", keywords: ["sang tao", "thiet ke", "ke chuyen", "san pham", "quan sat", "thi truong"] },
+  { id: "technical", label: "Kỹ thuật", keywords: ["cong nghe", "ky thuat", "thuc hanh", "he thong", "khong gian", "quy trinh"] },
+  { id: "personal", label: "Cá nhân", keywords: ["dong cam", "ap luc", "kien tri", "ti mi", "dao duc", "tu hoc", "cai tien"] },
+]
+
+const getSoftSkillGroupId = (skillName = "") => {
+  const normalized = normalizeSkillText(skillName)
+  const group = softSkillGroups.find((item) =>
+    item.id !== "all" && item.keywords.some((keyword) => normalized.includes(keyword))
+  )
+  return group?.id || "personal"
+}
 
 export default function CareerPredictionScreen() {
   const { userID, accessToken } = useAuth()
@@ -29,6 +54,8 @@ export default function CareerPredictionScreen() {
   const [editableScores, setEditableScores] = useState({})
   const [submitted, setSubmitted] = useState(false)
   const [selectedSoftSkills, setSelectedSoftSkills] = useState([])
+  const [softSkillSearch, setSoftSkillSearch] = useState("")
+  const [softSkillGroup, setSoftSkillGroup] = useState("all")
   
   // Feedback states
   const [activeFeedbackMajor, setActiveFeedbackMajor] = useState(null) // Stores the full major object
@@ -320,6 +347,21 @@ export default function CareerPredictionScreen() {
     setSelectedSoftSkills((prev) =>
       prev.includes(skillName) ? prev.filter((s) => s !== skillName) : [...prev, skillName],
     )
+  }
+
+  const filteredSoftSkills = useMemo(() => {
+    const search = normalizeSkillText(softSkillSearch)
+    return softSkills.filter((skill) => {
+      const name = normalizeSkillText(skill.name)
+      const matchesSearch = !search || name.includes(search)
+      const matchesGroup = softSkillGroup === "all" || getSoftSkillGroupId(skill.name) === softSkillGroup
+      return matchesSearch && matchesGroup
+    })
+  }, [softSkills, softSkillSearch, softSkillGroup])
+
+  const clearSoftSkillFilters = () => {
+    setSoftSkillSearch("")
+    setSoftSkillGroup("all")
   }
 
   const getFilteredRecommendations = () => {
@@ -717,16 +759,71 @@ export default function CareerPredictionScreen() {
         <div className={styles.section}>
           <h2>Kỹ năng mềm</h2>
           <p className={styles.softSkillsDescription}>Chọn các kỹ năng mềm của bạn để xem các ngành phù hợp</p>
-          <div className={styles.softSkillsGrid}>
-            {softSkills.map((skill) => (
-              <div
-                key={skill.id}
-                className={`${styles.softSkillCard} ${selectedSoftSkills.includes(skill.name) ? styles.activeSoftSkill : ""}`}
-                onClick={() => handleSoftSkillToggle(skill.name)}
+          <div className={styles.softSkillsPanel}>
+            <div className={styles.softSkillToolbar}>
+              <label className={styles.softSkillSearch}>
+                <Search size={18} />
+                <input
+                  value={softSkillSearch}
+                  onChange={(event) => setSoftSkillSearch(event.target.value)}
+                  placeholder="Tìm kỹ năng"
+                />
+              </label>
+
+              <select
+                value={softSkillGroup}
+                onChange={(event) => setSoftSkillGroup(event.target.value)}
+                className={styles.softSkillFilter}
               >
-                <span className={styles.softSkillName}>{skill.name}</span>
+                {softSkillGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.label}
+                  </option>
+                ))}
+              </select>
+
+              {(softSkillSearch || softSkillGroup !== "all") && (
+                <button type="button" className={styles.softSkillClear} onClick={clearSoftSkillFilters}>
+                  Xóa lọc
+                </button>
+              )}
+            </div>
+
+            {selectedSoftSkills.length > 0 && (
+              <div className={styles.selectedSoftSkills}>
+                {selectedSoftSkills.map((skillName) => (
+                  <button
+                    key={skillName}
+                    type="button"
+                    className={styles.selectedSoftSkill}
+                    onClick={() => handleSoftSkillToggle(skillName)}
+                  >
+                    {skillName}
+                    <X size={14} />
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
+
+            <div className={styles.softSkillList}>
+              {filteredSoftSkills.map((skill) => (
+                <label
+                  key={skill.id}
+                  className={`${styles.softSkillOption} ${selectedSoftSkills.includes(skill.name) ? styles.activeSoftSkill : ""}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSoftSkills.includes(skill.name)}
+                    onChange={() => handleSoftSkillToggle(skill.name)}
+                  />
+                  <span>{skill.name}</span>
+                </label>
+              ))}
+
+              {filteredSoftSkills.length === 0 && (
+                <div className={styles.emptySoftSkills}>Không có kỹ năng phù hợp</div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -122,6 +122,7 @@ const forwardJsonRequest = (service, targetPath) => asyncHandler(async (req, res
         method: req.method,
         headers: {
             'content-type': 'application/json',
+            ...(req.headers.authorization ? { authorization: req.headers.authorization } : {}),
             'x-forwarded-by': 'api-gateway',
             'x-original-url': req.originalUrl,
             'x-original-method': req.method,
@@ -240,6 +241,10 @@ const studentServicePrefixes = [
 studentServicePrefixes.forEach((prefix) => {
     const service = getService(prefix);
     if (service) {
+        if (prefix === '/student-profile') {
+            router.put('/student-profile/update', forwardJsonRequest(service, '/api/student-profile/update'));
+            router.patch('/student-profile/update', forwardJsonRequest(service, '/api/student-profile/update'));
+        }
         router.use(prefix, createProxyMiddleware(service));
     }
 });

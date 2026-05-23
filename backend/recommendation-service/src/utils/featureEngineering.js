@@ -82,11 +82,12 @@ export const academicFit = (profile, knowledge, subjectsById) => {
     ]),
   );
 
+  const hasTranscript = Array.isArray(profile.academicTranscript) && profile.academicTranscript.length > 0;
+  const fallbackScore = hasTranscript ? 4 : (profile.gpa || 6.5);
   const totalWeight = entries.reduce((sum, [, weight]) => sum + Number(weight || 0), 0) || 1;
   const weighted = entries.reduce((sum, [subjectName, weight]) => {
     const score = transcript.get(normalizeText(subjectName));
-    const fallback = profile.gpa || 6.5;
-    return sum + (Number.isFinite(score) ? score : fallback) * Number(weight || 0);
+    return sum + (Number.isFinite(score) ? score : fallbackScore) * Number(weight || 0);
   }, 0);
 
   return clamp((weighted / totalWeight) * 10);
