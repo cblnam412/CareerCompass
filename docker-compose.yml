@@ -19,6 +19,8 @@ services:
       context: ./backend/auth-service
     container_name: doan1-auth-service
     restart: unless-stopped
+    env_file:
+      - ./backend/auth-service/.env
     ports:
       - "5000:5000"
     environment:
@@ -28,8 +30,6 @@ services:
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       UNIVERSITY_SERVICE_URL: http://university-service:5001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
-      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
-      SUPABASE_KEY: ${SUPABASE_KEY:-doan1-dev-supabase-key}
     volumes:
       - ./backend/auth-service:/app
       - auth-node-modules:/app/node_modules
@@ -164,6 +164,8 @@ services:
       context: ./backend/content-service
     container_name: doan1-content-service
     restart: unless-stopped
+    env_file:
+      - ./backend/auth-service/.env
     ports:
       - "5004:5004"
     environment:
@@ -174,8 +176,6 @@ services:
       AUTH_SERVICE_URL: http://auth-service:5000
       UNIVERSITY_SERVICE_URL: http://university-service:5001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
-      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
-      SUPABASE_KEY: ${SUPABASE_KEY:-doan1-dev-supabase-key}
     volumes:
       - ./backend/content-service:/app
       - content-node-modules:/app/node_modules
@@ -204,6 +204,8 @@ services:
       context: ./backend/messaging-service
     container_name: doan1-messaging-service
     restart: unless-stopped
+    env_file:
+      - ./backend/auth-service/.env
     ports:
       - "5005:5005"
     environment:
@@ -214,8 +216,6 @@ services:
       AUTH_SERVICE_URL: http://auth-service:5000
       UNIVERSITY_SERVICE_URL: http://university-service:5001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
-      SUPABASE_URL: ${SUPABASE_URL:-https://example.supabase.co}
-      SUPABASE_KEY: ${SUPABASE_KEY:-doan1-dev-supabase-key}
     volumes:
       - ./backend/messaging-service:/app
       - messaging-node-modules:/app/node_modules
@@ -276,6 +276,51 @@ services:
       retries: 5
       start_period: 20s
 
+  recommendation-service:
+    build:
+      context: ./backend/recommendation-service
+    container_name: doan1-recommendation-service
+    restart: unless-stopped
+    ports:
+      - "5017:5007"
+    environment:
+      PORT: 5007
+      NODE_ENV: development
+      MONGO_URL: mongodb://mongo:27017/recommendation-service
+      STUDENT_MONGO_URL: mongodb://mongo:27017/student-service
+      UNIVERSITY_MONGO_URL: mongodb://mongo:27017/university-service
+      MOCK_EXAMS_MONGO_URL: mongodb://mongo:27017/mock-exams-service
+      ASSESSMENT_MONGO_URL: mongodb://mongo:27017/assessment-service
+      JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
+      AUTO_SEED_RECOMMENDATION_DATA: "true"
+    volumes:
+      - ./backend/recommendation-service:/app
+      - recommendation-node-modules:/app/node_modules
+    depends_on:
+      mongo:
+        condition: service_healthy
+      student-service:
+        condition: service_healthy
+      university-service:
+        condition: service_healthy
+      mock-exams-service:
+        condition: service_healthy
+      assessment-service:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5007/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   api-gateway:
     build:
       context: ./backend/api-gateway
@@ -293,6 +338,7 @@ services:
       CONTENT_SERVICE_URL: http://content-service:5004
       MESSAGING_SERVICE_URL: http://messaging-service:5005
       ASSESSMENT_SERVICE_URL: http://assessment-service:5006
+      RECOMMENDATION_SERVICE_URL: http://recommendation-service:5007
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
       LOG_LEVEL: info
       REQUEST_TIMEOUT: 30000
@@ -313,6 +359,8 @@ services:
       messaging-service:
         condition: service_healthy
       assessment-service:
+        condition: service_healthy
+      recommendation-service:
         condition: service_healthy
     healthcheck:
       test:
@@ -354,4 +402,5 @@ volumes:
   content-node-modules:
   messaging-node-modules:
   assessment-node-modules:
+  recommendation-node-modules:
   frontend-node-modules:

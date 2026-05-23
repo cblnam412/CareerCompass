@@ -117,6 +117,26 @@ const requestJson = async (url, options = {}) => {
     return body.data ?? body;
 };
 
+const forwardJsonRequest = (service, targetPath) => asyncHandler(async (req, res) => {
+    const response = await fetch(`${service.url}${targetPath}`, {
+        method: req.method,
+        headers: {
+            'content-type': 'application/json',
+            'x-forwarded-by': 'api-gateway',
+            'x-original-url': req.originalUrl,
+            'x-original-method': req.method,
+            'x-request-id': generateRequestId(),
+        },
+        body: JSON.stringify(req.body || {}),
+    });
+    const responseBody = await response.text();
+
+    res
+        .status(response.status)
+        .type(response.headers.get('content-type') || 'application/json')
+        .send(responseBody);
+});
+
 const verifyAdminRequest = async (req) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) throw new APIError('Token khong duoc tim thay', 401);
@@ -164,6 +184,8 @@ router.get('/admin/stats', asyncHandler(async (req, res) => {
  */
 const authService = getService('/auth');
 if (authService) {
+    router.post('/auth/login', forwardJsonRequest(authService, '/login'));
+    router.post('/auth/register', forwardJsonRequest(authService, '/register'));
     router.use('/auth', createProxyMiddleware(authService));
 }
 
@@ -216,6 +238,17 @@ const studentServicePrefixes = [
 ];
 
 studentServicePrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
+const recommendationServicePrefixes = [
+    '/major-recommendations'
+];
+
+recommendationServicePrefixes.forEach((prefix) => {
     const service = getService(prefix);
     if (service) {
         router.use(prefix, createProxyMiddleware(service));

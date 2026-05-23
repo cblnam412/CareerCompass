@@ -175,6 +175,14 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    majorRecommendations: {
+        name: 'Recommendation Service',
+        url: process.env.RECOMMENDATION_SERVICE_URL || 'http://localhost:5007',
+        prefix: '/major-recommendations',
+        targetPrefix: '/api/major-recommendations',
+        timeout: 30000,
+        retries: 1
+    },
     // Thêm các services khác ở đây
     // university: {
     //     name: 'University Service',
