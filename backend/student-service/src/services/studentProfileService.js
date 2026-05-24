@@ -40,13 +40,13 @@ const buildUpdateData = (payload = {}) => {
 class StudentProfileService {
   async ensureUserExists(userId) {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new HttpError(400, 'userId khong hop le');
+      throw new HttpError(400, 'userId không hợp lệ');
     }
 
     try {
       return await getInternalUserById(userId);
     } catch (error) {
-      throw new HttpError(error.status || 404, error.message || 'Khong tim thay nguoi dung');
+      throw new HttpError(error.status || 404, error.message || 'Không tìm thấy người dùng');
     }
   }
 
@@ -95,7 +95,7 @@ class StudentProfileService {
     const targetUserId = payload.userId || currentUserId;
 
     if (requester.role !== 'admin' && String(currentUserId) !== String(targetUserId)) {
-      throw new HttpError(403, 'Ban khong co quyen cap nhat ho so nay');
+      throw new HttpError(403, 'Bạn không có quyền cập nhật hồ sơ này');
     }
 
     await this.ensureProfile(targetUserId);
@@ -117,7 +117,7 @@ class StudentProfileService {
     }
 
     const profile = await StudentProfileRepository.updateByUserId(targetUserId, updateData);
-    if (!profile) throw new HttpError(404, 'Khong tim thay ho so hoc sinh');
+    if (!profile) throw new HttpError(404, 'Không tìm thấy hồ sơ học sinh');
     return this.attachProfileLookups(profile);
   }
 
@@ -129,11 +129,11 @@ class StudentProfileService {
     if (payload.hollandResult !== undefined) updateData.hollandResult = payload.hollandResult;
 
     if (Object.keys(updateData).length === 0) {
-      throw new HttpError(400, 'Can co mbtiResult hoac hollandResult de cap nhat');
+      throw new HttpError(400, 'Cần có mbtiResult hoặc hollandResult để cập nhật');
     }
 
     const profile = await StudentProfileRepository.updateByUserId(userId, updateData);
-    if (!profile) throw new HttpError(404, 'Khong tim thay ho so hoc sinh');
+    if (!profile) throw new HttpError(404, 'Không tìm thấy hồ sơ học sinh');
     return profile;
   }
 }

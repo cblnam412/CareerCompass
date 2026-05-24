@@ -4,7 +4,7 @@ import mockExamService from '../services/mockExamService.js';
 export const getAllMockExams = async (req, res, next) => {
   try {
     const result = await mockExamService.getAll(req.query);
-    res.status(200).json({ success: true, message: 'Lay danh sach de thi thanh cong', ...result });
+    res.status(200).json({ success: true, message: 'Lấy danh sách đề thi thành công', ...result });
   } catch (error) {
     next(error);
   }
@@ -13,7 +13,7 @@ export const getAllMockExams = async (req, res, next) => {
 export const getMockExamById = async (req, res, next) => {
   try {
     const data = await mockExamService.getById(req.params.examId);
-    res.status(200).json({ success: true, message: 'Lay chi tiet de thi thanh cong', data });
+    res.status(200).json({ success: true, message: 'Lấy chi tiết đề thi thành công', data });
   } catch (error) {
     next(error);
   }
@@ -22,7 +22,7 @@ export const getMockExamById = async (req, res, next) => {
 export const createMockExam = async (req, res, next) => {
   try {
     const data = await mockExamService.create(req.body);
-    res.status(201).json({ success: true, message: 'Tao de thi thanh cong', data });
+    res.status(201).json({ success: true, message: 'Tạo đề thi thành công', data });
   } catch (error) {
     next(error);
   }
@@ -31,7 +31,7 @@ export const createMockExam = async (req, res, next) => {
 export const updateMockExam = async (req, res, next) => {
   try {
     const data = await mockExamService.update(req.params.examId, req.body);
-    res.status(200).json({ success: true, message: 'Cap nhat de thi thanh cong', data });
+    res.status(200).json({ success: true, message: 'Cập nhật đề thi thành công', data });
   } catch (error) {
     next(error);
   }
@@ -40,7 +40,7 @@ export const updateMockExam = async (req, res, next) => {
 export const deleteMockExam = async (req, res, next) => {
   try {
     await mockExamService.delete(req.params.examId);
-    res.status(200).json({ success: true, message: 'Xoa de thi thanh cong' });
+    res.status(200).json({ success: true, message: 'Xóa đề thi thành công' });
   } catch (error) {
     next(error);
   }
@@ -52,7 +52,7 @@ export const importQuestionsFromExcel = async (req, res, next) => {
     const importedCount = data.importedCount ?? data.count;
     res.status(200).json({
       success: true,
-      message: `Import thanh cong ${importedCount} cau hoi`,
+      message: `Import thành công ${importedCount} câu hỏi`,
       data,
     });
   } catch (error) {
@@ -72,7 +72,7 @@ export const getMockExamForStudent = async (req, res, next) => {
 export const submitMockExam = async (req, res, next) => {
   try {
     const data = await mockExamService.submit(req.params.examId, req.userId, req.body.answers);
-    res.status(201).json({ success: true, message: 'Nop bai thi thanh cong', data });
+    res.status(201).json({ success: true, message: 'Nộp bài thi thành công', data });
   } catch (error) {
     next(error);
   }

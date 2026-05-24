@@ -21,7 +21,7 @@ class AuthService {
         if (isNaN(age) || age < 15) {
             throw {
                 status: 400,
-                message: 'Ngay sinh khong hop le hoac ban phai tren 15 tuoi'
+                message: 'Ngày sinh không hợp lệ hoặc bạn phải trên 15 tuổi'
             };
         }
     }
@@ -62,20 +62,20 @@ class AuthService {
         const user = await UserRepository.findByEmailWithPassword(email);
 
         if (!user) {
-            throw { status: 401, message: 'Email hoac mat khau khong chinh xac' };
+            throw { status: 401, message: 'Email hoặc mật khẩu không chính xác' };
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            throw { status: 401, message: 'Email hoac mat khau khong chinh xac' };
+            throw { status: 401, message: 'Email hoặc mật khẩu không chính xác' };
         }
 
         if (user.status === 'banned') {
-            throw { status: 403, message: 'Tai khoan cua ban da bi khoa' };
+            throw { status: 403, message: 'Tài khoản của bạn đã bị khóa' };
         }
 
         if (user.status === 'pending') {
-            throw { status: 403, message: 'Tai khoan cua ban dang cho phe duyet' };
+            throw { status: 403, message: 'Tài khoản của bạn đang chờ phê duyệt' };
         }
 
         const token = jwt.sign(
@@ -95,7 +95,7 @@ class AuthService {
 
         const existingUser = await UserRepository.findByEmail(email);
         if (existingUser) {
-            throw { status: 400, message: 'Email da duoc su dung' };
+            throw { status: 400, message: 'Email đã được sử dụng' };
         }
 
         const user = await UserRepository.create({
@@ -114,14 +114,14 @@ class AuthService {
         try {
             return jwt.verify(token, process.env.JWT_SECRET);
         } catch {
-            throw { status: 401, message: 'Token khong hop le' };
+            throw { status: 401, message: 'Token không hợp lệ' };
         }
     }
 
     async getUserById(userId) {
         const user = await UserRepository.findById(userId);
         if (!user) {
-            throw { status: 404, message: 'Khong tim thay nguoi dung' };
+            throw { status: 404, message: 'Không tìm thấy người dùng' };
         }
         return this.toPublicUser(user);
     }
@@ -129,7 +129,7 @@ class AuthService {
     async updateUser(userId, updateData) {
         const user = await UserRepository.update(userId, updateData);
         if (!user) {
-            throw { status: 404, message: 'Khong tim thay nguoi dung' };
+            throw { status: 404, message: 'Không tìm thấy người dùng' };
         }
         return this.toPublicUser(user);
     }
@@ -154,7 +154,7 @@ class AuthService {
         );
 
         if (!user) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         return this.toPublicUser(user);
@@ -164,7 +164,7 @@ class AuthService {
         const user = await UserRepository.findByIdWithPopulatedUniversity(userId);
 
         if (!user) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         return this.toPublicUser(user);
@@ -173,7 +173,7 @@ class AuthService {
     async getInternalUserById(userId) {
         const user = await UserRepository.findByIdWithoutPassword(userId);
         if (!user) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
         return this.toInternalUser(user);
     }
@@ -187,7 +187,7 @@ class AuthService {
 
     async updateInternalUserStatus(userId, { status, banReleaseDate = null }) {
         if (!['active', 'pending', 'banned'].includes(status)) {
-            throw { status: 400, message: 'Trang thai nguoi dung khong hop le' };
+            throw { status: 400, message: 'Trạng thái người dùng không hợp lệ' };
         }
 
         const updated = await UserRepository.updateWithoutPassword(userId, {
@@ -196,7 +196,7 @@ class AuthService {
         });
 
         if (!updated) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         return this.toInternalUser(updated);
@@ -207,11 +207,11 @@ class AuthService {
         const user = await UserRepository.findById(userId);
 
         if (!user) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         if (!['student', 'uniRep', 'uniManager'].includes(user.role)) {
-            throw { status: 403, message: 'Khong co quyen chinh sua profile' };
+            throw { status: 403, message: 'Không có quyền chỉnh sửa profile' };
         }
 
         const updatePayload = {};
@@ -227,17 +227,17 @@ class AuthService {
 
     async uploadAvatar(userId, file) {
         if (!file) {
-            throw { status: 400, message: 'Vui long chon anh' };
+            throw { status: 400, message: 'Vui lòng chọn ảnh' };
         }
 
         const user = await UserRepository.findById(userId);
         if (!user) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         const bucketCheck = await FileRepository.ensureBucketExists('user-avatars');
         if (!bucketCheck.success) {
-            throw { status: 500, message: `Loi kiem tra bucket: ${bucketCheck.error}` };
+            throw { status: 500, message: `Lỗi kiểm tra bucket: ${bucketCheck.error}` };
         }
 
         if (user.avatar) {
@@ -251,7 +251,7 @@ class AuthService {
 
         const avatarResult = await FileRepository.uploadAvatar(file);
         if (!avatarResult.success) {
-            throw { status: 500, message: `Loi upload avatar: ${avatarResult.error}` };
+            throw { status: 500, message: `Lỗi upload avatar: ${avatarResult.error}` };
         }
 
         const updated = await UserRepository.updateAvatar(userId, avatarResult.url);
@@ -262,7 +262,7 @@ class AuthService {
         const user = await UserRepository.findById(userId);
 
         if (!user) {
-            throw { status: 404, message: 'Nguoi dung khong ton tai' };
+            throw { status: 404, message: 'Người dùng không tồn tại' };
         }
 
         if (user.avatar) {

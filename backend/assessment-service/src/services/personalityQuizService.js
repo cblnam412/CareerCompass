@@ -39,7 +39,7 @@ class PersonalityQuizService {
 
   async getById(quizId) {
     const quiz = await PersonalityQuizRepository.findById(quizId).lean();
-    if (!quiz) throw new HttpError(404, 'Khong tim thay bai trac nghiem');
+    if (!quiz) throw new HttpError(404, 'Không tìm thấy bài trắc nghiệm');
 
     const questions = await QuizQuestionRepository.findByQuizId(quizId).lean();
     return {
@@ -54,11 +54,11 @@ class PersonalityQuizService {
   async getByType(type) {
     const normalizedType = normalizeTestType(type);
     if (!QUIZ_TYPES.includes(normalizedType)) {
-      throw new HttpError(400, 'Loai trac nghiem khong hop le. Chi chap nhan MBTI hoac Holland/RIASEC.');
+      throw new HttpError(400, 'Loại trắc nghiệm không hợp lệ. Chỉ chấp nhận MBTI hoặc Holland/RIASEC.');
     }
 
     const quiz = await PersonalityQuizRepository.findActiveByType(normalizedType);
-    if (!quiz) throw new HttpError(404, `Khong tim thay bai trac nghiem loai ${normalizedType}`);
+    if (!quiz) throw new HttpError(404, `Không tìm thấy bài trắc nghiệm loại ${normalizedType}`);
 
     const questions = await quizQuestionService.getQuestionsWithOptions(quiz);
     return { ...quiz.toObject(), questions };
@@ -73,14 +73,14 @@ class PersonalityQuizService {
       createdBy: userId,
     };
     const validation = validatePersonalityQuizData(data);
-    if (!validation.isValid) throw new HttpError(400, 'Du lieu bai trac nghiem khong hop le', validation.errors);
+    if (!validation.isValid) throw new HttpError(400, 'Dữ liệu bài trắc nghiệm không hợp lệ', validation.errors);
 
     return PersonalityQuizRepository.create(data);
   }
 
   async update(quizId, payload = {}) {
     const existing = await PersonalityQuizRepository.findById(quizId);
-    if (!existing) throw new HttpError(404, 'Khong tim thay bai trac nghiem');
+    if (!existing) throw new HttpError(404, 'Không tìm thấy bài trắc nghiệm');
 
     const updateData = {};
     if (payload.title !== undefined) updateData.title = payload.title?.trim();
@@ -92,24 +92,24 @@ class PersonalityQuizService {
       { title: updateData.title ?? existing.title, type: updateData.type ?? existing.type },
       { partial: true },
     );
-    if (!validation.isValid) throw new HttpError(400, 'Du lieu bai trac nghiem khong hop le', validation.errors);
+    if (!validation.isValid) throw new HttpError(400, 'Dữ liệu bài trắc nghiệm không hợp lệ', validation.errors);
 
     return PersonalityQuizRepository.updateById(quizId, updateData);
   }
 
   async delete(quizId) {
     const quiz = await PersonalityQuizRepository.deleteById(quizId);
-    if (!quiz) throw new HttpError(404, 'Khong tim thay bai trac nghiem');
+    if (!quiz) throw new HttpError(404, 'Không tìm thấy bài trắc nghiệm');
     await QuizQuestionRepository.deleteByQuizId(quizId);
     return quiz;
   }
 
   async submit(quizId, studentId, answers = []) {
     const quiz = await PersonalityQuizRepository.findById(quizId);
-    if (!quiz || !quiz.isActive) throw new HttpError(404, 'Khong tim thay bai trac nghiem dang hoat dong');
+    if (!quiz || !quiz.isActive) throw new HttpError(404, 'Không tìm thấy bài trắc nghiệm đang hoạt động');
 
     const questions = await QuizQuestionRepository.findByQuizId(quizId);
-    if (questions.length === 0) throw new HttpError(400, 'Bai trac nghiem chua co cau hoi');
+    if (questions.length === 0) throw new HttpError(400, 'Bài trắc nghiệm chưa có câu hỏi');
 
     const answerValidation = validateAnswers(answers, questions, quiz.type);
     if (!answerValidation.isValid) throw new HttpError(400, answerValidation.message);
@@ -145,7 +145,7 @@ class PersonalityQuizService {
 
   async getStatistics(quizId) {
     const quiz = await PersonalityQuizRepository.findById(quizId);
-    if (!quiz) throw new HttpError(404, 'Khong tim thay bai trac nghiem');
+    if (!quiz) throw new HttpError(404, 'Không tìm thấy bài trắc nghiệm');
 
     const attempts = await QuizAttemptRepository.findByQuizId(quizId);
     return { quiz, statistics: getQuizStats(quiz, attempts) };

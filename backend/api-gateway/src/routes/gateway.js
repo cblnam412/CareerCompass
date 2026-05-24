@@ -2,7 +2,7 @@ import express from 'express';
 import proxy from 'express-http-proxy';
 import { getService, getAllServices } from '../config/services.js';
 import { APIError, asyncHandler } from '../middlewares/errorHandler.js';
-import { createRedisCacheReadMiddleware, cacheProxyResponse } from '../middlewares/responseCache.js';
+import { createRedisCacheReadMiddleware, cacheProxyResponse, clearResponseCache } from '../middlewares/responseCache.js';
 import { alertAbnormalError, generateRequestId, getMonitoringSnapshot, getRecentLogs } from '../utils/monitoring.js';
 
 const router = express.Router();
@@ -107,6 +107,10 @@ const createProxyMiddleware = (service) => {
                     ip: userReq.ip,
                     message: `Service returned ${proxyRes.statusCode}`,
                 });
+            }
+
+            if (userReq.method !== 'GET' && proxyRes.statusCode < 400) {
+                await clearResponseCache({ enabled: RESPONSE_CACHE_ENABLED });
             }
 
             await cacheProxyResponse(proxyRes, proxyResData, userReq, {

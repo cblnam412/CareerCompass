@@ -24,36 +24,36 @@ class SoftSkillService {
 
   async getById(id) {
     const skill = await SoftSkillRepository.findById(id);
-    if (!skill) throw new HttpError(404, 'Khong tim thay ky nang mem');
+    if (!skill) throw new HttpError(404, 'Không tìm thấy kỹ năng mềm');
     return skill;
   }
 
   async create(payload = {}) {
     const softSkillName = payload.softSkillName?.trim();
-    if (!softSkillName) throw new HttpError(400, 'Ten ky nang mem la bat buoc');
+    if (!softSkillName) throw new HttpError(400, 'Tên kỹ năng mềm là bắt buộc');
 
     const duplicate = await SoftSkillRepository.findDuplicate(softSkillName);
-    if (duplicate) throw new HttpError(409, 'Ky nang mem nay da ton tai');
+    if (duplicate) throw new HttpError(409, 'Kỹ năng mềm này đã tồn tại');
 
     return SoftSkillRepository.create({ softSkillName });
   }
 
   async update(id, payload = {}) {
     const existing = await SoftSkillRepository.findById(id);
-    if (!existing) throw new HttpError(404, 'Khong tim thay ky nang mem');
+    if (!existing) throw new HttpError(404, 'Không tìm thấy kỹ năng mềm');
 
     const softSkillName = payload.softSkillName?.trim();
-    if (!softSkillName) throw new HttpError(400, 'Ten ky nang mem la bat buoc');
+    if (!softSkillName) throw new HttpError(400, 'Tên kỹ năng mềm là bắt buộc');
 
     const duplicate = await SoftSkillRepository.findDuplicate(softSkillName, id);
-    if (duplicate) throw new HttpError(409, 'Ten ky nang mem nay da ton tai');
+    if (duplicate) throw new HttpError(409, 'Tên kỹ năng mềm này đã tồn tại');
 
     return SoftSkillRepository.updateById(id, { softSkillName });
   }
 
   async delete(id) {
     const skill = await SoftSkillRepository.deleteById(id);
-    if (!skill) throw new HttpError(404, 'Khong tim thay ky nang mem');
+    if (!skill) throw new HttpError(404, 'Không tìm thấy kỹ năng mềm');
     return skill;
   }
 }

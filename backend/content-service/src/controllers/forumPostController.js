@@ -21,7 +21,7 @@ export const getForumPostById = async (req, res, next) => {
 export const createForumPost = async (req, res, next) => {
   try {
     const data = await forumPostService.create(req.body, req.files, req.userId);
-    res.status(201).json({ success: true, message: 'Tao bai viet thanh cong', data });
+    res.status(201).json({ success: true, message: 'Tạo bài viết thành công', data });
   } catch (error) {
     next(error);
   }
@@ -30,7 +30,7 @@ export const createForumPost = async (req, res, next) => {
 export const updateForumPost = async (req, res, next) => {
   try {
     const data = await forumPostService.update(req.params.postId, req.body, req.files, req.userId);
-    res.status(200).json({ success: true, message: 'Cap nhat bai viet thanh cong', data });
+    res.status(200).json({ success: true, message: 'Cập nhật bài viết thành công', data });
   } catch (error) {
     next(error);
   }
@@ -39,7 +39,7 @@ export const updateForumPost = async (req, res, next) => {
 export const deleteForumPost = async (req, res, next) => {
   try {
     await forumPostService.delete(req.params.postId, req.userId);
-    res.status(200).json({ success: true, message: 'Xoa bai viet thanh cong' });
+    res.status(200).json({ success: true, message: 'Xóa bài viết thành công' });
   } catch (error) {
     next(error);
   }
@@ -48,7 +48,7 @@ export const deleteForumPost = async (req, res, next) => {
 export const upvoteForumPost = async (req, res, next) => {
   try {
     const data = await forumPostService.toggleUpvote(req.params.postId, req.userId);
-    res.status(200).json({ success: true, message: data.isUpvoted ? 'Upvote thanh cong' : 'Huy upvote thanh cong', data });
+    res.status(200).json({ success: true, message: data.isUpvoted ? 'Upvote thành công' : 'Hủy upvote thành công', data });
   } catch (error) {
     next(error);
   }

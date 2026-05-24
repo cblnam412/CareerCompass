@@ -18,17 +18,17 @@ const examResultSchema = new mongoose.Schema(
   {
     studentId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: [true, 'Hoc sinh la bat buoc'],
+      required: [true, 'Học sinh là bắt buộc'],
     },
     mockExamId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'MockExam',
-      required: [true, 'De thi la bat buoc'],
+      required: [true, 'Đề thi là bắt buộc'],
     },
     subject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subject',
-      required: [true, 'Mon hoc la bat buoc'],
+      required: [true, 'Môn học là bắt buộc'],
     },
     scoreTotal: {
       type: Number,

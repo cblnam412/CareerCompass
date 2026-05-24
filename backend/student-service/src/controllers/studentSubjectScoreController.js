@@ -27,7 +27,7 @@ export const addOrUpdateStudentScore = async (req, res, next) => {
     );
     res.status(200).json({
       success: true,
-      message: 'Them/cap nhat diem thanh cong',
+      message: 'Thêm/cập nhật điểm thành công',
       data,
     });
   } catch (error) {
@@ -44,7 +44,7 @@ export const deleteStudentSubjectScore = async (req, res, next) => {
     );
     res.status(200).json({
       success: true,
-      message: 'Xoa diem thanh cong',
+      message: 'Xóa điểm thành công',
     });
   } catch (error) {
     next(error);

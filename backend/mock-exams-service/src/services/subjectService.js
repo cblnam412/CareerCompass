@@ -12,13 +12,13 @@ const normalizeSubjectPayload = (payload = {}) => ({
 class SubjectService {
   async create(payload) {
     const data = normalizeSubjectPayload(payload);
-    if (!data.name) throw new HttpError(400, 'Ten mon hoc la bat buoc');
+    if (!data.name) throw new HttpError(400, 'Tên môn học là bắt buộc');
 
     const duplicate = await SubjectRepository.findDuplicate(data);
     if (duplicate) {
       throw new HttpError(409, duplicate.name.toLowerCase() === data.name.toLowerCase()
-        ? `Ten mon hoc "${data.name}" da ton tai`
-        : `Ma mon hoc "${data.code}" da ton tai`);
+        ? `Tên môn học "${data.name}" đã tồn tại`
+        : `Mã môn học "${data.code}" đã tồn tại`);
     }
 
     return SubjectRepository.create(data);
@@ -48,20 +48,20 @@ class SubjectService {
 
   async getById(id) {
     const subject = await SubjectRepository.findById(id);
-    if (!subject) throw new HttpError(404, 'Khong tim thay mon hoc');
+    if (!subject) throw new HttpError(404, 'Không tìm thấy môn học');
     return subject;
   }
 
   async update(id, payload) {
     const existing = await SubjectRepository.findById(id);
-    if (!existing) throw new HttpError(404, 'Khong tim thay mon hoc');
+    if (!existing) throw new HttpError(404, 'Không tìm thấy môn học');
 
     const data = normalizeSubjectPayload(payload);
     if (data.name || data.code) {
       const duplicate = await SubjectRepository.findDuplicate({ ...data, excludeId: id });
       if (duplicate) {
         const duplicatedName = data.name && duplicate.name.toLowerCase() === data.name.toLowerCase();
-        throw new HttpError(409, duplicatedName ? `Ten mon hoc "${data.name}" da duoc su dung` : `Ma mon hoc "${data.code}" da duoc su dung`);
+        throw new HttpError(409, duplicatedName ? `Tên môn học "${data.name}" đã được sử dụng` : `Mã môn học "${data.code}" đã được sử dụng`);
       }
     }
 
@@ -76,7 +76,7 @@ class SubjectService {
 
   async delete(id) {
     const existing = await SubjectRepository.findById(id);
-    if (!existing) throw new HttpError(404, 'Khong tim thay mon hoc');
+    if (!existing) throw new HttpError(404, 'Không tìm thấy môn học');
 
     const [examCount, combinationCount] = await Promise.all([
       MockExamRepository.countBySubject(id),
@@ -84,7 +84,7 @@ class SubjectService {
     ]);
 
     if (examCount > 0 || combinationCount > 0) {
-      throw new HttpError(409, 'Khong the xoa mon hoc dang duoc su dung');
+      throw new HttpError(409, 'Không thể xóa môn học đang được sử dụng');
     }
 
     return SubjectRepository.deleteById(id);

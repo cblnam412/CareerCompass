@@ -5,7 +5,7 @@ export const verifyInternalRequest = (req, res, next) => {
   if (!token || token !== env.internalServiceToken) {
     return res.status(403).json({
       success: false,
-      message: 'Internal request khong hop le',
+      message: 'Internal request không hợp lệ',
     });
   }
   next();

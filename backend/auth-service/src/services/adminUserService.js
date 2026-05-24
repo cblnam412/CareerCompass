@@ -15,13 +15,13 @@ const toUserObject = (user) => {
 
 const requireValidRole = (role) => {
     if (!VALID_ROLES.includes(role)) {
-        throw { status: 400, message: 'Vai tro khong hop le' };
+        throw { status: 400, message: 'Vai trò không hợp lệ' };
     }
 };
 
 const requireValidStatus = (status) => {
     if (status !== undefined && !VALID_STATUSES.includes(status)) {
-        throw { status: 400, message: 'Trang thai nguoi dung khong hop le' };
+        throw { status: 400, message: 'Trạng thái người dùng không hợp lệ' };
     }
 };
 
@@ -87,7 +87,7 @@ class AdminUserService {
 
     async getUserById(id) {
         const user = await UserRepository.findByIdWithoutPassword(id);
-        if (!user) throw { status: 404, message: 'Nguoi dung khong ton tai' };
+        if (!user) throw { status: 404, message: 'Người dùng không tồn tại' };
         return this.attachUniversity(user);
     }
 
@@ -95,7 +95,7 @@ class AdminUserService {
         if (!isUniversityRole(role)) return null;
 
         if (!universityId) {
-            throw { status: 400, message: 'Vai tro uniRep hoac uniManager phai co universityId' };
+            throw { status: 400, message: 'Vai trò uniRep hoặc uniManager phải có universityId' };
         }
 
         await getUniversityById(universityId);
@@ -105,7 +105,7 @@ class AdminUserService {
             if (existingManager) {
                 throw {
                     status: 409,
-                    message: 'Truong nay da co uniManager. Moi truong chi co mot quan ly.'
+                    message: 'Trường này đã có uniManager. Mỗi trường chỉ có một quản lý.'
                 };
             }
         }
@@ -122,15 +122,15 @@ class AdminUserService {
         const password = payload.password;
 
         if (!fullName || !email || !password) {
-            throw { status: 400, message: 'fullName, email va password la bat buoc' };
+            throw { status: 400, message: 'fullName, email và password là bắt buộc' };
         }
 
         if (password.length < 6) {
-            throw { status: 400, message: 'Mat khau phai co it nhat 6 ky tu' };
+            throw { status: 400, message: 'Mật khẩu phải có ít nhất 6 ký tự' };
         }
 
         const existing = await UserRepository.findByEmail(email);
-        if (existing) throw { status: 409, message: 'Email da duoc su dung' };
+        if (existing) throw { status: 409, message: 'Email đã được sử dụng' };
 
         const universityId = await this.validateUniversityAssignment(role, payload.universityId);
         const status = payload.status || 'active';
@@ -154,7 +154,7 @@ class AdminUserService {
 
     async updateUser(id, payload = {}) {
         const existing = await UserRepository.findById(id);
-        if (!existing) throw { status: 404, message: 'Nguoi dung khong ton tai' };
+        if (!existing) throw { status: 404, message: 'Người dùng không tồn tại' };
 
         const nextRole = payload.role !== undefined ? normalizeRole(payload.role) : existing.role;
         requireValidRole(nextRole);
@@ -170,11 +170,11 @@ class AdminUserService {
         if (payload.fullName !== undefined) updateData.fullName = payload.fullName?.trim();
         if (payload.email !== undefined) {
             const email = payload.email?.trim()?.toLowerCase();
-            if (!email) throw { status: 400, message: 'Email khong duoc de trong' };
+            if (!email) throw { status: 400, message: 'Email không được để trống' };
 
             const duplicate = await UserRepository.findByEmail(email);
             if (duplicate && String(duplicate._id) !== String(id)) {
-                throw { status: 409, message: 'Email da duoc su dung' };
+                throw { status: 409, message: 'Email đã được sử dụng' };
             }
             updateData.email = email;
         }
@@ -197,7 +197,7 @@ class AdminUserService {
             banReleaseDate: null
         });
 
-        if (!user) throw { status: 404, message: 'Nguoi dung khong ton tai' };
+        if (!user) throw { status: 404, message: 'Người dùng không tồn tại' };
         return this.attachUniversity(user);
     }
 

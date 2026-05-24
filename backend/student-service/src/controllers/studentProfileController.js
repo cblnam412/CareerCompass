@@ -5,7 +5,7 @@ export const getMyStudentProfile = async (req, res, next) => {
     const data = await studentProfileService.getMyProfile(req.userId);
     res.status(200).json({
       success: true,
-      message: 'Lay ho so hoc sinh thanh cong',
+      message: 'Lấy hồ sơ học sinh thành công',
       data,
     });
   } catch (error) {
@@ -21,7 +21,7 @@ export const updateStudentProfile = async (req, res, next) => {
     );
     res.status(200).json({
       success: true,
-      message: 'Cap nhat ho so hoc sinh thanh cong',
+      message: 'Cập nhật hồ sơ học sinh thành công',
       data,
     });
   } catch (error) {

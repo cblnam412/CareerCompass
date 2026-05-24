@@ -10,7 +10,7 @@ class FileRepository {
 
   async ensureBucketExists(bucketName) {
     if (!this.supabase) {
-      return { success: false, error: 'Chua cau hinh Supabase' };
+      return { success: false, error: 'Chưa cấu hình Supabase' };
     }
 
     const { data: buckets, error: listError } = await this.supabase.storage.listBuckets();
@@ -26,7 +26,7 @@ class FileRepository {
 
   async uploadFile(file, bucketName, folder) {
     if (!file?.buffer) {
-      return { success: false, error: 'File khong hop le' };
+      return { success: false, error: 'File không hợp lệ' };
     }
 
     const bucket = await this.ensureBucketExists(bucketName);

@@ -1,6 +1,6 @@
 import authService from '../services/authService.js';
 
-const sendError = (res, error, fallbackMessage = 'Loi server') => {
+const sendError = (res, error, fallbackMessage = 'Lỗi server') => {
     const status = error.status || 500;
     res.status(status).json({
         success: false,
@@ -16,18 +16,18 @@ class AuthController {
             if (!email || !password) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Email va mat khau la bat buoc'
+                    message: 'Email và mật khẩu là bắt buộc'
                 });
             }
 
             const result = await authService.login(email, password);
             res.status(200).json({
                 success: true,
-                message: 'Dang nhap thanh cong',
+                message: 'Đăng nhập thành công',
                 data: result
             });
         } catch (error) {
-            sendError(res, error, 'Loi server khi dang nhap');
+            sendError(res, error, 'Lỗi server khi đăng nhập');
         }
     }
 
@@ -36,11 +36,11 @@ class AuthController {
             const user = await authService.register(req.body);
             res.status(201).json({
                 success: true,
-                message: 'Dang ki thanh cong',
+                message: 'Đăng ký thành công',
                 data: user
             });
         } catch (error) {
-            sendError(res, error, 'Loi server khi dang ki');
+            sendError(res, error, 'Lỗi server khi đăng ký');
         }
     }
 
@@ -49,11 +49,11 @@ class AuthController {
             const user = await authService.registerUser(req.body);
             res.status(201).json({
                 success: true,
-                message: 'Dang ki tai khoan thanh cong',
+                message: 'Đăng ký tài khoản thành công',
                 data: user
             });
         } catch (error) {
-            sendError(res, error, 'Loi server khi dang ki tai khoan');
+            sendError(res, error, 'Lỗi server khi đăng ký tài khoản');
         }
     }
 
@@ -62,11 +62,11 @@ class AuthController {
             const result = await authService.registerUniversityRep(req.body, req.files || {});
             res.status(201).json({
                 success: true,
-                message: 'Dang ki dai dien truong thanh cong. Vui long cho quan ly truong phe duyet',
+                message: 'Đăng ký đại diện trường thành công. Vui lòng chờ quản lý trường phê duyệt',
                 data: result
             });
         } catch (error) {
-            sendError(res, error, 'Loi server khi dang ki dai dien truong');
+            sendError(res, error, 'Lỗi server khi đăng ký đại diện trường');
         }
     }
 
@@ -84,7 +84,7 @@ class AuthController {
             const user = await authService.updateUser(req.userId, req.body);
             res.status(200).json({
                 success: true,
-                message: 'Cap nhat thong tin thanh cong',
+                message: 'Cập nhật thông tin thành công',
                 data: user
             });
         } catch (error) {
@@ -95,7 +95,7 @@ class AuthController {
     async verifyToken(req, res) {
         res.status(200).json({
             success: true,
-            message: 'Token hop le',
+            message: 'Token hợp lệ',
             data: {
                 userId: req.userId,
                 email: req.email,
@@ -127,7 +127,7 @@ class AuthController {
             const user = await authService.updateMyProfile(req.userId, req.body);
             res.status(200).json({
                 success: true,
-                message: 'Cap nhat profile thanh cong',
+                message: 'Cập nhật profile thành công',
                 data: user
             });
         } catch (error) {
@@ -140,7 +140,7 @@ class AuthController {
             if (!req.files || !req.files.avatar) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Vui long chon anh'
+                    message: 'Vui lòng chọn ảnh'
                 });
             }
 
@@ -148,7 +148,7 @@ class AuthController {
             const user = await authService.uploadAvatar(req.userId, avatarFile);
             res.status(200).json({
                 success: true,
-                message: 'Cap nhat avatar thanh cong',
+                message: 'Cập nhật avatar thành công',
                 data: user
             });
         } catch (error) {
@@ -161,7 +161,7 @@ class AuthController {
             await authService.deleteAvatar(req.userId);
             res.status(200).json({
                 success: true,
-                message: 'Xoa avatar thanh cong'
+                message: 'Xóa avatar thành công'
             });
         } catch (error) {
             sendError(res, error);

@@ -53,9 +53,9 @@ class ForumPostService {
   }
 
   async getById(postId, userId = null) {
-    if (!mongoose.Types.ObjectId.isValid(postId)) throw new HttpError(400, 'postId khong hop le');
+    if (!mongoose.Types.ObjectId.isValid(postId)) throw new HttpError(400, 'postId không hợp lệ');
     const post = await ForumPostRepository.findById(postId);
-    if (!post) throw new HttpError(404, 'Bai viet khong ton tai');
+    if (!post) throw new HttpError(404, 'Bài viết không tồn tại');
 
     const comments = await ForumCommentRepository.findMany(
       { postId },
@@ -86,7 +86,7 @@ class ForumPostService {
         );
       }
       const result = await FileRepository.uploadFile(image, 'forum-posts', 'images');
-      if (!result.success) throw new HttpError(400, `Loi upload hinh anh: ${result.error}`);
+      if (!result.success) throw new HttpError(400, `Lỗi upload hình ảnh: ${result.error}`);
       update.itemUrl = result.url;
     }
 
@@ -98,7 +98,7 @@ class ForumPostService {
         );
       }
       const result = await FileRepository.uploadFile(document, 'forum-posts', 'documents');
-      if (!result.success) throw new HttpError(400, `Loi upload tai lieu: ${result.error}`);
+      if (!result.success) throw new HttpError(400, `Lỗi upload tài liệu: ${result.error}`);
       update.documentUrl = result.url;
     }
 
@@ -106,11 +106,11 @@ class ForumPostService {
   }
 
   async create(payload = {}, files = {}, authorId) {
-    if (!authorId) throw new HttpError(401, 'Vui long dang nhap');
+    if (!authorId) throw new HttpError(401, 'Vui lòng đăng nhập');
     const title = payload.title?.trim();
     const content = payload.content?.trim();
-    if (!title) throw new HttpError(400, 'Vui long cung cap tieu de');
-    if (!content) throw new HttpError(400, 'Vui long cung cap noi dung');
+    if (!title) throw new HttpError(400, 'Vui lòng cung cấp tiêu đề');
+    if (!content) throw new HttpError(400, 'Vui lòng cung cấp nội dung');
 
     await getUserById(authorId);
     const attachments = await this.uploadAttachments(files);
@@ -130,26 +130,26 @@ class ForumPostService {
 
   async update(postId, payload = {}, files = {}, userId) {
     const post = await ForumPostRepository.findById(postId);
-    if (!post) throw new HttpError(404, 'Bai viet khong ton tai');
+    if (!post) throw new HttpError(404, 'Bài viết không tồn tại');
     if (String(post.authorId) !== String(userId)) {
-      throw new HttpError(403, 'Ban khong co quyen chinh sua bai viet nay');
+      throw new HttpError(403, 'Bạn không có quyền chỉnh sửa bài viết này');
     }
 
     const update = await this.uploadAttachments(files, post);
     if (payload.title !== undefined) {
       const title = payload.title.trim();
-      if (!title) throw new HttpError(400, 'Tieu de khong duoc de trong');
+      if (!title) throw new HttpError(400, 'Tiêu đề không được để trống');
       update.title = title;
     }
     if (payload.content !== undefined) {
       const content = payload.content.trim();
-      if (!content) throw new HttpError(400, 'Noi dung khong duoc de trong');
+      if (!content) throw new HttpError(400, 'Nội dung không được để trống');
       update.content = content;
     }
     if (payload.itemUrl !== undefined && !firstFile(files, 'image')) update.itemUrl = payload.itemUrl;
     if (payload.status !== undefined) {
       if (!['active', 'resolved', 'closed', 'hidden'].includes(payload.status)) {
-        throw new HttpError(400, 'Trang thai bai viet khong hop le');
+        throw new HttpError(400, 'Trạng thái bài viết không hợp lệ');
       }
       update.status = payload.status;
     }
@@ -164,9 +164,9 @@ class ForumPostService {
 
   async delete(postId, userId, { bypassOwner = false } = {}) {
     const post = await ForumPostRepository.findById(postId);
-    if (!post) throw new HttpError(404, 'Bai viet khong ton tai');
+    if (!post) throw new HttpError(404, 'Bài viết không tồn tại');
     if (!bypassOwner && String(post.authorId) !== String(userId)) {
-      throw new HttpError(403, 'Ban khong co quyen xoa bai viet nay');
+      throw new HttpError(403, 'Bạn không có quyền xóa bài viết này');
     }
 
     if (post.itemUrl) {
@@ -192,7 +192,7 @@ class ForumPostService {
 
   async toggleUpvote(postId, userId) {
     const post = await ForumPostRepository.findById(postId);
-    if (!post) throw new HttpError(404, 'Bai viet khong ton tai');
+    if (!post) throw new HttpError(404, 'Bài viết không tồn tại');
 
     const hasUpvoted = hasUserUpvoted(post.upvoters, userId);
     post.upvoters = hasUpvoted

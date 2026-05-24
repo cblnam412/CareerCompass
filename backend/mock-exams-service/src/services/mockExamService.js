@@ -26,24 +26,24 @@ const normalizeExamPayload = (payload = {}) => ({
 class MockExamService {
   async assertSubjectExists(subjectId) {
     if (!mongoose.Types.ObjectId.isValid(subjectId)) {
-      throw new HttpError(400, 'Mon hoc khong hop le');
+      throw new HttpError(400, 'Môn học không hợp lệ');
     }
 
     const subject = await SubjectRepository.findById(subjectId);
-    if (!subject) throw new HttpError(400, 'Mon hoc khong ton tai');
+    if (!subject) throw new HttpError(400, 'Môn học không tồn tại');
     return subject;
   }
 
   validateDuration(duration) {
     if (typeof duration !== 'number' || Number.isNaN(duration) || duration <= 0) {
-      throw new HttpError(400, 'Thoi gian lam bai phai la so duong');
+      throw new HttpError(400, 'Thời gian làm bài phải là số dương');
     }
   }
 
   validateQuestions(questions) {
     const validation = validateQuestionsStructure(questions);
     if (!validation.valid) {
-      throw new HttpError(400, 'Du lieu cau hoi khong hop le', validation.errors);
+      throw new HttpError(400, 'Dữ liệu câu hỏi không hợp lệ', validation.errors);
     }
   }
 
@@ -71,14 +71,14 @@ class MockExamService {
 
   async getById(examId) {
     const exam = await MockExamRepository.findById(examId);
-    if (!exam) throw new HttpError(404, 'De thi khong ton tai');
+    if (!exam) throw new HttpError(404, 'Đề thi không tồn tại');
     return exam;
   }
 
   async create(payload) {
     const data = normalizeExamPayload(payload);
     if (!data.title || !data.subject || data.duration === undefined || !data.questions) {
-      throw new HttpError(400, 'Yeu cau thieu: title, subject, duration, questions');
+      throw new HttpError(400, 'Yêu cầu thiếu: title, subject, duration, questions');
     }
 
     await this.assertSubjectExists(data.subject);
@@ -90,7 +90,7 @@ class MockExamService {
 
   async update(examId, payload) {
     const existing = await MockExamRepository.findRawById(examId);
-    if (!existing) throw new HttpError(404, 'De thi khong ton tai');
+    if (!existing) throw new HttpError(404, 'Đề thi không tồn tại');
 
     const data = normalizeExamPayload(payload);
     if (data.subject !== undefined) await this.assertSubjectExists(data.subject);
@@ -108,15 +108,15 @@ class MockExamService {
 
   async delete(examId) {
     const deleted = await MockExamRepository.deleteById(examId);
-    if (!deleted) throw new HttpError(404, 'De thi khong ton tai');
+    if (!deleted) throw new HttpError(404, 'Đề thi không tồn tại');
     return deleted;
   }
 
   async importQuestionsFromExcel(examId, file, action = 'replace') {
-    if (!file) throw new HttpError(400, 'Vui long upload file Excel');
+    if (!file) throw new HttpError(400, 'Vui lòng upload file Excel');
 
     const questions = parseExcelQuestions(file.buffer);
-    if (questions.length === 0) throw new HttpError(400, 'File Excel khong chua cau hoi hop le');
+    if (questions.length === 0) throw new HttpError(400, 'File Excel không chứa câu hỏi hợp lệ');
 
     this.validateQuestions(questions);
 
@@ -129,7 +129,7 @@ class MockExamService {
     }
 
     const existing = await MockExamRepository.findRawById(examId);
-    if (!existing) throw new HttpError(404, 'De thi khong ton tai');
+    if (!existing) throw new HttpError(404, 'Đề thi không tồn tại');
 
     const exam = action === 'append'
       ? await MockExamRepository.appendQuestions(examId, questions)
@@ -160,16 +160,16 @@ class MockExamService {
 
   async submit(examId, studentId, answers) {
     if (!studentId || !mongoose.Types.ObjectId.isValid(studentId)) {
-      throw new HttpError(401, 'Vui long dang nhap');
+      throw new HttpError(401, 'Vui lòng đăng nhập');
     }
 
     if (!Array.isArray(answers)) {
-      throw new HttpError(400, 'answers phai la mang');
+      throw new HttpError(400, 'answers phải là mảng');
     }
 
     const exam = await this.getById(examId);
     if (answers.length !== exam.questions.length) {
-      throw new HttpError(400, `Can cung cap dap an cho ca ${exam.questions.length} cau hoi`);
+      throw new HttpError(400, `Cần cung cấp đáp án cho cả ${exam.questions.length} câu hỏi`);
     }
 
     let correctCount = 0;
@@ -193,14 +193,14 @@ class MockExamService {
     const weaknesses = scoringDetails
       .filter((detail) => !detail.isCorrect)
       .slice(0, 3)
-      .map((detail) => `Cau ${detail.questionIndex}: ${detail.question.substring(0, 50)}...`);
+      .map((detail) => `Câu ${detail.questionIndex}: ${detail.question.substring(0, 50)}...`);
     const strengths = scoringDetails
       .filter((detail) => detail.isCorrect)
       .slice(0, 3)
-      .map((detail) => `Cau ${detail.questionIndex}`);
+      .map((detail) => `Câu ${detail.questionIndex}`);
     const improvementTips = correctCount >= totalQuestions * 0.8
-      ? 'Ban lam tot. Hay tiep tuc on tap de nang cao kien thuc.'
-      : 'Ban can on tap lai cac phan kien thuc con yeu va xem lai cac cau sai.';
+      ? 'Bạn làm tốt. Hãy tiếp tục ôn tập để nâng cao kiến thức.'
+      : 'Bạn cần ôn tập lại các phần kiến thức còn yếu và xem lại các câu sai.';
 
     const result = await ExamResultRepository.create({
       studentId,
@@ -208,8 +208,8 @@ class MockExamService {
       subject: exam.subject._id || exam.subject,
       scoreTotal,
       scoreDetails: scoringDetails,
-      weaknesses: weaknesses.length > 0 ? weaknesses : ['Khong co'],
-      strengths: strengths.length > 0 ? strengths : ['Tat ca'],
+      weaknesses: weaknesses.length > 0 ? weaknesses : ['Không có'],
+      strengths: strengths.length > 0 ? strengths : ['Tất cả'],
       improvementTips,
     });
 

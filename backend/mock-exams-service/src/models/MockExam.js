@@ -4,7 +4,7 @@ const questionSchema = new mongoose.Schema(
   {
     question: {
       type: String,
-      required: [true, 'Noi dung cau hoi la bat buoc'],
+      required: [true, 'Nội dung câu hỏi là bắt buộc'],
       trim: true,
     },
     options: {
@@ -14,18 +14,18 @@ const questionSchema = new mongoose.Schema(
         validator(options) {
           return Array.isArray(options) && options.length === 4 && options.every((item) => String(item).trim());
         },
-        message: 'Moi cau hoi can dung 4 lua chon khong rong',
+        message: 'Mỗi câu hỏi cần đúng 4 lựa chọn không rỗng',
       },
     },
     answer: {
       type: String,
-      required: [true, 'Dap an la bat buoc'],
+      required: [true, 'Đáp án là bắt buộc'],
       trim: true,
       validate: {
         validator(answer) {
           return Array.isArray(this.options) && this.options.includes(answer);
         },
-        message: 'Dap an phai nam trong cac lua chon',
+        message: 'Đáp án phải nằm trong các lựa chọn',
       },
     },
     explanation: {
@@ -41,18 +41,18 @@ const mockExamSchema = new mongoose.Schema(
   {
     title: {
       type: String,
-      required: [true, 'Tieu de de thi la bat buoc'],
+      required: [true, 'Tiêu đề đề thi là bắt buộc'],
       trim: true,
     },
     subject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subject',
-      required: [true, 'Mon hoc la bat buoc'],
+      required: [true, 'Môn học là bắt buộc'],
     },
     duration: {
       type: Number,
-      required: [true, 'Thoi gian lam bai la bat buoc'],
-      min: [1, 'Thoi gian lam bai phai lon hon 0'],
+      required: [true, 'Thời gian làm bài là bắt buộc'],
+      min: [1, 'Thời gian làm bài phải lớn hơn 0'],
     },
     questions: {
       type: [questionSchema],
@@ -61,7 +61,7 @@ const mockExamSchema = new mongoose.Schema(
         validator(questions) {
           return Array.isArray(questions) && questions.length > 0;
         },
-        message: 'De thi phai co it nhat 1 cau hoi',
+        message: 'Đề thi phải có ít nhất 1 câu hỏi',
       },
     },
     status: {

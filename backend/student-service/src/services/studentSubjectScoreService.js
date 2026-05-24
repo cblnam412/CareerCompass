@@ -8,7 +8,7 @@ const roundScore = (value) => Math.round(Number(value) * 100) / 100;
 
 const assertObjectId = (value, name) => {
   if (!mongoose.Types.ObjectId.isValid(value)) {
-    throw new HttpError(400, `${name} khong hop le`);
+    throw new HttpError(400, `${name} không hợp lệ`);
   }
 };
 
@@ -33,9 +33,9 @@ class StudentSubjectScoreService {
     );
   }
 
-  assertSameStudent(requester, studentId, action = 'cap nhat') {
+  assertSameStudent(requester, studentId, action = 'cập nhật') {
     if (String(requester.userId) !== String(studentId)) {
-      throw new HttpError(403, `Ban khong co quyen ${action} diem cua hoc sinh khac`);
+      throw new HttpError(403, `Bạn không có quyền ${action} điểm của học sinh khác`);
     }
   }
 
@@ -91,7 +91,7 @@ class StudentSubjectScoreService {
   }
 
   async addOrUpdateManualScore(studentId, payload, requester) {
-    this.assertSameStudent(requester, studentId, 'cap nhat');
+    this.assertSameStudent(requester, studentId, 'cập nhật');
     assertObjectId(studentId, 'studentId');
 
     const { subjectId, score } = payload;
@@ -117,12 +117,12 @@ class StudentSubjectScoreService {
   }
 
   async deleteSubjectScore(studentId, subjectId, requester) {
-    this.assertSameStudent(requester, studentId, 'xoa');
+    this.assertSameStudent(requester, studentId, 'xóa');
     assertObjectId(studentId, 'studentId');
     assertObjectId(subjectId, 'subjectId');
 
     const deleted = await StudentSubjectScoreRepository.deleteOne(studentId, subjectId);
-    if (!deleted) throw new HttpError(404, 'Diem mon hoc nay khong ton tai');
+    if (!deleted) throw new HttpError(404, 'Điểm môn học này không tồn tại');
     return deleted;
   }
 
@@ -132,7 +132,7 @@ class StudentSubjectScoreService {
 
     const numericScore = Number(score);
     if (Number.isNaN(numericScore) || numericScore < 0 || numericScore > 10) {
-      throw new HttpError(400, 'Diem phai nam trong khoang 0-10');
+      throw new HttpError(400, 'Điểm phải nằm trong khoảng 0-10');
     }
 
     await getSubjectById(subjectId);

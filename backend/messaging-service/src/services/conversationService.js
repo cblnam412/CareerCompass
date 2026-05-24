@@ -10,7 +10,7 @@ const isParticipant = (conversation, userId) =>
 
 class ConversationService {
   assertObjectId(id, name = 'id') {
-    if (!mongoose.Types.ObjectId.isValid(id)) throw new HttpError(400, `${name} khong hop le`);
+    if (!mongoose.Types.ObjectId.isValid(id)) throw new HttpError(400, `${name} không hợp lệ`);
   }
 
   async getUserConversations(userId) {
@@ -29,11 +29,11 @@ class ConversationService {
     const { studentId, uniManagerId, universityId } = payload;
 
     if (!studentId || !uniManagerId || !universityId) {
-      throw new HttpError(400, 'Vui long cung cap studentId, uniManagerId, universityId');
+      throw new HttpError(400, 'Vui lòng cung cấp studentId, uniManagerId, universityId');
     }
 
     if (![studentId, uniManagerId].some((id) => String(id) === String(requester.userId)) && requester.role !== 'admin') {
-      throw new HttpError(403, 'Ban khong co quyen tao cuoc tro chuyen nay');
+      throw new HttpError(403, 'Bạn không có quyền tạo cuộc trò chuyện này');
     }
 
     await Promise.all([
@@ -70,10 +70,10 @@ class ConversationService {
     this.assertObjectId(conversationId, 'conversationId');
     const conversation = await ConversationRepository.findById(conversationId);
     if (!conversation || !conversation.isActive) {
-      throw new HttpError(404, 'Cuoc tro chuyen khong ton tai');
+      throw new HttpError(404, 'Cuộc trò chuyện không tồn tại');
     }
     if (!isParticipant(conversation, userId)) {
-      throw new HttpError(403, 'Ban khong co quyen truy cap cuoc tro chuyen nay');
+      throw new HttpError(403, 'Bạn không có quyền truy cập cuộc trò chuyện này');
     }
     return conversation;
   }
@@ -81,7 +81,7 @@ class ConversationService {
   getReceiverId(conversation, senderId) {
     if (String(conversation.studentId) === String(senderId)) return conversation.uniManagerId;
     if (String(conversation.uniManagerId) === String(senderId)) return conversation.studentId;
-    throw new HttpError(403, 'Ban khong phai thanh vien cua cuoc tro chuyen nay');
+    throw new HttpError(403, 'Bạn không phải thành viên của cuộc trò chuyện này');
   }
 
   async updateLastMessage(conversationId, message = null) {

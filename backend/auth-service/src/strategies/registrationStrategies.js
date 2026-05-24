@@ -36,31 +36,31 @@ class RegistrationStrategy {
         }
 
         if (isNaN(age) || age < 15) {
-            throwHttpError(400, 'Ngay sinh khong hop le hoac ban phai tren 15 tuoi');
+            throwHttpError(400, 'Ngày sinh không hợp lệ hoặc bạn phải trên 15 tuổi');
         }
     }
 
     async ensureUniqueUser(email, studentId) {
         const existingUser = await UserRepository.findByEmail(email);
         if (existingUser) {
-            throwHttpError(400, 'Email da duoc su dung');
+            throwHttpError(400, 'Email đã được sử dụng');
         }
 
         if (studentId) {
             const existingStudentId = await UserRepository.findByStudentId(studentId);
             if (existingStudentId) {
-                throwHttpError(400, 'Ma so sinh vien da duoc su dung');
+                throwHttpError(400, 'Mã số sinh viên đã được sử dụng');
             }
         }
     }
 
     validateCommonFields({ fullName, email, password, DOB }) {
         if (!fullName?.trim() || !email?.trim() || !password) {
-            throwHttpError(400, 'Ten, email va mat khau la bat buoc');
+            throwHttpError(400, 'Tên, email và mật khẩu là bắt buộc');
         }
 
         if (!DOB) {
-            throwHttpError(400, 'Ngay sinh la bat buoc');
+            throwHttpError(400, 'Ngày sinh là bắt buộc');
         }
     }
 
@@ -116,11 +116,11 @@ export class UniversityRepresentativeRegistrationStrategy extends RegistrationSt
         const normalizedStudentId = studentId?.trim();
 
         if (!normalizedStudentId || !universityId) {
-            throwHttpError(400, 'Ma sinh vien va ID truong dai hoc la bat buoc');
+            throwHttpError(400, 'Mã sinh viên và ID trường đại học là bắt buộc');
         }
 
         if (!studentCardFront || !studentCardBack) {
-            throwHttpError(400, 'Vui long upload anh mat truoc va mat sau cua the sinh vien');
+            throwHttpError(400, 'Vui lòng upload ảnh mặt trước và mặt sau của thẻ sinh viên');
         }
 
         await this.ensureUniqueUser(normalizedEmail, normalizedStudentId);
@@ -130,18 +130,18 @@ export class UniversityRepresentativeRegistrationStrategy extends RegistrationSt
 
         const bucketCheck = await FileRepository.ensureBucketExists('student-cards');
         if (!bucketCheck.success) {
-            throwHttpError(500, `Loi kiem tra bucket student-cards: ${bucketCheck.error}`);
+            throwHttpError(500, `Lỗi kiểm tra bucket student-cards: ${bucketCheck.error}`);
         }
 
         const frontCardUpload = await FileRepository.uploadStudentCard(studentCardFront, 'front');
         if (!frontCardUpload.success) {
-            throwHttpError(500, `Loi upload anh mat truoc: ${frontCardUpload.error}`);
+            throwHttpError(500, `Lỗi upload ảnh mặt trước: ${frontCardUpload.error}`);
         }
 
         const backCardUpload = await FileRepository.uploadStudentCard(studentCardBack, 'back');
         if (!backCardUpload.success) {
             await FileRepository.deleteStudentCard(frontCardUpload.path);
-            throwHttpError(500, `Loi upload anh mat sau: ${backCardUpload.error}`);
+            throwHttpError(500, `Lỗi upload ảnh mặt sau: ${backCardUpload.error}`);
         }
 
         let newUser;
@@ -190,7 +190,7 @@ const registrationStrategies = {
 export const getRegistrationStrategy = (type) => {
     const strategy = registrationStrategies[type];
     if (!strategy) {
-        throwHttpError(400, 'Loai dang ki khong hop le');
+        throwHttpError(400, 'Loại đăng ký không hợp lệ');
     }
     return strategy;
 };

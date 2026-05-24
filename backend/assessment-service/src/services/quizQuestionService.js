@@ -36,7 +36,7 @@ const normalizeQuestionPayload = (payload = {}, quizType) => {
 class QuizQuestionService {
   async getQuizOrFail(quizId) {
     const quiz = await PersonalityQuizRepository.findById(quizId);
-    if (!quiz) throw new HttpError(404, 'Khong tim thay bai trac nghiem');
+    if (!quiz) throw new HttpError(404, 'Không tìm thấy bài trắc nghiệm');
     return quiz;
   }
 
@@ -49,7 +49,7 @@ class QuizQuestionService {
     const quiz = await this.getQuizOrFail(quizId);
     const data = normalizeQuestionPayload(payload, quiz.type);
     const validation = validateQuestionData(data, quiz.type);
-    if (!validation.isValid) throw new HttpError(400, 'Du lieu cau hoi khong hop le', validation.errors);
+    if (!validation.isValid) throw new HttpError(400, 'Dữ liệu câu hỏi không hợp lệ', validation.errors);
 
     if (!data.order) {
       const lastQuestion = await QuizQuestionRepository.findLastByQuiz(quizId);
@@ -63,7 +63,7 @@ class QuizQuestionService {
   async update(quizId, questionId, payload = {}) {
     const quiz = await this.getQuizOrFail(quizId);
     const existing = await QuizQuestionRepository.findOneByQuizAndId(quizId, questionId);
-    if (!existing) throw new HttpError(404, 'Khong tim thay cau hoi');
+    if (!existing) throw new HttpError(404, 'Không tìm thấy câu hỏi');
 
     const merged = {
       ...existing.toObject(),
@@ -71,7 +71,7 @@ class QuizQuestionService {
     };
     const normalized = normalizeQuestionPayload(merged, quiz.type);
     const validation = validateQuestionData(normalized, quiz.type);
-    if (!validation.isValid) throw new HttpError(400, 'Du lieu cau hoi khong hop le', validation.errors);
+    if (!validation.isValid) throw new HttpError(400, 'Dữ liệu câu hỏi không hợp lệ', validation.errors);
 
     const updateData = {};
     ['content', 'order', 'dimension', 'attribute', 'agreePreference', 'disagreePreference'].forEach((field) => {
@@ -84,21 +84,21 @@ class QuizQuestionService {
 
   async delete(quizId, questionId) {
     const question = await QuizQuestionRepository.deleteOneByQuizAndId(quizId, questionId);
-    if (!question) throw new HttpError(404, 'Khong tim thay cau hoi');
+    if (!question) throw new HttpError(404, 'Không tìm thấy câu hỏi');
     return question;
   }
 
   async importFromExcel(quizId, file) {
     const quiz = await this.getQuizOrFail(quizId);
-    if (!file?.buffer) throw new HttpError(400, 'Vui long upload file Excel');
+    if (!file?.buffer) throw new HttpError(400, 'Vui lòng upload file Excel');
 
     const XLSX = await import('xlsx');
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
-    if (!sheetName) throw new HttpError(400, 'File Excel khong co sheet');
+    if (!sheetName) throw new HttpError(400, 'File Excel không có sheet');
 
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
-    if (rows.length < 2) throw new HttpError(400, 'File Excel phai co header row');
+    if (rows.length < 2) throw new HttpError(400, 'File Excel phải có header row');
 
     const lastQuestion = await QuizQuestionRepository.findLastByQuiz(quizId);
     let nextOrder = (lastQuestion?.order || 0) + 1;

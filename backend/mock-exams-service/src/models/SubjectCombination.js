@@ -4,7 +4,7 @@ const subjectCombinationSchema = new mongoose.Schema(
   {
     combinationName: {
       type: String,
-      required: [true, 'Ma to hop la bat buoc'],
+      required: [true, 'Mã tổ hợp là bắt buộc'],
       trim: true,
       uppercase: true,
     },
@@ -25,7 +25,7 @@ const subjectCombinationSchema = new mongoose.Schema(
         validator(subjects) {
           return Array.isArray(subjects) && subjects.length === 3;
         },
-        message: 'To hop phai co dung 3 mon hoc',
+        message: 'Tổ hợp phải có đúng 3 môn học',
       },
     },
     status: {

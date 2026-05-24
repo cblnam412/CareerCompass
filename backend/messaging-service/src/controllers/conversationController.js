@@ -24,7 +24,7 @@ export const startConversation = async (req, res, next) => {
 export const deleteConversation = async (req, res, next) => {
   try {
     await conversationService.deleteConversation(req.params.conversationId, req.userId);
-    res.status(200).json({ success: true, message: 'Xoa cuoc tro chuyen thanh cong' });
+    res.status(200).json({ success: true, message: 'Xóa cuộc trò chuyện thành công' });
   } catch (error) {
     next(error);
   }

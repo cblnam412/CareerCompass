@@ -5,7 +5,7 @@ export const validateObjectIdParam = (paramName = 'id') => (req, res, next) => {
   if (!mongoose.Types.ObjectId.isValid(value)) {
     return res.status(400).json({
       success: false,
-      message: `${paramName} khong hop le`,
+      message: `${paramName} không hợp lệ`,
     });
   }
   next();
@@ -14,10 +14,10 @@ export const validateObjectIdParam = (paramName = 'id') => (req, res, next) => {
 export const validatePaginationQuery = (req, res, next) => {
   const { page, limit } = req.query;
   if (page !== undefined && (!Number.isInteger(Number(page)) || Number(page) < 1)) {
-    return res.status(400).json({ success: false, message: 'page khong hop le' });
+    return res.status(400).json({ success: false, message: 'page không hợp lệ' });
   }
   if (limit !== undefined && (!Number.isInteger(Number(limit)) || Number(limit) < 1)) {
-    return res.status(400).json({ success: false, message: 'limit khong hop le' });
+    return res.status(400).json({ success: false, message: 'limit không hợp lệ' });
   }
   next();
 };

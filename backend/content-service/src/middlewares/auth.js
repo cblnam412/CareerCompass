@@ -19,7 +19,7 @@ export const verifyToken = (req, res, next) => {
   if (!token) {
     return res.status(401).json({
       success: false,
-      message: 'Khong tim thay token xac thuc',
+      message: 'Không tìm thấy token xác thực',
     });
   }
 
@@ -29,7 +29,7 @@ export const verifyToken = (req, res, next) => {
   } catch {
     res.status(403).json({
       success: false,
-      message: 'Token khong hop le hoac da het han',
+      message: 'Token không hợp lệ hoặc đã hết hạn',
     });
   }
 };
@@ -51,7 +51,7 @@ export const authorizeRole = (...roles) => (req, res, next) => {
   if (!req.role || !roles.includes(req.role)) {
     return res.status(403).json({
       success: false,
-      message: 'Ban khong co quyen truy cap',
+      message: 'Bạn không có quyền truy cập',
     });
   }
   next();

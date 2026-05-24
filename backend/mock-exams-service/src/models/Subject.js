@@ -4,7 +4,7 @@ const subjectSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Ten mon hoc la bat buoc'],
+      required: [true, 'Tên môn học là bắt buộc'],
       trim: true,
     },
     code: {

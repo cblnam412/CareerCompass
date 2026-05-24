@@ -56,8 +56,8 @@ const buildFallbackCandidate = (knowledge) => ({
   _id: `knowledge-${knowledge._id}`,
   majorId: knowledge._id,
   majorName: knowledge.majorName,
-  universityName: 'Nhieu truong dao tao',
-  region: 'Toan quoc',
+  universityName: 'Nhiều trường đào tạo',
+  region: 'Toàn quốc',
   admissionScore: null,
   admissionMethods: [],
   isKnowledgeFallback: true,
@@ -101,18 +101,18 @@ const explainRecommendation = ({ profile, knowledge, features, rfScore, finalSco
     .map((item) => item.name);
 
   const reasonParts = [];
-  if (strengths.includes('academicFit')) reasonParts.push('diem hoc tap phu hop voi nhom mon trong nganh');
-  if (strengths.includes('hollandFit')) reasonParts.push('ma Holland co xu huong gan voi moi truong nghe nay');
-  if (strengths.includes('mbtiFit')) reasonParts.push('MBTI tuong thich voi cach lam viec cua nganh');
-  if (strengths.includes('keywordFit')) reasonParts.push('ho so co nhieu dau hieu trung voi tu khoa nghe nghiep');
-  if (strengths.includes('softSkillFit')) reasonParts.push('ky nang mem dang co ho tro tot cho nganh');
+  if (strengths.includes('academicFit')) reasonParts.push('điểm học tập phù hợp với nhóm môn trong ngành');
+  if (strengths.includes('hollandFit')) reasonParts.push('mã Holland có xu hướng gần với môi trường nghề này');
+  if (strengths.includes('mbtiFit')) reasonParts.push('MBTI tương thích với cách làm việc của ngành');
+  if (strengths.includes('keywordFit')) reasonParts.push('hồ sơ có nhiều dấu hiệu trùng với từ khóa nghề nghiệp');
+  if (strengths.includes('softSkillFit')) reasonParts.push('kỹ năng mềm đang có hỗ trợ tốt cho ngành');
 
   const admissionNote = candidate?.admissionScore
-    ? `Diem chuan tham khao ${candidate.admissionScore}; he thong uoc tinh muc phu hop diem la ${Math.round(features[5])}/100.`
-    : 'Chua co diem chuan cu the cho lua chon nay, nen he thong uu tien do phu hop hoc luc va so thich.';
+    ? `Điểm chuẩn tham khảo ${candidate.admissionScore}; hệ thống ước tính mức phù hợp điểm là ${Math.round(features[5])}/100.`
+    : 'Chưa có điểm chuẩn cụ thể cho lựa chọn này, nên hệ thống ưu tiên độ phù hợp học lực và sở thích.';
 
   const reason = [
-    reasonParts.length ? `Phu hop vi ${reasonParts.join(', ')}.` : 'Phu hop dua tren tong hop hoc luc, tinh cach va nhu cau thi truong.',
+    reasonParts.length ? `Phù hợp vì ${reasonParts.join(', ')}.` : 'Phù hợp dựa trên tổng hợp học lực, tính cách và nhu cầu thị trường.',
     admissionNote,
     knowledge.adviceTemplate,
   ].filter(Boolean).join(' ');
@@ -141,13 +141,13 @@ class RecommendationService {
 
   async getStudentProfile(userId) {
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      throw new HttpError(400, 'userId khong hop le');
+      throw new HttpError(400, 'userId không hợp lệ');
     }
 
     const { StudentProfile } = getExternalModels();
     const profile = await StudentProfile.findOne({ userId }).lean();
     if (!profile) {
-      throw new HttpError(404, 'Khong tim thay ho so hoc sinh. Hay cap nhat MBTI, Holland va diem truoc khi goi y.');
+      throw new HttpError(404, 'Không tìm thấy hồ sơ học sinh. Hãy cập nhật MBTI, Holland và điểm trước khi gợi ý.');
     }
     return profile;
   }
@@ -155,7 +155,7 @@ class RecommendationService {
   async getCandidates(knowledgeList) {
     const { UniversityMajor, Major, University } = getExternalModels();
     const [universityMajors, majors, universities] = await Promise.all([
-      UniversityMajor.find({}).limit(500).lean(),
+      UniversityMajor.find({}).limit(5000).lean(),
       Major.find({}).lean(),
       University.find({ status: { $ne: 'inactive' } }).lean(),
     ]);
@@ -191,7 +191,7 @@ class RecommendationService {
 
     const knowledgeList = knowledgeDocs.map(toKnowledgeObject);
     if (!knowledgeList.length) {
-      throw new HttpError(500, 'Recommendation knowledge base chua co du lieu');
+      throw new HttpError(500, 'Recommendation knowledge base chưa có dữ liệu');
     }
 
     const candidates = await this.getCandidates(knowledgeList);
@@ -226,13 +226,13 @@ class RecommendationService {
         name: major.name || candidate.majorName || knowledge.majorName,
         majorName: major.name || candidate.majorName || knowledge.majorName,
         universityId: toId(candidate.universityId || ''),
-        universityName: university.name || candidate.universityName || 'Nhieu truong dao tao',
-        region: university.region || candidate.region || 'Toan quoc',
+        universityName: university.name || candidate.universityName || 'Nhiều trường đào tạo',
+        region: university.region || candidate.region || 'Toàn quốc',
         minScore: Number(candidate.admissionScore || 0),
         admissionScore: candidate.admissionScore,
         admissionMethods: candidate.admissionMethods || [],
         category: major.category || knowledge.category,
-        salary: knowledge.salaryText || 'Dang cap nhat',
+        salary: knowledge.salaryText || 'Đang cập nhật',
         softSkills: knowledge.softSkills || [],
         matchScore: Math.round(finalScore),
         confidence: Math.round(finalScore),
@@ -283,9 +283,9 @@ class RecommendationService {
 
   async saveFeedback(requester, payload = {}) {
     const userId = payload.userId || requester.userId;
-    if (!mongoose.Types.ObjectId.isValid(userId)) throw new HttpError(400, 'userId khong hop le');
-    if (!payload.recommendationId) throw new HttpError(400, 'recommendationId la bat buoc');
-    if (payload.isHelpful === undefined) throw new HttpError(400, 'isHelpful la bat buoc');
+    if (!mongoose.Types.ObjectId.isValid(userId)) throw new HttpError(400, 'userId không hợp lệ');
+    if (!payload.recommendationId) throw new HttpError(400, 'recommendationId là bắt buộc');
+    if (payload.isHelpful === undefined) throw new HttpError(400, 'isHelpful là bắt buộc');
 
     const feedback = await RecommendationFeedback.findOneAndUpdate(
       { userId, recommendationId: String(payload.recommendationId) },

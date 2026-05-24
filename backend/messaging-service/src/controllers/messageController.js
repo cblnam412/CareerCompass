@@ -21,7 +21,7 @@ export const searchMessages = async (req, res, next) => {
 export const sendMessageWithDocument = async (req, res, next) => {
   try {
     const data = await messageService.sendWithDocument(req.body, req.file, req.userId);
-    res.status(201).json({ success: true, message: 'Gui tin nhan thanh cong', data });
+    res.status(201).json({ success: true, message: 'Gửi tin nhắn thành công', data });
   } catch (error) {
     next(error);
   }
@@ -30,7 +30,7 @@ export const sendMessageWithDocument = async (req, res, next) => {
 export const deleteMessage = async (req, res, next) => {
   try {
     await messageService.deleteMessage(req.params.messageId, req.userId);
-    res.status(200).json({ success: true, message: 'Xoa tin nhan thanh cong' });
+    res.status(200).json({ success: true, message: 'Xóa tin nhắn thành công' });
   } catch (error) {
     next(error);
   }

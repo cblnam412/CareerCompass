@@ -13,7 +13,7 @@ const upload = multer({
     if (allowedMimes.includes(file.mimetype) || allowedExtension) {
       cb(null, true);
     } else {
-      cb(new Error('Chi chap nhan file Excel (.xlsx, .xls)'), false);
+      cb(new Error('Chỉ chấp nhận file Excel (.xlsx, .xls)'), false);
     }
   },
   limits: { fileSize: 5 * 1024 * 1024 },

@@ -15,7 +15,7 @@ class TestScoringStrategyFactory {
       return new HollandScoringStrategy();
     }
 
-    throw new HttpError(400, 'Loai trac nghiem khong hop le. Chi chap nhan MBTI hoac Holland/RIASEC.');
+    throw new HttpError(400, 'Loại trắc nghiệm không hợp lệ. Chỉ chấp nhận MBTI hoặc Holland/RIASEC.');
   }
 }
 

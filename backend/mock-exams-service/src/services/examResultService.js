@@ -31,17 +31,17 @@ const attachUsers = async (results) => {
 class ExamResultService {
   async getResultById(resultId, requester) {
     const result = await ExamResultRepository.findById(resultId);
-    if (!result) throw new HttpError(404, 'Ket qua thi khong ton tai');
+    if (!result) throw new HttpError(404, 'Kết quả thi không tồn tại');
 
     if (requester.role !== 'admin' && result.studentId.toString() !== requester.userId) {
-      throw new HttpError(403, 'Ban khong co quyen xem ket qua nay');
+      throw new HttpError(403, 'Bạn không có quyền xem kết quả này');
     }
 
     return attachUsers(result);
   }
 
   async getStudentResults(studentId, query = {}) {
-    if (!mongoose.Types.ObjectId.isValid(studentId)) throw new HttpError(400, 'Hoc sinh khong hop le');
+    if (!mongoose.Types.ObjectId.isValid(studentId)) throw new HttpError(400, 'Học sinh không hợp lệ');
 
     const { page, limit, skip } = getPagination(query, 10);
     const sort = getSort(query, '-takenAt');
@@ -79,7 +79,7 @@ class ExamResultService {
   }
 
   async getInternalStudentResults(studentId) {
-    if (!mongoose.Types.ObjectId.isValid(studentId)) throw new HttpError(400, 'Hoc sinh khong hop le');
+    if (!mongoose.Types.ObjectId.isValid(studentId)) throw new HttpError(400, 'Học sinh không hợp lệ');
     return ExamResultRepository.findMany({ studentId }, null, { sort: '-takenAt' });
   }
 
@@ -106,7 +106,7 @@ class ExamResultService {
       highestScore: Math.max(...scores),
       lowestScore: Math.min(...scores),
       examHistory: results.map((result) => ({
-        examTitle: result.mockExamId?.title || 'De thi',
+        examTitle: result.mockExamId?.title || 'Đề thi',
         score: result.scoreTotal,
         takenAt: result.takenAt,
       })),

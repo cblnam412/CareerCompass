@@ -86,3 +86,29 @@ export const cacheProxyResponse = async (proxyRes, proxyResData, userReq, {
         console.error('[response-cache] Redis write failed:', error.message);
     }
 };
+
+export const clearResponseCache = async ({
+    enabled = true,
+    keyPrefix = 'api-gateway:response-cache',
+} = {}) => {
+    if (!enabled) return;
+
+    try {
+        const redis = await getRedisClient();
+        if (!redis?.isReady) return;
+
+        const keys = [];
+        for await (const key of redis.scanIterator({
+            MATCH: `${keyPrefix}:*`,
+            COUNT: 100,
+        })) {
+            keys.push(key);
+        }
+
+        if (keys.length > 0) {
+            await redis.del(keys);
+        }
+    } catch (error) {
+        console.error('[response-cache] Redis clear failed:', error.message);
+    }
+};

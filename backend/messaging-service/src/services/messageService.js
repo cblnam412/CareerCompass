@@ -7,7 +7,7 @@ import { attachUsers } from './lookupService.js';
 
 class MessageService {
   assertObjectId(id, name = 'id') {
-    if (!mongoose.Types.ObjectId.isValid(id)) throw new HttpError(400, `${name} khong hop le`);
+    if (!mongoose.Types.ObjectId.isValid(id)) throw new HttpError(400, `${name} không hợp lệ`);
   }
 
   async listMessages(conversationId, query = {}, userId) {
@@ -32,7 +32,7 @@ class MessageService {
   async searchMessages(conversationId, query = {}, userId) {
     const conversation = await conversationService.getParticipantConversation(conversationId, userId);
     const searchQuery = query.query?.trim() || query.q?.trim();
-    if (!searchQuery) throw new HttpError(400, 'Vui long nhap tu khoa tim kiem');
+    if (!searchQuery) throw new HttpError(400, 'Vui lòng nhập từ khóa tìm kiếm');
 
     const { page, limit, skip } = getPagination(query, 15);
     const regex = { $regex: escapeRegex(searchQuery), $options: 'i' };
@@ -65,7 +65,7 @@ class MessageService {
     if (!file) return {};
 
     const result = await FileRepository.uploadFile(file, 'messages', 'documents');
-    if (!result.success) throw new HttpError(400, `Loi upload tai lieu: ${result.error}`);
+    if (!result.success) throw new HttpError(400, `Lỗi upload tài liệu: ${result.error}`);
 
     return {
       fileUrl: result.url,
@@ -76,8 +76,8 @@ class MessageService {
   async sendWithDocument(payload = {}, file = null, senderId) {
     const { conversationId } = payload;
     const content = payload.content?.trim() || '';
-    if (!conversationId) throw new HttpError(400, 'Vui long cung cap conversationId');
-    if (!content && !file) throw new HttpError(400, 'Vui long nhap noi dung hoac chon file');
+    if (!conversationId) throw new HttpError(400, 'Vui lòng cung cấp conversationId');
+    if (!content && !file) throw new HttpError(400, 'Vui lòng nhập nội dung hoặc chọn file');
 
     const conversation = await conversationService.getParticipantConversation(conversationId, senderId);
     const receiverId = conversationService.getReceiverId(conversation, senderId);
@@ -100,14 +100,14 @@ class MessageService {
   async deleteMessage(messageId, userId) {
     this.assertObjectId(messageId, 'messageId');
     const message = await MessageRepository.findById(messageId);
-    if (!message) throw new HttpError(404, 'Tin nhan khong ton tai');
+    if (!message) throw new HttpError(404, 'Tin nhắn không tồn tại');
     if (String(message.senderId) !== String(userId)) {
-      throw new HttpError(403, 'Ban khong co quyen xoa tin nhan nay');
+      throw new HttpError(403, 'Bạn không có quyền xóa tin nhắn này');
     }
 
     const conversation = await ConversationRepository.findById(message.conversationId);
     if (conversation && ![conversation.studentId, conversation.uniManagerId].some((id) => String(id) === String(userId))) {
-      throw new HttpError(403, 'Ban khong co quyen xoa tin nhan nay');
+      throw new HttpError(403, 'Bạn không có quyền xóa tin nhắn này');
     }
 
     if (message.fileUrl) {

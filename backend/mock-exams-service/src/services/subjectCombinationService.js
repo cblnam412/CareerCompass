@@ -12,21 +12,21 @@ const normalizePayload = (payload = {}) => ({
 class SubjectCombinationService {
   async validateSubjects(subjects) {
     if (!Array.isArray(subjects) || subjects.length !== 3) {
-      throw new HttpError(400, 'To hop phai co dung 3 mon hoc');
+      throw new HttpError(400, 'Tổ hợp phải có đúng 3 môn học');
     }
 
     const uniqueSubjects = [...new Set(subjects.map(String))];
     if (uniqueSubjects.length !== 3) {
-      throw new HttpError(400, 'To hop khong duoc trung mon hoc');
+      throw new HttpError(400, 'Tổ hợp không được trùng môn học');
     }
 
     if (uniqueSubjects.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
-      throw new HttpError(400, 'Danh sach mon hoc khong hop le');
+      throw new HttpError(400, 'Danh sách môn học không hợp lệ');
     }
 
     const found = await SubjectRepository.findMany({ _id: { $in: uniqueSubjects } }, '_id');
     if (found.length !== 3) {
-      throw new HttpError(400, 'Mot hoac nhieu mon hoc khong ton tai');
+      throw new HttpError(400, 'Một hoặc nhiều môn học không tồn tại');
     }
 
     return uniqueSubjects;
@@ -34,12 +34,12 @@ class SubjectCombinationService {
 
   async create(payload) {
     const data = normalizePayload(payload);
-    if (!data.combinationName) throw new HttpError(400, 'Ma to hop la bat buoc');
+    if (!data.combinationName) throw new HttpError(400, 'Mã tổ hợp là bắt buộc');
 
     data.subjects = await this.validateSubjects(data.subjects);
 
     const duplicate = await SubjectCombinationRepository.findDuplicate(data);
-    if (duplicate) throw new HttpError(409, `To hop "${data.combinationName}" da ton tai`);
+    if (duplicate) throw new HttpError(409, `Tổ hợp "${data.combinationName}" đã tồn tại`);
 
     return SubjectCombinationRepository.create(data);
   }
@@ -67,18 +67,18 @@ class SubjectCombinationService {
 
   async getById(id) {
     const combination = await SubjectCombinationRepository.findById(id);
-    if (!combination) throw new HttpError(404, 'Khong tim thay to hop mon');
+    if (!combination) throw new HttpError(404, 'Không tìm thấy tổ hợp môn');
     return combination;
   }
 
   async update(id, payload) {
     const existing = await SubjectCombinationRepository.findRawById(id);
-    if (!existing) throw new HttpError(404, 'Khong tim thay to hop mon');
+    if (!existing) throw new HttpError(404, 'Không tìm thấy tổ hợp môn');
 
     const data = normalizePayload(payload);
     if (data.combinationName) {
       const duplicate = await SubjectCombinationRepository.findDuplicate({ ...data, excludeId: id });
-      if (duplicate) throw new HttpError(409, `To hop "${data.combinationName}" da duoc su dung`);
+      if (duplicate) throw new HttpError(409, `Tổ hợp "${data.combinationName}" đã được sử dụng`);
     }
 
     if (data.subjects !== undefined) {
@@ -96,7 +96,7 @@ class SubjectCombinationService {
 
   async delete(id) {
     const deleted = await SubjectCombinationRepository.deleteById(id);
-    if (!deleted) throw new HttpError(404, 'Khong tim thay to hop mon');
+    if (!deleted) throw new HttpError(404, 'Không tìm thấy tổ hợp môn');
     return deleted;
   }
 }

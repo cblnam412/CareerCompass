@@ -64,14 +64,14 @@ const calculateBanPayload = (violationCount) => {
 class ViolationReportService {
   assertAdmin(requester) {
     if (requester.role !== 'admin') {
-      throw new HttpError(403, 'Chi admin co quyen xu ly bao cao');
+      throw new HttpError(403, 'Chỉ admin có quyền xử lý báo cáo');
     }
   }
 
   async getTarget(targetType, targetItemId) {
     const normalizedType = normalizeTargetType(targetType);
     if (!['Post', 'Comment'].includes(normalizedType)) {
-      throw new HttpError(400, 'targetType phai la Post hoac Comment');
+      throw new HttpError(400, 'targetType phải là Post hoặc Comment');
     }
 
     const target = normalizedType === 'Post'
@@ -79,7 +79,7 @@ class ViolationReportService {
       : await ForumCommentRepository.findById(targetItemId);
 
     if (!target) {
-      throw new HttpError(404, normalizedType === 'Post' ? 'Bai viet khong ton tai' : 'Binh luan khong ton tai');
+      throw new HttpError(404, normalizedType === 'Post' ? 'Bài viết không tồn tại' : 'Bình luận không tồn tại');
     }
 
     return { targetType: normalizedType, target };
@@ -92,13 +92,13 @@ class ViolationReportService {
     const targetId = payload.targetId || payload.targerId || target.authorId;
 
     if (!targetId || !targetItemId || !reason) {
-      throw new HttpError(400, 'Thieu thong tin: targetId, targetType, targetItemId, reason');
+      throw new HttpError(400, 'Thiếu thông tin: targetId, targetType, targetItemId, reason');
     }
     if (String(reporterId) === String(targetId)) {
-      throw new HttpError(400, 'Khong the tu bao cao chinh minh');
+      throw new HttpError(400, 'Không thể tự báo cáo chính mình');
     }
     if (String(target.authorId) !== String(targetId)) {
-      throw new HttpError(400, 'targetId khong khop voi tac gia noi dung bi bao cao');
+      throw new HttpError(400, 'targetId không khớp với tác giả nội dung bị báo cáo');
     }
 
     await Promise.all([getUserById(reporterId), getUserById(targetId)]);
@@ -108,7 +108,7 @@ class ViolationReportService {
       targetItemId,
       status: 'Pending',
     });
-    if (existing) throw new HttpError(409, 'Ban da bao cao noi dung nay roi');
+    if (existing) throw new HttpError(409, 'Bạn đã báo cáo nội dung này rồi');
 
     return ViolationReportRepository.create({
       reporterId,
@@ -155,7 +155,7 @@ class ViolationReportService {
   async getReportDetail(requester, reportId) {
     this.assertAdmin(requester);
     const report = await ViolationReportRepository.findById(reportId);
-    if (!report) throw new HttpError(404, 'Bao cao khong ton tai');
+    if (!report) throw new HttpError(404, 'Báo cáo không tồn tại');
 
     let targetContent = null;
     if (report.targetType === 'Post') {
@@ -175,16 +175,16 @@ class ViolationReportService {
     try {
       if (report.targetType === 'Post') {
         await forumPostService.delete(report.targetItemId, null, { bypassOwner: true });
-        return 'Da xoa bai viet';
+        return 'Đã xóa bài viết';
       }
 
       const result = await forumCommentService.delete(report.targetItemId, null, { bypassOwner: true });
-      return result.deletedCount > 0 ? 'Da xoa binh luan' : 'Binh luan da bi xoa truoc do';
+      return result.deletedCount > 0 ? 'Đã xóa bình luận' : 'Bình luận đã bị xóa trước đó';
     } catch (error) {
       if (error.statusCode === 404 || error.status === 404) {
         return report.targetType === 'Post'
-          ? 'Bai viet da bi xoa truoc do'
-          : 'Binh luan da bi xoa truoc do';
+          ? 'Bài viết đã bị xóa trước đó'
+          : 'Bình luận đã bị xóa trước đó';
       }
       throw error;
     }
@@ -193,8 +193,8 @@ class ViolationReportService {
   async approveReport(requester, reportId) {
     this.assertAdmin(requester);
     const report = await ViolationReportRepository.findById(reportId);
-    if (!report) throw new HttpError(404, 'Bao cao khong ton tai');
-    if (report.status !== 'Pending') throw new HttpError(409, 'Bao cao nay da duoc xu ly');
+    if (!report) throw new HttpError(404, 'Báo cáo không tồn tại');
+    if (report.status !== 'Pending') throw new HttpError(409, 'Báo cáo này đã được xử lý');
 
     await getUserById(report.targetId);
     let actionTaken = await this.removeReportedContent(report);
@@ -208,8 +208,8 @@ class ViolationReportService {
     const bannedUser = await updateUserStatus(report.targetId, banPayload);
 
     actionTaken += banPayload.banReleaseDate
-      ? `\nTai khoan bi khoa den ${new Date(banPayload.banReleaseDate).toISOString()}`
-      : '\nTai khoan bi khoa vo thoi han';
+      ? `\nTài khoản bị khóa đến ${new Date(banPayload.banReleaseDate).toISOString()}`
+      : '\nTài khoản bị khóa vô thời hạn';
 
     return ViolationReportRepository.updateById(reportId, {
       status: 'Approved',
@@ -225,17 +225,17 @@ class ViolationReportService {
     this.assertAdmin(requester);
     const note = reason?.trim();
     if (!note || note.length < 5) {
-      throw new HttpError(400, 'Ly do tu choi phai co it nhat 5 ky tu');
+      throw new HttpError(400, 'Lý do từ chối phải có ít nhất 5 ký tự');
     }
 
     const report = await ViolationReportRepository.findById(reportId);
-    if (!report) throw new HttpError(404, 'Bao cao khong ton tai');
-    if (report.status !== 'Pending') throw new HttpError(409, 'Bao cao nay da duoc xu ly');
+    if (!report) throw new HttpError(404, 'Báo cáo không tồn tại');
+    if (report.status !== 'Pending') throw new HttpError(409, 'Báo cáo này đã được xử lý');
 
     return ViolationReportRepository.updateById(reportId, {
       status: 'Rejected',
       decision: 'Rejected',
-      actionTaken: `Tu choi voi ly do: ${note}`,
+      actionTaken: `Từ chối với lý do: ${note}`,
       resolvedBy: requester.userId,
       resolvedAt: new Date(),
     });
@@ -247,9 +247,9 @@ class ViolationReportService {
       return this.approveReport(requester, reportId);
     }
     if (String(decision).toLowerCase() === 'rejected') {
-      return this.rejectReport(requester, reportId, payload.reason || 'Bao cao khong hop le');
+      return this.rejectReport(requester, reportId, payload.reason || 'Báo cáo không hợp lệ');
     }
-    throw new HttpError(400, 'decision phai la Approved hoac Rejected');
+    throw new HttpError(400, 'decision phải là Approved hoặc Rejected');
   }
 }
 

@@ -14,7 +14,7 @@ export const getAffiliations = async (req, res, next) => {
 export const createAffiliationFromAuth = async (req, res, next) => {
   try {
     const data = await affiliationService.createFromAuth(req.body);
-    res.status(201).json({ success: true, message: 'Tao yeu cau dai dien truong thanh cong', data });
+    res.status(201).json({ success: true, message: 'Tạo yêu cầu đại diện trường thành công', data });
   } catch (error) {
     next(error);
   }

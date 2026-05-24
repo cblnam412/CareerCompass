@@ -8,10 +8,10 @@ import {
 import { getPagination } from '../utils/query.js';
 import { HttpError } from '../utils/httpError.js';
 
-const ensureManagerCanAccess = (currentUser, universityId, action = 'xu ly') => {
+const ensureManagerCanAccess = (currentUser, universityId, action = 'xử lý') => {
   if (currentUser.role === 'admin') return;
   if (!currentUser.universityId || currentUser.universityId.toString() !== universityId.toString()) {
-    throw new HttpError(403, `Ban chi co quyen ${action} yeu cau cua truong minh quan ly`);
+    throw new HttpError(403, `Bạn chỉ có quyền ${action} yêu cầu của trường mình quản lý`);
   }
 };
 
@@ -23,7 +23,7 @@ const mapById = (items = []) =>
 class AffiliationService {
   async getCurrentUser(userId) {
     const currentUser = await getUserById(userId);
-    if (!currentUser) throw new HttpError(401, 'Nguoi dung khong ton tai');
+    if (!currentUser) throw new HttpError(401, 'Người dùng không tồn tại');
     return currentUser;
   }
 
@@ -85,7 +85,7 @@ class AffiliationService {
     ensureManagerCanAccess(currentUser, universityId, 'xem');
 
     const university = await UniversityRepository.findById(universityId);
-    if (!university) throw new HttpError(404, 'Khong tim thay truong dai hoc');
+    if (!university) throw new HttpError(404, 'Không tìm thấy trường đại học');
 
     const { page, limit, skip } = getPagination(query, 10);
     const filter = { universityId };
@@ -105,7 +105,7 @@ class AffiliationService {
   async getById(id, requester) {
     const currentUser = await this.getCurrentUser(requester.userId);
     const affiliation = await UniversityAffiliationRepository.findById(id, true);
-    if (!affiliation) throw new HttpError(404, 'Yeu cau khong ton tai');
+    if (!affiliation) throw new HttpError(404, 'Yêu cầu không tồn tại');
     ensureManagerCanAccess(currentUser, affiliation.universityId._id || affiliation.universityId, 'xem');
     return this.attachAuthUsers(affiliation);
   }
@@ -121,11 +121,11 @@ class AffiliationService {
     } = payload;
 
     if (!authUserId || !universityId) {
-      throw new HttpError(400, 'authUserId va universityId la bat buoc');
+      throw new HttpError(400, 'authUserId và universityId là bắt buộc');
     }
 
     const university = await UniversityRepository.findById(universityId);
-    if (!university) throw new HttpError(404, 'Khong tim thay truong dai hoc');
+    if (!university) throw new HttpError(404, 'Không tìm thấy trường đại học');
 
     const affiliation = await UniversityAffiliationRepository.create({
       authUserId,
@@ -144,13 +144,13 @@ class AffiliationService {
   async review(id, requester, status, reviewNote = '') {
     const currentUser = await this.getCurrentUser(requester.userId);
     const affiliation = await UniversityAffiliationRepository.findById(id);
-    if (!affiliation) throw new HttpError(404, 'Yeu cau khong ton tai');
-    ensureManagerCanAccess(currentUser, affiliation.universityId, status === 'approved' ? 'duyet' : 'tu choi');
+    if (!affiliation) throw new HttpError(404, 'Yêu cầu không tồn tại');
+    ensureManagerCanAccess(currentUser, affiliation.universityId, status === 'approved' ? 'duyệt' : 'từ chối');
     if (affiliation.status !== 'pending') {
-      throw new HttpError(400, `Khong the xu ly yeu cau dang o trang thai '${affiliation.status}'`);
+      throw new HttpError(400, `Không thể xử lý yêu cầu đang ở trạng thái '${affiliation.status}'`);
     }
     if (status === 'rejected' && !reviewNote?.trim()) {
-      throw new HttpError(400, 'Vui long cung cap ly do tu choi');
+      throw new HttpError(400, 'Vui lòng cung cấp lý do từ chối');
     }
 
     const updated = await UniversityAffiliationRepository.updateById(id, {
