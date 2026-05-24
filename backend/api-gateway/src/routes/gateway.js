@@ -6,11 +6,20 @@ import { createRedisCacheReadMiddleware, cacheProxyResponse, clearResponseCache 
 import { alertAbnormalError, generateRequestId, getMonitoringSnapshot, getRecentLogs } from '../utils/monitoring.js';
 
 const router = express.Router();
-const RESPONSE_CACHE_ENABLED = process.env.RESPONSE_CACHE_ENABLED !== 'false';
+const RESPONSE_CACHE_ENABLED = process.env.RESPONSE_CACHE_ENABLED === 'true';
 const RESPONSE_CACHE_TTL_SECONDS = Number(process.env.RESPONSE_CACHE_TTL_SECONDS || 60);
+const RESPONSE_CACHE_BASE_PREFIX = process.env.RESPONSE_CACHE_KEY_PREFIX || 'api-gateway:response-cache';
+const RESPONSE_CACHE_VERSION = process.env.RESPONSE_CACHE_VERSION || `startup-${Date.now()}`;
+const RESPONSE_CACHE_KEY_PREFIX = `${RESPONSE_CACHE_BASE_PREFIX}:${RESPONSE_CACHE_VERSION}`;
 const cacheReadMiddleware = createRedisCacheReadMiddleware({
     enabled: RESPONSE_CACHE_ENABLED,
     ttlSeconds: RESPONSE_CACHE_TTL_SECONDS,
+    keyPrefix: RESPONSE_CACHE_KEY_PREFIX,
+});
+
+const clearGatewayResponseCache = () => clearResponseCache({
+    enabled: RESPONSE_CACHE_ENABLED,
+    keyPrefix: RESPONSE_CACHE_KEY_PREFIX,
 });
 
 /**
@@ -110,12 +119,13 @@ const createProxyMiddleware = (service) => {
             }
 
             if (userReq.method !== 'GET' && proxyRes.statusCode < 400) {
-                await clearResponseCache({ enabled: RESPONSE_CACHE_ENABLED });
+                await clearGatewayResponseCache();
             }
 
             await cacheProxyResponse(proxyRes, proxyResData, userReq, {
                 enabled: RESPONSE_CACHE_ENABLED,
                 ttlSeconds: RESPONSE_CACHE_TTL_SECONDS,
+                keyPrefix: RESPONSE_CACHE_KEY_PREFIX,
             });
 
             return proxyResData;
@@ -194,6 +204,10 @@ const forwardJsonRequest = (service, targetPath) => asyncHandler(async (req, res
         });
     }
 
+    if (req.method !== 'GET' && response.status < 400) {
+        await clearGatewayResponseCache();
+    }
+
     res
         .status(response.status)
         .type(response.headers.get('content-type') || 'application/json')
@@ -213,6 +227,23 @@ const verifyAdminRequest = async (req) => {
         throw new APIError('Ban khong co quyen truy cap', 403);
     }
 };
+
+router.post('/gateway/cache/clear', asyncHandler(async (req, res) => {
+    await verifyAdminRequest(req);
+    const deletedCount = await clearResponseCache({
+        enabled: true,
+        keyPrefix: req.query.currentOnly === 'true' ? RESPONSE_CACHE_KEY_PREFIX : RESPONSE_CACHE_BASE_PREFIX,
+    });
+
+    res.status(200).json({
+        success: true,
+        message: 'Đã xóa response cache',
+        deletedCount,
+        cachePrefix: req.query.currentOnly === 'true' ? RESPONSE_CACHE_KEY_PREFIX : RESPONSE_CACHE_BASE_PREFIX,
+        currentCachePrefix: RESPONSE_CACHE_KEY_PREFIX,
+        timestamp: new Date().toISOString(),
+    });
+}));
 
 router.get('/gateway/monitoring/status', asyncHandler(async (req, res) => {
     await verifyAdminRequest(req);

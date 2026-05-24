@@ -12,7 +12,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const RATE_LIMIT_ENABLED = process.env.RATE_LIMIT_ENABLED !== 'false';
-const RESPONSE_CACHE_ENABLED = process.env.RESPONSE_CACHE_ENABLED !== 'false';
+const RESPONSE_CACHE_ENABLED = process.env.RESPONSE_CACHE_ENABLED === 'true';
 
 connectRedis();
 

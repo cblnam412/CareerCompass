@@ -3,10 +3,17 @@ import { getRedisClient } from '../utils/redisClient.js';
 
 const DEFAULT_CACHEABLE_STATUSES = new Set([200]);
 
+const hasCacheBypassHeader = (req) => {
+    const cacheControl = String(req.headers['cache-control'] || '');
+    const pragma = String(req.headers.pragma || '');
+    return /no-cache|no-store|max-age=0/i.test(cacheControl) || /no-cache/i.test(pragma);
+};
+
 const shouldCacheRequest = (req) => (
     req.method === 'GET'
     && !req.headers.authorization
     && !req.headers.cookie
+    && !hasCacheBypassHeader(req)
 );
 
 const createCacheKey = (req, prefix) => {
@@ -21,6 +28,7 @@ export const createRedisCacheReadMiddleware = ({
     keyPrefix = 'api-gateway:response-cache',
 } = {}) => async (req, res, next) => {
     if (!enabled || ttlSeconds <= 0 || !shouldCacheRequest(req)) {
+        if (req.method === 'GET') res.setHeader('X-Cache', 'BYPASS');
         return next();
     }
 
@@ -37,6 +45,7 @@ export const createRedisCacheReadMiddleware = ({
 
         const payload = JSON.parse(cached);
         res.setHeader('X-Cache', 'HIT');
+        res.setHeader('X-Cache-Key', cacheKey);
         Object.entries(payload.headers || {}).forEach(([key, value]) => {
             if (value) res.setHeader(key, value);
         });
@@ -91,24 +100,32 @@ export const clearResponseCache = async ({
     enabled = true,
     keyPrefix = 'api-gateway:response-cache',
 } = {}) => {
-    if (!enabled) return;
+    if (!enabled) return 0;
 
     try {
         const redis = await getRedisClient();
-        if (!redis?.isReady) return;
+        if (!redis?.isReady) return 0;
 
         const keys = [];
+        let deletedCount = 0;
         for await (const key of redis.scanIterator({
             MATCH: `${keyPrefix}:*`,
             COUNT: 100,
         })) {
             keys.push(key);
+
+            if (keys.length >= 500) {
+                deletedCount += await redis.del(keys.splice(0, keys.length));
+            }
         }
 
         if (keys.length > 0) {
-            await redis.del(keys);
+            deletedCount += await redis.del(keys);
         }
+
+        return deletedCount;
     } catch (error) {
         console.error('[response-cache] Redis clear failed:', error.message);
+        return 0;
     }
 };
