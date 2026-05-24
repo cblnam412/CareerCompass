@@ -95,6 +95,7 @@ export default function HollandQuizScreen() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState({}) // Maps questionId -> score (1-5)
   const [showResults, setShowResults] = useState(false)
+  const [hollandCode, setHollandCode] = useState("")
   const [results, setResults] = useState([]) // Processed top 3 results
 
   // 1. Fetch Quiz Data
@@ -176,6 +177,7 @@ export default function HollandQuizScreen() {
       if (data.success) {
         // Backend returns: interpretation: { R: 3.5, I: 4.2, ... } (Averages out of 5)
         processResults(data.data.interpretation);
+        setHollandCode(data.data.resultScore.code);
         setShowResults(true);
         toast.success("Đã có kết quả!");
       } else {
@@ -230,7 +232,7 @@ export default function HollandQuizScreen() {
                 <h2 className={styles.resultsTitle}>Kết quả trắc nghiệm nghề nghiệp của bạn</h2>
                 <p className={styles.resultSubtitle}>
                   Mã Holland của bạn là:{" "}
-                  <span className={styles.hollandCode}>{results.map((r) => r.type).join("")}</span>
+                  <span className={styles.hollandCode}>{hollandCode}</span>
                 </p>
               </div>
 
