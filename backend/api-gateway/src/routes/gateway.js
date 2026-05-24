@@ -68,7 +68,11 @@ const createProxyMiddleware = (service) => {
     const proxyMiddleware = proxy(service.url, {
         // Transform request path
         proxyReqPathResolver: (req) => {
-            const path = req.url.replace(service.prefix, '');
+            const path = req.url === service.prefix
+                ? '/'
+                : req.url.startsWith(`${service.prefix}/`)
+                    ? req.url.slice(service.prefix.length)
+                    : req.url;
             return service.targetPrefix ? `${service.targetPrefix}${path}` : path;
         },
 

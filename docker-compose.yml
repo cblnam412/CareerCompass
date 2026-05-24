@@ -1,19 +1,4 @@
 services:
-  mongo:
-    image: mongo:7
-    container_name: doan1-mongo
-    restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo-data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-
   redis:
     image: redis:7-alpine
     container_name: doan1-redis
@@ -42,7 +27,6 @@ services:
     environment:
       PORT: 5000
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/auth-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       UNIVERSITY_SERVICE_URL: http://university-service:5001
@@ -50,9 +34,6 @@ services:
     volumes:
       - ./backend/auth-service:/app
       - auth-node-modules:/app/node_modules
-    depends_on:
-      mongo:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -71,12 +52,13 @@ services:
       context: ./backend/university-service
     container_name: doan1-university-service
     restart: unless-stopped
+    env_file:
+      - ./backend/university-service/.env
     ports:
       - "5001:5001"
     environment:
       PORT: 5001
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/university-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
@@ -84,9 +66,6 @@ services:
     volumes:
       - ./backend/university-service:/app
       - university-node-modules:/app/node_modules
-    depends_on:
-      mongo:
-        condition: service_healthy
     healthcheck:
       test:
         [
@@ -105,12 +84,13 @@ services:
       context: ./backend/mock-exams-service
     container_name: doan1-mock-exams-service
     restart: unless-stopped
+    env_file:
+      - ./backend/mock-exams-service/.env
     ports:
       - "5002:5002"
     environment:
       PORT: 5002
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/mock-exams-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
@@ -120,8 +100,6 @@ services:
       - ./backend/mock-exams-service:/app
       - mock-exams-node-modules:/app/node_modules
     depends_on:
-      mongo:
-        condition: service_healthy
       auth-service:
         condition: service_healthy
     healthcheck:
@@ -142,12 +120,13 @@ services:
       context: ./backend/student-service
     container_name: doan1-student-service
     restart: unless-stopped
+    env_file:
+      - ./backend/student-service/.env
     ports:
       - "5003:5003"
     environment:
       PORT: 5003
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/student-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
@@ -158,8 +137,6 @@ services:
       - ./backend/student-service:/app
       - student-node-modules:/app/node_modules
     depends_on:
-      mongo:
-        condition: service_healthy
       auth-service:
         condition: service_healthy
       university-service:
@@ -185,13 +162,12 @@ services:
     container_name: doan1-content-service
     restart: unless-stopped
     env_file:
-      - ./backend/auth-service/.env
+      - ./backend/content-service/.env
     ports:
       - "5004:5004"
     environment:
       PORT: 5004
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/content-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
@@ -201,8 +177,6 @@ services:
       - ./backend/content-service:/app
       - content-node-modules:/app/node_modules
     depends_on:
-      mongo:
-        condition: service_healthy
       auth-service:
         condition: service_healthy
       university-service:
@@ -226,13 +200,12 @@ services:
     container_name: doan1-messaging-service
     restart: unless-stopped
     env_file:
-      - ./backend/auth-service/.env
+      - ./backend/messaging-service/.env
     ports:
       - "5005:5005"
     environment:
       PORT: 5005
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/messaging-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
@@ -242,8 +215,6 @@ services:
       - ./backend/messaging-service:/app
       - messaging-node-modules:/app/node_modules
     depends_on:
-      mongo:
-        condition: service_healthy
       auth-service:
         condition: service_healthy
       university-service:
@@ -266,12 +237,13 @@ services:
       context: ./backend/assessment-service
     container_name: doan1-assessment-service
     restart: unless-stopped
+    env_file:
+      - ./backend/assessment-service/.env
     ports:
       - "5006:5006"
     environment:
       PORT: 5006
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/assessment-service
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       STUDENT_SERVICE_URL: http://student-service:5003
@@ -280,8 +252,6 @@ services:
       - ./backend/assessment-service:/app
       - assessment-node-modules:/app/node_modules
     depends_on:
-      mongo:
-        condition: service_healthy
       auth-service:
         condition: service_healthy
       student-service:
@@ -304,17 +274,14 @@ services:
       context: ./backend/recommendation-service
     container_name: doan1-recommendation-service
     restart: unless-stopped
+    env_file:
+      - ./backend/recommendation-service/.env
     ports:
       - "5017:5007"
     environment:
       PORT: 5007
       NODE_ENV: development
-      MONGO_URL: mongodb://mongo:27017/recommendation-service
       REDIS_URL: redis://redis:6379
-      STUDENT_MONGO_URL: mongodb://mongo:27017/student-service
-      UNIVERSITY_MONGO_URL: mongodb://mongo:27017/university-service
-      MOCK_EXAMS_MONGO_URL: mongodb://mongo:27017/mock-exams-service
-      ASSESSMENT_MONGO_URL: mongodb://mongo:27017/assessment-service
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
       AUTO_SEED_RECOMMENDATION_DATA: "true"
@@ -322,8 +289,6 @@ services:
       - ./backend/recommendation-service:/app
       - recommendation-node-modules:/app/node_modules
     depends_on:
-      mongo:
-        condition: service_healthy
       student-service:
         condition: service_healthy
       university-service:
@@ -434,7 +399,6 @@ services:
         condition: service_healthy
 
 volumes:
-  mongo-data:
   redis-data:
   auth-node-modules:
   gateway-node-modules:
