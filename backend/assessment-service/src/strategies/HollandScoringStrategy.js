@@ -21,9 +21,22 @@ export default class HollandScoringStrategy extends TestScoringStrategy {
       return acc;
     }, {});
 
+    const orderIndex = new Map(
+      HOLLAND_ATTRIBUTES.map((attribute, index) => [attribute, index])
+    );
+  
     const code = Object.entries(scores)
-      .sort(([, left], [, right]) => right - left)
+      .sort(([leftAttr, leftScore], [rightAttr, rightScore]) => {
+        if (rightScore !== leftScore) {
+          return rightScore - leftScore;
+        }
+
+        return orderIndex.get(leftAttr) - orderIndex.get(rightAttr);
+      })
       .slice(0, 3)
+      .sort(([leftAttr], [rightAttr]) => {
+        return orderIndex.get(leftAttr) - orderIndex.get(rightAttr);
+      })
       .map(([attribute]) => attribute)
       .join('');
 
