@@ -25,6 +25,11 @@ const examResultSchema = new mongoose.Schema(
       ref: 'MockExam',
       required: [true, 'Đề thi là bắt buộc'],
     },
+    attemptId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'MockExamAttempt',
+      default: null,
+    },
     subject: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Subject',
@@ -62,6 +67,7 @@ const examResultSchema = new mongoose.Schema(
 
 examResultSchema.index({ studentId: 1, takenAt: -1 });
 examResultSchema.index({ mockExamId: 1 });
+examResultSchema.index({ attemptId: 1 });
 examResultSchema.index({ subject: 1 });
 
 export default mongoose.model('ExamResult', examResultSchema);

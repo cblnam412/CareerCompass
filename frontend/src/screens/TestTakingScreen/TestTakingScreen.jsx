@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { toast, ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
@@ -11,62 +11,111 @@ import { useAuth } from "../../context/AuthContext"
 import API from "../../API/API"
 import styles from "./TestTakingScreen.module.css"
 
+const OPTION_LETTERS = ["A", "B", "C", "D"]
+
 export default function TestTakingScreen() {
   const { id: testId } = useParams()
   const navigate = useNavigate()
   const { accessToken, userID } = useAuth()
 
   const [test, setTest] = useState(null)
+  const [attempt, setAttempt] = useState(null)
   const [questions, setQuestions] = useState([])
-  const [answers, setAnswers] = useState({}) 
+  const [answers, setAnswers] = useState({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showResults, setShowResults] = useState(false)
-  
+  const [autosaveStatus, setAutosaveStatus] = useState("idle")
+  const [lastSavedAt, setLastSavedAt] = useState(null)
+  const hydratedRef = useRef(false)
+  const submittingRef = useRef(false)
+
   const [serverResult, setServerResult] = useState({
     score: 0,
     total: 0,
-    percentage: 0
+    scoreTotal: 0,
   })
 
-  // Fetch Exam Data
+  const draftKey = `mockExamDraft:${userID || "guest"}:${testId}`
+
+  const formatQuestions = (items = []) =>
+    items.map((q, index) => ({
+      id: q._id || `question_${index}`,
+      question_text: q.question,
+      option_a: q.options?.[0] || "",
+      option_b: q.options?.[1] || "",
+      option_c: q.options?.[2] || "",
+      option_d: q.options?.[3] || "",
+      order_number: index + 1,
+    }))
+
+  const serverAnswersToLetters = (serverAnswers = {}, formattedQuestions = []) => {
+    const nextAnswers = {}
+    formattedQuestions.forEach((question) => {
+      const answerText = serverAnswers[question.id]
+      if (!answerText) return
+      const optionIndex = OPTION_LETTERS.findIndex((letter) => question[`option_${letter.toLowerCase()}`] === answerText)
+      if (optionIndex >= 0) nextAnswers[question.id] = OPTION_LETTERS[optionIndex]
+    })
+    return nextAnswers
+  }
+
+  const readLocalDraft = (attemptId, savedAt) => {
+    try {
+      const draft = JSON.parse(localStorage.getItem(draftKey) || "null")
+      if (!draft || draft.attemptId !== String(attemptId)) return null
+      const localTime = new Date(draft.updatedAt || 0).getTime()
+      const serverTime = new Date(savedAt || 0).getTime()
+      return localTime > serverTime ? draft.answers : null
+    } catch {
+      return null
+    }
+  }
+
+  const buildAnswerPayload = (answerMap = answers) =>
+    questions.reduce((payload, question) => {
+      const selectedLetter = answerMap[question.id]
+      const selectedText = selectedLetter ? question[`option_${selectedLetter.toLowerCase()}`] : ""
+      payload[question.id] = selectedText || ""
+      return payload
+    }, {})
+
   useEffect(() => {
     const fetchTest = async () => {
-      if (!accessToken) return;
-      
+      if (!accessToken) return
+
+      setLoading(true)
+      hydratedRef.current = false
       try {
         const res = await fetch(`${API}/api/student/mock-exams/${testId}`, {
-            headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "x-user-id": userID
-            }
-        });
-        
-        const data = await res.json();
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "x-user-id": userID,
+          },
+        })
 
-        if (!data.success) throw new Error(data.message);
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
 
-        const testData = data.data;
+        const examData = data.data.exam || data.data
+        const attemptData = data.data.attempt || null
+        const formattedQuestions = formatQuestions(examData.questions)
+        const serverAnswerLetters = serverAnswersToLetters(attemptData?.answers, formattedQuestions)
+        const localAnswerLetters = attemptData ? readLocalDraft(attemptData.attemptId, attemptData.lastSavedAt) : null
 
-        const formattedQuestions = testData.questions.map((q, index) => ({
-            // Use q._id if available, otherwise fallback to index to ensure uniqueness
-            id: q._id || `question_${index}`, 
-            question_text: q.question,
-            option_a: q.options[0],
-            option_b: q.options[1],
-            option_c: q.options[2],
-            option_d: q.options[3],
-            order_number: index + 1
-        }));
-
-        setTest(testData);
-        setQuestions(formattedQuestions);
-        setTimeLeft(testData.duration * 60); 
+        setTest(examData)
+        setAttempt(attemptData)
+        setQuestions(formattedQuestions)
+        setAnswers(localAnswerLetters || serverAnswerLetters)
+        setTimeLeft(attemptData?.timeRemainingSeconds ?? examData.duration * 60)
+        setLastSavedAt(attemptData?.lastSavedAt || null)
+        setAutosaveStatus(localAnswerLetters ? "offline" : "saved")
       } catch (error) {
         console.error("Error fetching test:", error)
-        toast.error("Không thể tải bài thi. " + (error.message || ""));
+        toast.error("Khong the tai bai thi. " + (error.message || ""))
       } finally {
+        hydratedRef.current = true
         setLoading(false)
       }
     }
@@ -74,99 +123,142 @@ export default function TestTakingScreen() {
     fetchTest()
   }, [testId, accessToken, userID])
 
-  // Timer Logic
   useEffect(() => {
-    if (loading || showResults) return; 
+    if (!hydratedRef.current || !attempt?.attemptId || showResults || loading || submitting) return
 
-    if (timeLeft <= 0) {
-        if (!submitting && !loading && questions.length > 0) {
-             toast.warning("Hết thời gian! Bài thi được nộp tự động.")
-             handleSubmit()
-        }
+    localStorage.setItem(
+      draftKey,
+      JSON.stringify({
+        attemptId: String(attempt.attemptId),
+        answers,
+        updatedAt: new Date().toISOString(),
+      }),
+    )
+
+    const timeout = setTimeout(async () => {
+      if (!navigator.onLine) {
+        setAutosaveStatus("offline")
         return
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1)
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [timeLeft, showResults, loading, questions.length])
-
-  const handleAnswerChange = (questionId, answer) => {
-    setAnswers((prev) => {
-      // If the answer is undefined (unselected), we delete the key
-      if (answer === undefined || answer === null) {
-        const { [questionId]: unused, ...rest } = prev;
-        return rest;
       }
-      // Otherwise, add or update the key
-      return { ...prev, [questionId]: answer };
-    })
-  }
 
-  // Submit Logic
-  const handleSubmit = async () => {
-    if (Object.keys(answers).length < questions.length && timeLeft > 0) {
-      const unansweredCount = questions.length - Object.keys(answers).length
-      toast.error(`Vui lòng trả lời hết ${unansweredCount} câu hỏi còn lại!`)
-      return
+      setAutosaveStatus("saving")
+      try {
+        const res = await fetch(`${API}/api/student/mock-exams/attempts/${attempt.attemptId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            "x-user-id": userID,
+          },
+          body: JSON.stringify({ answers: buildAnswerPayload(answers) }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.message)
+        setAutosaveStatus("saved")
+        setLastSavedAt(data.data.lastSavedAt)
+        setAttempt((prev) => ({ ...prev, ...data.data }))
+      } catch (error) {
+        console.error("Autosave failed:", error)
+        setAutosaveStatus("offline")
+      }
+    }, 800)
+
+    return () => clearTimeout(timeout)
+  }, [answers, attempt?.attemptId, showResults, loading, submitting])
+
+  const handleSubmit = async ({ auto = false } = {}) => {
+    if (submittingRef.current || !attempt?.attemptId) return
+
+    const unansweredCount = questions.length - Object.keys(answers).length
+    if (!auto) {
+      const message = unansweredCount > 0
+        ? `Ban con ${unansweredCount} cau chua lam. Ban van muon nop bai?`
+        : "Xac nhan nop bai?"
+      if (!window.confirm(message)) return
     }
 
+    submittingRef.current = true
     setSubmitting(true)
     try {
-      const answerPayload = questions.map(q => {
-        const selectedLetter = answers[q.id]; // e.g., "A"
-        
-        if (!selectedLetter) return ""; // Unanswered
-
-        // Map "A" -> q.option_a, "B" -> q.option_b dynamically
-        const optionKey = `option_${selectedLetter.toLowerCase()}`;
-        return q[optionKey] || "";
-      });
-
-      const res = await fetch(`${API}/api/student/mock-exams/${testId}/submit`, {
+      const res = await fetch(`${API}/api/student/mock-exams/attempts/${attempt.attemptId}/submit`, {
         method: "POST",
         headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-            "x-user-id": userID
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+          "x-user-id": userID,
         },
-        body: JSON.stringify({ answers: answerPayload })
-      });
+        body: JSON.stringify({ answers: buildAnswerPayload(answers) }),
+      })
 
-      const data = await res.json();
-
-      if (!data.success) throw new Error(data.message);
+      const data = await res.json()
+      if (!data.success) throw new Error(data.message)
 
       setServerResult({
         score: data.data.correctCount,
         total: data.data.totalQuestions,
-        percentage: data.data.scorePercentage / 10
-      });
-
+        scoreTotal: data.data.scoreTotal ?? data.data.result?.scoreTotal ?? 0,
+      })
+      localStorage.removeItem(draftKey)
+      setAutosaveStatus("submitted")
       setShowResults(true)
-      toast.success("Nộp bài thành công!")
+      toast.success("Nop bai thanh cong!")
     } catch (error) {
       console.error("Error submitting test:", error)
-      toast.error("Lỗi khi nộp bài: " + error.message)
+      toast.error("Loi khi nop bai: " + error.message)
     } finally {
+      submittingRef.current = false
       setSubmitting(false)
     }
   }
 
+  useEffect(() => {
+    if (loading || showResults || submitting) return
+
+    if (timeLeft <= 0) {
+      if (questions.length > 0) {
+        toast.warning("Het thoi gian! Bai thi duoc nop tu dong.")
+        handleSubmit({ auto: true })
+      }
+      return
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => Math.max(0, prev - 1))
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [timeLeft, showResults, loading, submitting, questions.length])
+
+  const handleAnswerChange = (questionId, answer) => {
+    setAnswers((prev) => {
+      if (answer === undefined || answer === null) {
+        const { [questionId]: unused, ...rest } = prev
+        return rest
+      }
+      return { ...prev, [questionId]: answer }
+    })
+  }
+
   const formatTime = (seconds) => {
-    if (seconds < 0) return "0:00";
+    if (seconds < 0) return "0:00"
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const renderSaveStatus = () => {
+    if (autosaveStatus === "saving") return "Dang luu..."
+    if (autosaveStatus === "offline") return "Da luu tam tren may nay"
+    if (autosaveStatus === "submitted") return "Da nop bai"
+    if (lastSavedAt) return `Da luu ${new Date(lastSavedAt).toLocaleTimeString("vi-VN")}`
+    return "Da san sang"
   }
 
   if (loading) {
     return (
       <div className={styles.loading}>
         <div className="spinner"></div>
-        <div style={{marginLeft: '10px'}}>Đang tải đề thi...</div>
+        <div style={{ marginLeft: "10px" }}>Dang tai de thi...</div>
       </div>
     )
   }
@@ -178,25 +270,25 @@ export default function TestTakingScreen() {
           <CardContent>
             <div className={styles.resultsContent}>
               <div className={styles.successIcon}>
-                 <CheckCircle size={80} strokeWidth={1.5} />
+                <CheckCircle size={80} strokeWidth={1.5} />
               </div>
               <div>
-                <h2 className={styles.resultsTitle}>Hoàn thành!</h2>
-                <p className={styles.resultsSubtitle}>Bạn đã hoàn thành bài thi</p>
+                <h2 className={styles.resultsTitle}>Hoan thanh!</h2>
+                <p className={styles.resultsSubtitle}>Ban da hoan thanh bai thi</p>
               </div>
 
               <div className={styles.scoreDisplay}>
                 <div className={styles.scoreNumber}>
                   {serverResult.score}/{serverResult.total}
                 </div>
-                <p className={styles.scorePercentage}>Điểm số: {serverResult.percentage}</p>
+                <p className={styles.scorePercentage}>Diem so: {serverResult.scoreTotal}/10</p>
               </div>
 
               <div className={styles.resultsActions}>
-                <Button variant="outline" onClick={() => navigate('/user/tests')}>
-                  Quay lại thi thử
+                <Button variant="outline" onClick={() => navigate("/user/tests")}>
+                  Quay lai thi thu
                 </Button>
-                <Button onClick={() => window.location.reload()}>Làm lại</Button>
+                <Button onClick={() => window.location.reload()}>Lam lai</Button>
               </div>
             </div>
           </CardContent>
@@ -205,7 +297,7 @@ export default function TestTakingScreen() {
     )
   }
 
-  const progress = (Object.keys(answers).length / questions.length) * 100
+  const progress = questions.length ? (Object.keys(answers).length / questions.length) * 100 : 0
   const allAnswered = Object.keys(answers).length === questions.length
 
   return (
@@ -217,21 +309,24 @@ export default function TestTakingScreen() {
           <div className={styles.headerContent}>
             <div className={styles.headerInfo}>
               <h1>{test?.title}</h1>
-              <p>Đã làm {Object.keys(answers).length}/{questions.length} câu</p>
+              <p>Da lam {Object.keys(answers).length}/{questions.length} cau</p>
+              <span className={`${styles.saveStatus} ${styles[`saveStatus_${autosaveStatus}`] || ""}`}>
+                {renderSaveStatus()}
+              </span>
             </div>
             <div className={styles.headerActions}>
               <div className={styles.timer}>
                 <Clock size={24} />
-                <span className={timeLeft < 300 ? styles.timerWarning : ''}>
+                <span className={timeLeft < 300 ? styles.timerWarning : ""}>
                   {formatTime(timeLeft)}
                 </span>
               </div>
-              <Button 
-                onClick={handleSubmit} 
-                disabled={submitting} 
-                title={!allAnswered ? `Bạn còn ${questions.length - Object.keys(answers).length} câu chưa làm` : ''}
+              <Button
+                onClick={() => handleSubmit()}
+                disabled={submitting}
+                title={!allAnswered ? `Ban con ${questions.length - Object.keys(answers).length} cau chua lam` : ""}
               >
-                {submitting ? "Đang nộp..." : "Nộp bài"}
+                {submitting ? "Dang nop..." : "Nop bai"}
               </Button>
             </div>
           </div>
@@ -244,7 +339,7 @@ export default function TestTakingScreen() {
               <CardContent>
                 <div className={styles.questionCard}>
                   <h3 className={styles.questionTitle}>
-                    Câu {index + 1}: {question.question_text}
+                    Cau {index + 1}: {question.question_text}
                   </h3>
 
                   <RadioGroup
@@ -252,13 +347,13 @@ export default function TestTakingScreen() {
                     onValueChange={(value) => handleAnswerChange(question.id, value)}
                   >
                     <div className={styles.optionsContainer}>
-                      {["A", "B", "C", "D"].map((option) => {
+                      {OPTION_LETTERS.map((option) => {
                         const optionKey = `option_${option.toLowerCase()}`
                         const isSelected = answers[question.id] === option
                         return (
                           <label
                             key={option}
-                            className={`${styles.optionLabel} ${isSelected ? styles.optionLabelSelected : ''}`}
+                            className={`${styles.optionLabel} ${isSelected ? styles.optionLabelSelected : ""}`}
                           >
                             <RadioGroupItem value={option} id={`${question.id}-${option}`} />
                             <span className={styles.optionText}>

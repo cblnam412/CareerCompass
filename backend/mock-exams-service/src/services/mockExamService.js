@@ -23,6 +23,24 @@ const normalizeExamPayload = (payload = {}) => ({
   questions: Array.isArray(payload.questions) ? normalizeQuestions(payload.questions) : payload.questions,
 });
 
+const toPlain = (item) => (item?.toObject ? item.toObject() : item);
+
+const sanitizeExamForStudent = (exam) => {
+  const item = toPlain(exam);
+  return {
+    _id: item._id,
+    title: item.title,
+    duration: item.duration,
+    subject: item.subject,
+    questions: (item.questions || []).map((question) => ({
+      _id: question._id,
+      question: question.question,
+      options: question.options,
+    })),
+    createdAt: item.createdAt,
+  };
+};
+
 class MockExamService {
   async assertSubjectExists(subjectId) {
     if (!mongoose.Types.ObjectId.isValid(subjectId)) {
@@ -47,7 +65,7 @@ class MockExamService {
     }
   }
 
-  async getAll(query = {}) {
+  async getAll(query = {}, options = {}) {
     const filter = {};
     if (query.search) {
       filter.title = { $regex: escapeRegex(query.search), $options: 'i' };
@@ -57,8 +75,9 @@ class MockExamService {
 
     const { page, limit, skip } = getPagination(query, 10);
     const sort = getSort(query, '-createdAt');
+    const projection = options.includeQuestions ? null : '-questions';
     const [data, total] = await Promise.all([
-      MockExamRepository.findMany(filter, null, { sort, skip, limit }),
+      MockExamRepository.findMany(filter, projection, { sort, skip, limit }),
       MockExamRepository.count(filter),
     ]);
 
@@ -73,6 +92,11 @@ class MockExamService {
     const exam = await MockExamRepository.findById(examId);
     if (!exam) throw new HttpError(404, 'Đề thi không tồn tại');
     return exam;
+  }
+
+  async getPublicById(examId) {
+    const exam = await this.getById(examId);
+    return sanitizeExamForStudent(exam);
   }
 
   async create(payload) {

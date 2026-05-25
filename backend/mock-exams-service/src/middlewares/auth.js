@@ -37,3 +37,4 @@ export const authorizeRole = (...roles) => (req, res, next) => {
 };
 
 export const checkAdminRole = authorizeRole('admin');
+export const checkStudentRole = authorizeRole('student');

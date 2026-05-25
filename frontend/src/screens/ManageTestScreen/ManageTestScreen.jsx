@@ -57,7 +57,11 @@ export default function ManageTestScreen() {
       if (subjData.success) setSubjects(subjData.data);
 
       // Fetch Tests
-      const testRes = await fetch(`${API}/api/mock-exams?limit=100`); // Adjust limit as needed
+      const testRes = await fetch(`${API}/api/admin/mock-exams?limit=100`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
       const testData = await testRes.json();
       if (testData.success) setTests(testData.data);
     } catch (error) {

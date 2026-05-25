@@ -42,6 +42,26 @@
   margin: 4px 0 0 0;
 }
 
+.saveStatus {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.saveStatus_saving {
+  color: #b45309;
+}
+
+.saveStatus_offline {
+  color: #b91c1c;
+}
+
+.saveStatus_saved,
+.saveStatus_submitted {
+  color: #15803d;
+}
+
 .headerActions {
   display: flex;
   align-items: center;
