@@ -31,6 +31,35 @@ const appendLogLine = (entry) => {
     });
 };
 
+const decodeTokenPayload = (token = '') => {
+    const [, payload] = token.split('.');
+    if (!payload) return {};
+
+    try {
+        return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    } catch {
+        return {};
+    }
+};
+
+const getRequestUserId = (req) => {
+    const authorization = req.get('authorization') || '';
+    const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
+    const tokenPayload = tokenMatch ? decodeTokenPayload(tokenMatch[1]) : {};
+
+    return (
+        req.userId
+        || tokenPayload.userId
+        || tokenPayload.id
+        || tokenPayload.sub
+        || req.get('x-user-id')
+        || req.params?.userId
+        || req.query?.userId
+        || req.body?.userId
+        || null
+    );
+};
+
 const rememberLog = (entry) => {
     recentLogs.unshift(entry);
     if (recentLogs.length > maxInMemoryLogs) {
@@ -58,6 +87,7 @@ export const requestMonitoring = (req, res, next) => {
         const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000;
         const entry = {
             requestId: req.requestId,
+            userId: getRequestUserId(req),
             method: req.method,
             path: req.originalUrl,
             status: res.statusCode,

@@ -63,6 +63,15 @@ const buildFallbackCandidate = (knowledge) => ({
   isKnowledgeFallback: true,
 });
 
+const normalizeDisplayText = (value = '') =>
+  String(value)
+    .replace(/\bk\u1ef3\s+thu\u1eadt\b/gi, 'k\u1ef9 thu\u1eadt')
+    .replace(/\bky\s+thuat\b/gi, 'k\u1ef9 thu\u1eadt')
+    .replace(/\bChat\s+l\u01b0\u1ee3ng\b/g, 'Ch\u1ea5t l\u01b0\u1ee3ng')
+    .replace(/\bchat\s+l\u01b0\u1ee3ng\b/g, 'ch\u1ea5t l\u01b0\u1ee3ng')
+    .replace(/\bt\u00edch\s+Anh\b/g, 'ti\u1ebfng Anh')
+    .replace(/\bT\u00edch\s+Anh\b/g, 'Ti\u1ebfng Anh');
+
 const dedupeByMajor = (items = []) => {
   const byMajor = new Map();
   items.forEach((item) => {
@@ -219,12 +228,13 @@ class RecommendationService {
       ].filter(Boolean));
       const finalScore = Math.max(0, Math.min(100, rfScore * 0.72 + keywordAgainstCandidate * 0.12 + features[2] * 0.1 + features[5] * 0.06));
       const explanation = explainRecommendation({ profile, knowledge, features, rfScore, finalScore, candidate });
+      const displayMajorName = normalizeDisplayText(major.name || candidate.majorName || knowledge.majorName);
 
       return {
         recommendationId: toId(candidate._id),
         majorId: toId(candidate.majorId || knowledge._id),
-        name: major.name || candidate.majorName || knowledge.majorName,
-        majorName: major.name || candidate.majorName || knowledge.majorName,
+        name: displayMajorName,
+        majorName: displayMajorName,
         universityId: toId(candidate.universityId || ''),
         universityName: university.name || candidate.universityName || 'Nhiều trường đào tạo',
         region: university.region || candidate.region || 'Toàn quốc',
