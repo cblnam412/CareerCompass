@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { User, Send, Search, Info, Smile, Paperclip, GraduationCap, School, Reply, Flag, X, ArrowLeft } from "lucide-react"
+import { User, Send, Search, Info, Smile, Paperclip, GraduationCap, School, Reply, Flag, X, ArrowLeft, Bot, RefreshCw, Square } from "lucide-react"
 import EmojiPicker from "emoji-picker-react"
 import { useAuth } from "../../context/AuthContext"
 import { useSocket } from "../../context/SocketContext"
@@ -15,9 +15,12 @@ export default function MessageScreen() {
   const navigate = useNavigate()
   
   const [conversations, setConversations] = useState([])
+  const [aiConversations, setAiConversations] = useState([])
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState("")
+  const [usePersonalContext, setUsePersonalContext] = useState(true)
+  const [isAiSending, setIsAiSending] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [showInfoSidebar, setShowInfoSidebar] = useState(false)
   const [hoveredMessage, setHoveredMessage] = useState(null)
@@ -29,6 +32,8 @@ export default function MessageScreen() {
 
   const messagesEndRef = useRef(null)
   const messageRefs = useRef({})
+  const aiAbortControllerRef = useRef(null)
+  const pendingAiMessageRef = useRef(null)
 
   // Search states
   const [showSearchSidebar, setShowSearchSidebar] = useState(false)
@@ -50,19 +55,49 @@ export default function MessageScreen() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
+  const isAiConversation = (conv) => Boolean(conv?._isAi)
+  const aiAssistant = {
+    _id: "ai-assistant",
+    fullName: "Trợ lý AI",
+    email: "Tư vấn học tập và hướng nghiệp",
+    role: "ai",
+  }
+
+  const getActiveAiConversation = (items = aiConversations) => items[0] || null
+  const buildAiListItem = (items = aiConversations) => {
+    const activeAi = getActiveAiConversation(items)
+    return {
+      ...(activeAi || {}),
+      _id: activeAi?._id || "new-ai-chat",
+      _isAi: true,
+      title: "Trợ lý AI",
+      lastMessage: activeAi?.lastMessage || "Hỏi đáp học tập và hướng nghiệp",
+    }
+  }
+
   // 1. Fetch Conversations on Mount
   useEffect(() => {
     const fetchConversations = async () => {
       try {
-        const response = await fetch(`${API}/api/messages/conversations`, {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-Type": "application/json"
-          }
-        });
-        const data = await response.json();
+        const headers = {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        };
+        const [messageResponse, aiResponse] = await Promise.all([
+          fetch(`${API}/api/messages/conversations`, { headers }),
+          fetch(`${API}/api/messages/ai/conversations`, { headers }),
+        ]);
+        const data = await messageResponse.json();
+        const aiData = await aiResponse.json();
         if (data.success) {
           setConversations(data.data);
+        }
+        if (aiData.success) {
+          const nextAiConversations = aiData.data.map((conv) => ({ ...conv, _isAi: true }));
+          setAiConversations(nextAiConversations);
+          if (!selectedConversation) {
+            setSelectedConversation(buildAiListItem(nextAiConversations));
+          }
         }
       } catch (error) {
         console.error("Error fetching conversations:", error);
@@ -73,6 +108,46 @@ export default function MessageScreen() {
       fetchConversations();
     }
   }, [accessToken]);
+
+  const refreshAiConversations = async () => {
+    try {
+      const response = await fetch(`${API}/api/messages/ai/conversations`, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAiConversations(data.data.map((conv) => ({ ...conv, _isAi: true })));
+      }
+    } catch (error) {
+      console.error("Error fetching AI conversations:", error);
+    }
+  }
+
+  const handleResetAiChat = () => {
+    handleStopAiResponse();
+    setAiConversations([]);
+    setSelectedConversation({ _id: "new-ai-chat", _isAi: true, title: "Trợ lý AI", lastMessage: "Hỏi đáp học tập và hướng nghiệp" });
+    setMessages([]);
+    setNewMessage("");
+    setShowEmojiPicker(false);
+  }
+
+  const handleStopAiResponse = () => {
+    if (!isAiSending) return;
+    aiAbortControllerRef.current?.abort();
+    aiAbortControllerRef.current = null;
+    setIsAiSending(false);
+    const pending = pendingAiMessageRef.current;
+    if (pending) {
+      setMessages((prev) => prev.filter((msg) => msg._id !== pending.id));
+      setNewMessage(pending.content);
+      pendingAiMessageRef.current = null;
+    }
+    toast.info("Đã dừng yêu cầu AI");
+  }
 
   // 2. Handle Socket Events (Receive Message)
   useEffect(() => {
@@ -109,6 +184,32 @@ export default function MessageScreen() {
   // 3. Select Conversation & Fetch History
   useEffect(() => {
     if (!selectedConversation) return;
+
+    if (isAiConversation(selectedConversation)) {
+      const fetchAiMessages = async () => {
+        try {
+          const response = await fetch(`${API}/api/messages/ai/conversations/${selectedConversation._id}/messages`, {
+              headers: {
+                  "Authorization": `Bearer ${accessToken}`,
+              }
+          });
+          const data = await response.json();
+          if (data.success) {
+              setMessages(data.data); 
+              setTimeout(scrollToBottom, 100);
+          }
+        } catch (error) {
+          console.error("Error fetching AI messages:", error);
+        }
+      };
+
+      if (selectedConversation._id === "new-ai-chat") {
+        setMessages([]);
+      } else {
+        fetchAiMessages();
+      }
+      return;
+    }
 
     // Join socket room
     if (socket) {
@@ -183,6 +284,10 @@ export default function MessageScreen() {
   // Reset typing status when changing conversations
   useEffect(() => {
     setTypingUser(null);
+    if (isAiConversation(selectedConversation)) {
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }, [selectedConversation]);
 
   // Handler for modifying input
@@ -190,7 +295,7 @@ export default function MessageScreen() {
     const value = e.target.value;
     setNewMessage(value);
 
-    if (!socket || !selectedConversation) return;
+    if (!socket || !selectedConversation || isAiConversation(selectedConversation)) return;
 
     // Emit 'typing' event
     socket.emit("typing", {
@@ -212,6 +317,7 @@ export default function MessageScreen() {
 
   const getOtherUser = (conv) => {
     if (!conv) return null;
+    if (isAiConversation(conv)) return aiAssistant;
 
     const studentId = conv.studentId?._id || conv.studentId;
     
@@ -262,7 +368,7 @@ export default function MessageScreen() {
       }
     } catch (error) {
       console.error("Error searching messages:", error);
-      toast.error("Lỗi khi tìm kiếm tin nhắn");
+      toast.error("Lá»—i khi tÃ¬m kiáº¿m tin nháº¯n");
     } finally {
       setIsSearching(false);
     }
@@ -370,6 +476,80 @@ export default function MessageScreen() {
   const handleSendMessage = async () => {
     // Allow send if there is text OR a file
     if ((!newMessage.trim() && !selectedFile) || !selectedConversation) return;
+
+    if (isAiConversation(selectedConversation)) {
+      if (!newMessage.trim() || isAiSending) return;
+      const content = newMessage.trim();
+      const tempUserMessage = {
+        _id: `temp-user-${Date.now()}`,
+        role: "user",
+        content,
+        createdAt: new Date().toISOString(),
+      };
+      const abortController = new AbortController();
+      aiAbortControllerRef.current = abortController;
+      pendingAiMessageRef.current = { id: tempUserMessage._id, content };
+
+      setMessages((prev) => [...prev, tempUserMessage]);
+      setNewMessage("");
+      setShowEmojiPicker(false);
+      setIsAiSending(true);
+      setTimeout(scrollToBottom, 100);
+
+      try {
+        const response = await fetch(`${API}/api/messages/ai/chat`, {
+          method: 'POST',
+          signal: abortController.signal,
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            conversationId: selectedConversation._id === "new-ai-chat" ? undefined : selectedConversation._id,
+            message: content,
+            usePersonalContext,
+          })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          const nextConversation = {
+            ...(selectedConversation._id === "new-ai-chat"
+              ? { _id: data.data.conversationId, title: content.slice(0, 60) || "Trợ lý AI" }
+              : selectedConversation),
+            _isAi: true,
+            lastMessage: data.data.assistantMessage.content,
+          };
+          setSelectedConversation(nextConversation);
+          pendingAiMessageRef.current = null;
+          setMessages((prev) => [
+            ...prev.filter((msg) => msg._id !== tempUserMessage._id),
+            data.data.userMessage,
+            data.data.assistantMessage,
+          ]);
+          refreshAiConversations();
+          setTimeout(scrollToBottom, 100);
+        } else {
+          setMessages((prev) => prev.filter((msg) => msg._id !== tempUserMessage._id));
+          pendingAiMessageRef.current = null;
+          setNewMessage(content);
+          toast.error(data.message || "Trợ lý AI chưa trả lời được");
+        }
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return;
+        }
+        setMessages((prev) => prev.filter((msg) => msg._id !== tempUserMessage._id));
+        pendingAiMessageRef.current = null;
+        setNewMessage(content);
+        toast.error("Có lỗi xảy ra khi gửi câu hỏi tới AI");
+        console.error(error);
+      } finally {
+        aiAbortControllerRef.current = null;
+        setIsAiSending(false);
+      }
+      return;
+    }
     
     // Clear typing timeout
     if (typingTimeoutRef.current) {
@@ -434,10 +614,10 @@ export default function MessageScreen() {
             setShowEmojiPicker(false);
             setTimeout(scrollToBottom, 100);
         } else {
-            toast.error(data.message || "Gửi file thất bại");
+            toast.error(data.message || "Gá»­i file tháº¥t báº¡i");
         }
       } catch (error) {
-        toast.error("Có lỗi xảy ra khi gửi file");
+        toast.error("CÃ³ lá»—i xáº£y ra khi gá»­i file");
         console.error(error);
       } finally {
         setIsUploading(false);
@@ -482,7 +662,7 @@ export default function MessageScreen() {
       const MAX_SIZE = 20 * 1024 * 1024;
 
       if (file.size > MAX_SIZE) {
-          toast.error("File quá lớn! Vui lòng chọn file dưới 20MB.");
+          toast.error("File quÃ¡ lá»›n! Vui lÃ²ng chá»n file dÆ°á»›i 20MB.");
           
           // Clear the input so the user can try selecting again
           if (fileInputRef.current) {
@@ -510,6 +690,7 @@ export default function MessageScreen() {
   // Render Helpers ---
 
   const renderRoleIcon = (role) => {
+    if (role === "ai") return <Bot size={16} className={styles.roleIcon} />
     if (role === "uniRep") return <GraduationCap size={16} className={styles.roleIcon} />
     if (role === "uniManager") return <School size={16} className={styles.roleIcon} />
     return null
@@ -519,17 +700,69 @@ export default function MessageScreen() {
       return userObj?.fullName || userObj?.email || "Unknown User";
   }
 
+  const normalizeAiText = (text = "") => String(text)
+    .replace(/\s+(\d+\.\s+)/g, "\n$1")
+    .replace(/\s+([*-]\s+)/g, "\n$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+
+  const renderFormattedMessage = (content, isAiMessage) => {
+    if (!isAiMessage) return <p className={styles.messageText}>{content}</p>
+
+    const lines = normalizeAiText(content).split("\n")
+    const blocks = []
+    let listItems = []
+
+    const flushList = () => {
+      if (!listItems.length) return
+      blocks.push(
+        <ul key={`list-${blocks.length}`} className={styles.aiMessageList}>
+          {listItems.map((item, index) => <li key={index}>{item}</li>)}
+        </ul>
+      )
+      listItems = []
+    }
+
+    lines.forEach((line) => {
+      const text = line.trim()
+      if (!text) {
+        flushList()
+        return
+      }
+
+      const listMatch = text.match(/^(\d+\.|[-*])\s+(.*)$/)
+      if (listMatch) {
+        listItems.push(listMatch[2])
+        return
+      }
+
+      flushList()
+      blocks.push(
+        <p key={`p-${blocks.length}`} className={styles.aiMessageParagraph}>
+          {text}
+        </p>
+      )
+    })
+    flushList()
+
+    return <div className={styles.aiMessageText}>{blocks}</div>
+  }
+
   const currentOtherUser = selectedConversation ? getOtherUser(selectedConversation) : null;
   const isImage = (url) => /\.(jpeg|jpg|gif|png|webp|bmp)$/i.test(url);
+  const visibleConversations = [
+    buildAiListItem(),
+    ...conversations,
+  ];
 
   return (
     <div className={styles.container}>
       <div className={styles.conversationsList}>
         <h2 className={styles.conversationsHeader}>
-            {userInfo?.fullName || "Tin nhắn"}
+            {userInfo?.fullName || "Tin nháº¯n"}
         </h2>
 
-        {conversations.map((conv) => {
+        {visibleConversations.map((conv) => {
           const otherUser = getOtherUser(conv);
           
           return (
@@ -545,11 +778,11 @@ export default function MessageScreen() {
               />
               <div className={styles.conversationInfo}>
                 <span className={styles.conversationName}>
-                  {getDisplayName(otherUser)}
+                  {isAiConversation(conv) ? (conv.title || "Trợ lý AI") : getDisplayName(otherUser)}
                   {renderRoleIcon(otherUser?.role)}
                 </span>
                 <span className={styles.conversationLastMessage}>
-                  {conv.lastMessage || "Bắt đầu cuộc trò chuyện"}
+                  {conv.lastMessage || "Báº¯t Ä‘áº§u cuá»™c trÃ² chuyá»‡n"}
                 </span>
               </div>
             </button>
@@ -578,20 +811,51 @@ export default function MessageScreen() {
                 </div>
               </div>
               <div className={styles.headerActions}>
-                <button 
-                  className={`${styles.actionButton} ${showInfoSidebar ? styles.activeActionButton : ''}`} 
-                  title="Info" 
-                  onClick={toggleInfoSidebar}
-                >
-                  <Info size={20} />
-                </button>
+                {isAiConversation(selectedConversation) && (
+                  <>
+                    <button
+                      className={styles.actionButton}
+                      title="Làm mới cuộc trò chuyện AI"
+                      onClick={handleResetAiChat}
+                      disabled={isAiSending}
+                    >
+                      <RefreshCw size={20} />
+                    </button>
+                    {isAiSending && (
+                      <button
+                        className={`${styles.actionButton} ${styles.stopButton}`}
+                        title="Dừng trả lời"
+                        onClick={handleStopAiResponse}
+                      >
+                        <Square size={18} />
+                      </button>
+                    )}
+                    <label className={styles.aiToggle}>
+                      <input
+                        type="checkbox"
+                        checked={usePersonalContext}
+                        onChange={(event) => setUsePersonalContext(event.target.checked)}
+                      />
+                      <span>Dùng hồ sơ của em</span>
+                    </label>
+                  </>
+                )}
+                {!isAiConversation(selectedConversation) && (
+                  <button 
+                    className={`${styles.actionButton} ${showInfoSidebar ? styles.activeActionButton : ''}`} 
+                    title="Info" 
+                    onClick={toggleInfoSidebar}
+                  >
+                    <Info size={20} />
+                  </button>
+                )}
               </div>
             </div>
 
             <div className={styles.messagesContent}>
               {messages.map((msg, index) => {
                 const msgSenderId = typeof msg.senderId === 'object' ? msg.senderId._id : msg.senderId;
-                const isOwn = msgSenderId === userID;
+                const isOwn = isAiConversation(selectedConversation) ? msg.role === 'user' : msgSenderId === userID;
                 const avatarToShow = isOwn ? userInfo?.avatar : (typeof msg.senderId === 'object' ? msg.senderId.avatar : currentOtherUser?.avatar);
 
                 const showTimestamp =
@@ -660,7 +924,10 @@ export default function MessageScreen() {
                         </div>
                       ) : (
                         <div className={styles.messageBubble}>
-                          <p className={styles.messageText}>{msg.content}</p>
+                          {renderFormattedMessage(
+                            msg.content,
+                            isAiConversation(selectedConversation) && msg.role === 'assistant'
+                          )}
                         </div>
                       )}
 
@@ -681,7 +948,7 @@ export default function MessageScreen() {
 
 
               {/* Typing indicator  */}
-              {typingUser && (
+              {(typingUser || isAiSending) && (
                 <div className={`${styles.messageGroup} ${styles.otherMessage}`}>
                   <img
                     src={currentOtherUser?.avatar || "https://www.svgrepo.com/show/452030/avatar-default.svg"}
@@ -711,28 +978,32 @@ export default function MessageScreen() {
             )}
 
             <div className={styles.inputArea}>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                onChange={handleFileSelect}
-                style={{ display: 'none' }}
-                accept="image/*,.pdf,.doc,.docx"
-              />
+              {!isAiConversation(selectedConversation) && (
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                  accept="image/*,.pdf,.doc,.docx"
+                />
+              )}
               
-              <button 
-                className={`${styles.iconButton} ${selectedFile ? styles.activeIcon : ''}`} 
-                title="Attachment"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip size={18} />
-              </button>
+              {!isAiConversation(selectedConversation) && (
+                <button 
+                  className={`${styles.iconButton} ${selectedFile ? styles.activeIcon : ''}`} 
+                  title="Attachment"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Paperclip size={18} />
+                </button>
+              )}
               <input
                 type="text"
                 value={newMessage}
                 onChange={handleInputChange}
                 onFocus={() => setShowEmojiPicker(false)}
                 onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                placeholder="Nhắn tin..."
+                placeholder={isAiConversation(selectedConversation) ? "Hỏi trợ lý AI..." : "Nhắn tin..."}
                 className={styles.input}
               />
               <div className={styles.emojiPickerContainer}>
@@ -757,18 +1028,19 @@ export default function MessageScreen() {
                 )}
               </div>
               <button 
-                onClick={handleSendMessage} 
-                className={styles.sendButton}
-                // Enable button if text OR file exists
-                disabled={(!newMessage.trim() && !selectedFile) || !userID || !currentOtherUser?._id || isUploading}
+                onClick={isAiConversation(selectedConversation) && isAiSending ? handleStopAiResponse : handleSendMessage} 
+                className={`${styles.sendButton} ${isAiConversation(selectedConversation) && isAiSending ? styles.stopSendButton : ''}`}
+                disabled={isAiConversation(selectedConversation)
+                  ? (!newMessage.trim() && !isAiSending)
+                  : ((!newMessage.trim() && !selectedFile) || !userID || !currentOtherUser?._id || isUploading)}
               >
-                <Send size={18} />
+                {isAiConversation(selectedConversation) && isAiSending ? <Square size={18} /> : <Send size={18} />}
               </button>
             </div>
           </>
         ) : (
           <div className={styles.emptyState}>
-            <p>Chọn một cuộc trò chuyện để bắt đầu nhắn tin</p>
+            <p>Chá»n má»™t cuá»™c trÃ² chuyá»‡n Ä‘á»ƒ báº¯t Ä‘áº§u nháº¯n tin</p>
           </div>
         )}
       </div>
@@ -814,7 +1086,7 @@ export default function MessageScreen() {
             <button className={styles.backBtn} onClick={toggleInfoSidebar} title="Back to Info">
               <ArrowLeft size={20} />
             </button>
-            <h3 className={styles.searchTitle}>Tìm kiếm tin nhắn</h3>
+            <h3 className={styles.searchTitle}>TÃ¬m kiáº¿m tin nháº¯n</h3>
           </div>
           
           <div className={styles.searchInputContainer}>
@@ -824,7 +1096,7 @@ export default function MessageScreen() {
               type="text"
               value={searchQuery}
               onChange={handleSearchInputChange}
-              placeholder="Tìm kiếm trong cuộc trò chuyện..."
+              placeholder="TÃ¬m kiáº¿m trong cuá»™c trÃ² chuyá»‡n..."
               className={styles.searchInput}
             />
             {searchQuery && (
@@ -846,36 +1118,36 @@ export default function MessageScreen() {
             {isSearching && searchResults.length === 0 && (
               <div className={styles.searchLoading}>
                 <div className={styles.searchSpinner}></div>
-                <span>Đang tìm kiếm...</span>
+                <span>Äang tÃ¬m kiáº¿m...</span>
               </div>
             )}
 
             {!isSearching && searchQuery && searchResults.length === 0 && (
               <div className={styles.noResults}>
                 <Search size={48} className={styles.noResultsIcon} />
-                <p>Không tìm thấy kết quả</p>
-                <span>Thử tìm với từ khóa khác</span>
+                <p>KhÃ´ng tÃ¬m tháº¥y káº¿t quáº£</p>
+                <span>Thá»­ tÃ¬m vá»›i tá»« khÃ³a khÃ¡c</span>
               </div>
             )}
 
             {!searchQuery && (
               <div className={styles.searchPlaceholder}>
                 <Search size={48} className={styles.searchPlaceholderIcon} />
-                <p>Nhập từ khóa để tìm kiếm</p>
+                <p>Nháº­p tá»« khÃ³a Ä‘á»ƒ tÃ¬m kiáº¿m</p>
               </div>
             )}
 
             {searchResults.length > 0 && (
               <>
                 <div className={styles.searchResultsCount}>
-                  Tìm thấy {searchResults.length}{hasMoreResults ? '+' : ''} kết quả
+                  TÃ¬m tháº¥y {searchResults.length}{hasMoreResults ? '+' : ''} káº¿t quáº£
                 </div>
                 <div className={styles.searchResultsList}>
                   {searchResults.map((result) => {
                     const senderId = typeof result.senderId === 'object' ? result.senderId._id : result.senderId;
                     const isOwn = senderId === userID;
                     const senderName = isOwn 
-                      ? 'Bạn' 
+                      ? 'Báº¡n' 
                       : (typeof result.senderId === 'object' ? result.senderId.fullName : getDisplayName(currentOtherUser));
                     
                     return (
@@ -915,7 +1187,7 @@ export default function MessageScreen() {
                     onClick={handleLoadMoreResults}
                     disabled={isSearching}
                   >
-                    {isSearching ? 'Đang tải...' : 'Tải thêm kết quả'}
+                    {isSearching ? 'Äang táº£i...' : 'Táº£i thÃªm káº¿t quáº£'}
                   </button>
                 )}
               </>

@@ -149,7 +149,31 @@ button {
 
 .headerActions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.aiToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid #d8dadf;
+  border-radius: 8px;
+  color: #262626;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  background-color: #ffffff;
+}
+
+.aiToggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #007bff;
+  cursor: pointer;
 }
 
 .actionButton {
@@ -167,6 +191,20 @@ button {
 
 .actionButton:hover {
   background-color: #f0f0f0;
+}
+
+.actionButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.stopButton {
+  color: #d93025;
+}
+
+.stopButton:hover {
+  background-color: #fde8e7;
+  color: #b3261e;
 }
 
 .messagesContent {
@@ -241,6 +279,7 @@ button {
   border-radius: 18px;
   word-wrap: break-word;
   position: relative;
+  text-align: left;
 }
 
 .ownMessage .messageBubble {
@@ -353,6 +392,37 @@ button {
   margin: 0;
   font-size: 15px;
   word-break: break-word;
+  line-height: 1.55;
+  text-align: left;
+  white-space: pre-wrap;
+}
+
+.aiMessageText {
+  font-size: 15px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.aiMessageParagraph {
+  margin: 0 0 10px;
+}
+
+.aiMessageParagraph:last-child {
+  margin-bottom: 0;
+}
+
+.aiMessageList {
+  margin: 0 0 10px 20px;
+  padding: 0;
+}
+
+.aiMessageList:last-child {
+  margin-bottom: 0;
+}
+
+.aiMessageList li {
+  margin: 4px 0;
+  padding-left: 2px;
 }
 
 .filePreviewContainer {
@@ -459,6 +529,10 @@ button {
 
 .sendButton:active {
   opacity: 0.6;
+}
+
+.stopSendButton {
+  color: #d93025;
 }
 
 .emptyState {

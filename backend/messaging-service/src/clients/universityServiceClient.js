@@ -32,3 +32,19 @@ export const getUniversitiesByIds = async (universityIds = []) => {
       : { _id: uniqueIds[index], lookupError: result.reason?.message || 'Lookup failed' },
   );
 };
+
+export const searchUniversities = (search = '', limit = 5) => {
+  const params = new URLSearchParams({
+    page: '1',
+    limit: String(limit),
+  });
+  if (search) params.set('search', search);
+
+  return requestUniversityService(`/api/universities?${params.toString()}`);
+};
+
+export const searchMajors = (keyword = '') => {
+  const params = new URLSearchParams();
+  if (keyword) params.set('keyword', keyword);
+  return requestUniversityService(`/api/majors/search?${params.toString()}`);
+};

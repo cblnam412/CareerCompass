@@ -210,7 +210,15 @@ services:
       JWT_SECRET: ${JWT_SECRET:-doan1-dev-jwt-secret-change-me}
       AUTH_SERVICE_URL: http://auth-service:5000
       UNIVERSITY_SERVICE_URL: http://university-service:5001
+      STUDENT_SERVICE_URL: http://student-service:5003
+      RECOMMENDATION_SERVICE_URL: http://recommendation-service:5007
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-doan1-dev-internal-token}
+      AI_CHAT_ENABLED: ${AI_CHAT_ENABLED:-true}
+      AI_PROVIDER: ${AI_PROVIDER:-groq}
+      AI_MODEL: ${AI_MODEL:-llama-3.1-8b-instant}
+      AI_TEMPERATURE: ${AI_TEMPERATURE:-0.3}
+      AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-800}
+      AI_CONTEXT_MAX_CHARS: ${AI_CONTEXT_MAX_CHARS:-6000}
     volumes:
       - ./backend/messaging-service:/app
       - messaging-node-modules:/app/node_modules
@@ -218,6 +226,10 @@ services:
       auth-service:
         condition: service_healthy
       university-service:
+        condition: service_healthy
+      student-service:
+        condition: service_healthy
+      recommendation-service:
         condition: service_healthy
     healthcheck:
       test:

@@ -5,6 +5,12 @@ import {
   startConversation,
 } from '../controllers/conversationController.js';
 import {
+  deleteAiConversation,
+  getAiConversations,
+  getAiMessages,
+  sendAiMessage,
+} from '../controllers/aiChatController.js';
+import {
   deleteMessage,
   getMessages,
   getUnreadCount,
@@ -15,6 +21,11 @@ import { verifyToken } from '../middlewares/auth.js';
 import { uploadMessageDocument } from '../middlewares/upload.js';
 
 const router = express.Router();
+
+router.get('/ai/conversations', verifyToken, getAiConversations);
+router.get('/ai/conversations/:conversationId/messages', verifyToken, getAiMessages);
+router.post('/ai/chat', verifyToken, sendAiMessage);
+router.delete('/ai/conversations/:conversationId', verifyToken, deleteAiConversation);
 
 router.get('/conversations', verifyToken, getConversations);
 router.post('/conversations/start', verifyToken, startConversation);
