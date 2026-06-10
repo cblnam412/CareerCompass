@@ -24,6 +24,7 @@ import ManageReportScreen from './ManageReportScreen/ManageReportScreen'
 import ExploreUniversityScreen from './ExploreUniversityScreen/ExploreUniversityScreen'
 import V_ActScreen from './V_ACTScreen/V_ActScreen'
 import MajorComparisonScreen from './MajorComparisonScreen/MajorComparisonScreen'
+import AdmissionTimelineScreen from './AdmissionTimelineScreen/AdmissionTimelineScreen'
 
 export {
     MessageScreen,
@@ -51,5 +52,6 @@ export {
     ManageReportScreen,
     ExploreUniversityScreen,
     V_ActScreen,
-    MajorComparisonScreen
+    MajorComparisonScreen,
+    AdmissionTimelineScreen
 }

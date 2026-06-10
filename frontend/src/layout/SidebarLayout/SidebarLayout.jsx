@@ -1,4 +1,4 @@
-import { Home, MessageCircle, Search, User, Users, Book, BookOpen, ClipboardCheck, Compass, LogOut, Clock, LayoutDashboard, FileText, Library, Flag, Handshake, UserCog, School, Sparkle, Scale } from "lucide-react"
+import { Home, MessageCircle, Search, User, Users, Book, BookOpen, ClipboardCheck, Compass, LogOut, Clock, LayoutDashboard, FileText, Library, Flag, Handshake, UserCog, School, Sparkle, Scale, CalendarDays } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useNavigate, useLocation, Outlet } from "react-router-dom"
 import { useAuth } from "../../context/AuthContext"
@@ -36,6 +36,7 @@ export function Sidebar({ isCollapsedForChat }) {
     { icon: Sparkle, label: "Tư vấn nghề nghiệp", href: "/user/predict" },
     { icon: School, label: "Khám phá ngành", href: "/user/explore-university" },
     { icon: Scale, label: "So sánh ngành học", href: "/user/major-comparison" },
+    { icon: CalendarDays, label: "Lịch tuyển sinh", href: "/user/admission-timeline" },
     { icon: Users, label: "Quản lý đại diện", href: "/user/representatives" },
     { icon: User, label: "Trang cá nhân", href: "/user/profile" },
   ]

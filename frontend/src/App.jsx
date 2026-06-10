@@ -30,6 +30,7 @@ import {
   ExploreUniversityScreen,
   V_ActScreen,
   MajorComparisonScreen,
+  AdmissionTimelineScreen,
 } from "./screens";
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
           <Route path="predict" element={<CareerPredictionScreen />} />
           <Route path="explore-university" element={<ExploreUniversityScreen />} />
           <Route path="major-comparison" element={<MajorComparisonScreen />} />
+          <Route path="admission-timeline" element={<AdmissionTimelineScreen />} />
           <Route path="v-act" element={<V_ActScreen />} />
 
           <Route path="profile" element={<ProfileScreen />} />
