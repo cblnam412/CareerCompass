@@ -29,6 +29,7 @@ import {
   CareerPredictionScreen,
   ManageReportScreen,
   ExploreUniversityScreen,
+  V_ActScreen,
 } from "./screens";
 
 function App() {
@@ -61,6 +62,7 @@ function App() {
           <Route path="quiz/holland" element={<HollandQuizScreen />} />
           <Route path="predict" element={<CareerPredictionScreen />} />
           <Route path="explore-university" element={<ExploreUniversityScreen />} />
+          <Route path="v-act" element={<V_ActScreen />} />
 
           <Route path="profile" element={<ProfileScreen />} />
           <Route path="profile/:userId" element={<ProfileScreen />} />
