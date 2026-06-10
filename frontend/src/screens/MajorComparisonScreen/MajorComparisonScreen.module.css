@@ -1,0 +1,539 @@
+.page {
+  width: 100%;
+  height: 100%;
+  padding: 38px 36px 44px;
+  color: #101828;
+  background: #fbfdff;
+  overflow-y: auto;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.header h1 {
+  color: #050505;
+  font-size: 39px;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: 0;
+  text-align: left;
+}
+
+.header p {
+  margin: 0;
+  color: #667085;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.filterCard {
+  display: grid;
+  grid-template-columns: minmax(230px, 1.1fr) minmax(220px, 1fr) minmax(240px, 1fr) auto;
+  align-items: end;
+  gap: 44px;
+  margin-bottom: 32px;
+  padding: 31px 28px 32px;
+  border: 1px solid #d4dce8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.selectGroup {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.selectShell {
+  position: relative;
+  min-width: 0;
+}
+
+.selectShell select {
+  width: 100%;
+  height: 54px;
+  appearance: none;
+  border: 1px solid #d7dee9;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #18223a;
+  padding: 0 46px 0 18px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+
+.selectShell select:focus {
+  border-color: #1583ff;
+  box-shadow: 0 0 0 3px rgba(21, 131, 255, 0.14);
+}
+
+.selectShell select:disabled {
+  color: #98a2b3;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  color: #25324b;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.updateButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 177px;
+  height: 54px;
+  padding: 0 18px;
+  border-radius: 6px;
+  background: #0877ee;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(8, 119, 238, 0.22);
+}
+
+.updateButton:disabled {
+  background: #98a2b3;
+  box-shadow: none;
+}
+
+.desktopTable {
+  overflow-x: auto;
+  width: 100%;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.comparisonGrid {
+  min-width: max(760px, calc(190px + var(--school-count) * 200px));
+}
+
+.comparisonRow {
+  display: grid;
+  grid-template-columns: 190px repeat(var(--school-count), minmax(250px, 1fr));
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.comparisonRow:last-child {
+  border-bottom: 0;
+}
+
+.cell {
+  min-width: 0;
+  border-right: 1px solid #e2e8f0;
+}
+
+.cell:last-child {
+  border-right: 0;
+}
+
+.criteriaHeader,
+.schoolHeader {
+  min-height: 126px;
+  padding: 25px 18px;
+  text-align: left;
+}
+
+.criteriaHeader {
+  display: flex;
+  align-items: center;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.schoolHeader {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.deleteButton {
+  position: absolute;
+  top: 7px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #667085;
+  cursor: pointer;
+  line-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.deleteButton svg {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.schoolHeader:hover .deleteButton,
+.schoolHeader:focus-within .deleteButton,
+.mobileCard:hover .deleteButton,
+.mobileCard:focus-within .deleteButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.deleteButton:hover {
+  border-color: #fecaca;
+  background: #fff5f5;
+  color: #dc2626;
+}
+
+.deleteButton:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  outline: 3px solid rgba(8, 119, 238, 0.24);
+  outline-offset: 2px;
+}
+
+.universityHeading {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+}
+
+.logoBox {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 68px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+
+.logoTone1 {
+  background: #fff3d9;
+  border-color: #ffd18a;
+  color: #ef4444;
+}
+
+.logoTone2 {
+  background: #eaf4ff;
+  border-color: #bddcff;
+  color: #1d67c8;
+}
+
+.logoTone3 {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #d71920;
+}
+
+.logoTone4 {
+  background: #f0f7ff;
+  border-color: #c8def9;
+  color: #1558a8;
+  font-size: 10px;
+}
+
+.universityText {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  text-align: left;
+}
+
+.universityText strong {
+  color: #13203a;
+  font-size: 15.5px;
+  font-weight: 800;
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+}
+
+.universityText span {
+  width: fit-content;
+  max-width: 100%;
+  padding: 5px 11px;
+  border-radius: 6px;
+  background: #e8f3ff;
+  color: #2b6eae;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: left;
+}
+
+.universityText em {
+  width: fit-content;
+  max-width: 100%;
+  color: #667085;
+  font-size: 12.5px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.criteriaCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  min-height: 88px;
+  padding: 18px;
+  color: #111827;
+  font-size: 15.5px;
+  font-weight: 800;
+  line-height: 1.55;
+  text-align: left;
+}
+
+.criteriaCell span {
+  font-weight: 800;
+  text-align: left;
+}
+
+.valueCell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-height: 88px;
+  padding: 18px 20px;
+  color: #18223a;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.65;
+  text-align: left;
+}
+
+.scoreText {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: #0877ee;
+  font-weight: 800;
+}
+
+.bestBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: #dff8e8;
+  color: #16803a;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: #fff3d8;
+  color: #b85c00;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.mobileList {
+  display: none;
+}
+
+.mobileCard {
+  position: relative;
+  padding: 18px;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.mobileCard .deleteButton {
+  top: 12px;
+  right: 12px;
+}
+
+.mobileFacts {
+  display: grid;
+  gap: 0;
+  margin: 18px 0 0;
+}
+
+.mobileFacts div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.9fr) minmax(0, 1.1fr);
+  gap: 16px;
+  padding: 15px 0;
+  border-top: 1px solid #e8edf3;
+}
+
+.mobileFacts dt {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.mobileFacts dd {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: #18223a;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 13px;
+  margin: 40px auto 0;
+  color: #667085;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.note svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.note p {
+  margin: 0;
+}
+
+.note p + p {
+  margin-top: 6px;
+}
+
+.emptyState {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 28px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #667085;
+  text-align: center;
+  box-shadow: none;
+}
+
+.emptyState strong {
+  color: #18223a;
+}
+
+@media (max-width: 1320px) {
+  .filterCard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+  }
+
+  .updateButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 860px) {
+  .page {
+    padding: 28px 18px 34px;
+  }
+
+  .header {
+    margin-bottom: 24px;
+  }
+
+  .header h1 {
+    font-size: 31px;
+  }
+
+  .filterCard {
+    grid-template-columns: 1fr;
+    margin-bottom: 22px;
+    padding: 20px;
+  }
+
+  .desktopTable {
+    display: none;
+  }
+
+  .mobileList {
+    display: grid;
+    gap: 14px;
+  }
+
+  .note {
+    margin-top: 28px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .page {
+    padding: 23px 14px 30px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+  }
+
+  .header p {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .selectShell select,
+  .updateButton {
+    height: 50px;
+  }
+
+  .universityHeading {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .logoBox {
+    width: 50px;
+    height: 58px;
+  }
+
+  .mobileFacts div {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+}

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Sidebar } from "./layout/SidebarLayout/SidebarLayout";
@@ -30,6 +29,7 @@ import {
   ManageReportScreen,
   ExploreUniversityScreen,
   V_ActScreen,
+  MajorComparisonScreen,
 } from "./screens";
 
 function App() {
@@ -62,6 +62,7 @@ function App() {
           <Route path="quiz/holland" element={<HollandQuizScreen />} />
           <Route path="predict" element={<CareerPredictionScreen />} />
           <Route path="explore-university" element={<ExploreUniversityScreen />} />
+          <Route path="major-comparison" element={<MajorComparisonScreen />} />
           <Route path="v-act" element={<V_ActScreen />} />
 
           <Route path="profile" element={<ProfileScreen />} />
