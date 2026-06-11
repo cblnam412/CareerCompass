@@ -304,6 +304,19 @@ if (universityService) {
     router.use('/universities', createProxyMiddleware(universityService));
 }
 
+const universityFeaturePrefixes = [
+    '/admission-timeline',
+    '/university-cost-estimates',
+    '/major-comparisons'
+];
+
+universityFeaturePrefixes.forEach((prefix) => {
+    const service = getService(prefix);
+    if (service) {
+        router.use(prefix, createProxyMiddleware(service));
+    }
+});
+
 const adminUserService = getService('/admin/users');
 if (adminUserService) {
     router.use('/admin/users', createProxyMiddleware(adminUserService));

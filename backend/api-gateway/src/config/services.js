@@ -15,6 +15,30 @@ const services = {
         timeout: 30000,
         retries: 1
     },
+    admissionTimeline: {
+        name: 'University Service',
+        url: process.env.UNIVERSITY_SERVICE_URL || 'http://localhost:5001',
+        prefix: '/admission-timeline',
+        targetPrefix: '/api/universities/admission-timeline',
+        timeout: 30000,
+        retries: 1
+    },
+    universityCostEstimates: {
+        name: 'University Service',
+        url: process.env.UNIVERSITY_SERVICE_URL || 'http://localhost:5001',
+        prefix: '/university-cost-estimates',
+        targetPrefix: '/api/universities/university-cost-estimates',
+        timeout: 30000,
+        retries: 1
+    },
+    majorComparisons: {
+        name: 'University Service',
+        url: process.env.UNIVERSITY_SERVICE_URL || 'http://localhost:5001',
+        prefix: '/major-comparisons',
+        targetPrefix: '/api/universities/major-comparisons',
+        timeout: 30000,
+        retries: 1
+    },
     mockExams: {
         name: 'Mock Exams Service',
         url: process.env.MOCK_EXAMS_SERVICE_URL || 'http://localhost:5002',
