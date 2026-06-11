@@ -36,6 +36,7 @@ export function Sidebar({ isCollapsedForChat }) {
     { icon: Sparkle, label: "Tư vấn nghề nghiệp", href: "/user/predict" },
     { icon: School, label: "Khám phá ngành", href: "/user/explore-university" },
     { icon: Scale, label: "So sánh ngành học", href: "/user/major-comparison" },
+    { icon: FileText, label: "Quản lý nguyện vọng", href: "/user/university-preferences" },
     { icon: CalendarDays, label: "Lịch tuyển sinh", href: "/user/admission-timeline" },
     { icon: CircleDollarSign, label: "Dự toán chi phí", href: "/user/university-cost-estimation" },
     { icon: Users, label: "Quản lý đại diện", href: "/user/representatives" },
