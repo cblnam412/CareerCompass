@@ -25,6 +25,7 @@ import ExploreUniversityScreen from './ExploreUniversityScreen/ExploreUniversity
 import V_ActScreen from './V_ACTScreen/V_ActScreen'
 import MajorComparisonScreen from './MajorComparisonScreen/MajorComparisonScreen'
 import AdmissionTimelineScreen from './AdmissionTimelineScreen/AdmissionTimelineScreen'
+import CostEstimationScreen from './CostEstimationScreen/CostEstimationScreen'
 
 export {
     MessageScreen,
@@ -53,5 +54,6 @@ export {
     ExploreUniversityScreen,
     V_ActScreen,
     MajorComparisonScreen,
-    AdmissionTimelineScreen
+    AdmissionTimelineScreen,
+    CostEstimationScreen
 }
