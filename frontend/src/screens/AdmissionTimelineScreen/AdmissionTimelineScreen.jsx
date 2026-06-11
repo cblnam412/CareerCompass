@@ -295,7 +295,7 @@ const resources = [
 ];
 
 const timeFilterOptions = [
-  { value: "all", label: "Tất cả" },
+  { value: "all", label: "Tất cả trạng thái" },
   { value: "open", label: "Đang mở" },
   { value: "upcoming", label: "Sắp diễn ra" },
   { value: "ended", label: "Đã kết thúc" },
